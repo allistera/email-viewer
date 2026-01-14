@@ -1,0 +1,29 @@
+{
+  "env": {
+    "es2022": true,
+    "node": true,
+    "worker": true
+  },
+  "extends": "eslint:recommended",
+  "parserOptions": {
+    "ecmaVersion": 2022,
+    "sourceType": "module"
+  },
+  "globals": {
+    "crypto": "readonly",
+    "Response": "readonly",
+    "Request": "readonly",
+    "Headers": "readonly",
+    "URL": "readonly",
+    "URLSearchParams": "readonly",
+    "ReadableStream": "readonly",
+    "TransformStream": "readonly",
+    "WritableStream": "readonly"
+  },
+  "rules": {
+    "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+    "no-console": "off",
+    "prefer-const": "error",
+    "no-var": "error"
+  }
+}

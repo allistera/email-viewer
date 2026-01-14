@@ -1,0 +1,39 @@
+{
+  "name": "email-inbox-app",
+  "version": "1.0.0",
+  "description": "Personal email inbox app on Cloudflare Workers",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "dev:web": "cd web && npm run dev",
+    "deploy": "wrangler deploy",
+    "deploy:dev": "wrangler deploy --env dev",
+    "deploy:production": "wrangler deploy --env production",
+    "deploy:pages": "cd web && npm run build && cd .. && wrangler pages deploy web/dist --project-name mail-app",
+    "db:create": "wrangler d1 create maildb",
+    "db:create:dev": "wrangler d1 create maildb-dev",
+    "db:migrate": "wrangler d1 migrations apply maildb",
+    "db:migrate:dev": "wrangler d1 migrations apply maildb-dev --local",
+    "db:migrate:remote": "wrangler d1 migrations apply maildb --remote",
+    "r2:create": "wrangler r2 bucket create mailstore",
+    "r2:create:dev": "wrangler r2 bucket create mailstore-dev",
+    "queue:create": "wrangler queues create mail-events",
+    "pages:create": "wrangler pages project create mail-app",
+    "tail": "wrangler tail",
+    "lint": "eslint src"
+  },
+  "keywords": [
+    "cloudflare",
+    "workers",
+    "email",
+    "vue"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241127.0",
+    "eslint": "^8.57.0",
+    "wrangler": "^3.90.0"
+  },
+  "dependencies": {}
+}

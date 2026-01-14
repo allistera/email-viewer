@@ -1,0 +1,54 @@
+/* Todoist-inspired color palette */
+:root {
+  --color-primary: #db4c3f;
+  --color-primary-dark: #c53727;
+  --color-bg: #ffffff;
+  --color-bg-secondary: #f9f9f9;
+  --color-border: #e0e0e0;
+  --color-text: #202020;
+  --color-text-secondary: #808080;
+  --color-success: #058527;
+  --color-warning: #ff9a14;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+  line-height: 1.5;
+  overflow: hidden;
+}
+
+button {
+  font-family: inherit;
+}
+
+input,
+select {
+  font-family: inherit;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-secondary);
+}
