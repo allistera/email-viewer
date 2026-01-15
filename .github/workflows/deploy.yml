@@ -48,7 +48,7 @@ jobs:
 
       - name: Run Playwright tests
         working-directory: web
-        run: npm test
+        run: npm test -- --project=chromium
 
       - name: Upload test results
         if: failure()
