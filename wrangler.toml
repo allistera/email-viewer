@@ -8,10 +8,11 @@ binding = "DB"
 database_name = "maildb"
 database_id = "13ae0605-ffca-426d-b3ca-e682b296de0f"
 
-# R2 Bucket
-[[r2_buckets]]
-binding = "MAILSTORE"
-bucket_name = "mailstore"
+# NOTE: R2 must be enabled in Cloudflare Dashboard first
+# Go to R2 in dashboard, enable it, then create bucket
+# [[r2_buckets]]
+# binding = "MAILSTORE"
+# bucket_name = "mailstore"
 
 # NOTE: Queues require Cloudflare Workers Paid plan ($5/mo)
 # Uncomment below when ready to enable async spam classification
@@ -75,9 +76,10 @@ binding = "DB"
 database_name = "maildb"
 database_id = "13ae0605-ffca-426d-b3ca-e682b296de0f"
 
-[[env.production.r2_buckets]]
-binding = "MAILSTORE"
-bucket_name = "mailstore"
+# NOTE: R2 must be enabled first
+# [[env.production.r2_buckets]]
+# binding = "MAILSTORE"
+# bucket_name = "mailstore"
 
 # NOTE: Queues require paid plan - commented out
 # [[env.production.queues.producers]]
