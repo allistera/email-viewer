@@ -5,41 +5,55 @@
       @submit="handleAuthSubmit"
     />
 
-    <div v-if="!showAuthModal" class="app-container">
-      <MessageList
-        :messages="messages"
-        :selected-id="selectedMessageId"
-        :loading="loadingMessages"
-        :loading-more="loadingMore"
-        :has-more="hasMore"
-        :error="listError"
-        @select="handleSelectMessage"
-        @filter-change="handleFilterChange"
-        @refresh="handleRefresh"
-        @load-more="handleLoadMore"
+    <div v-if="!showAuthModal" class="app-layout">
+      <ActionBar
+        :filters="customFilters"
+        :active-filter-id="activeFilterId"
+        :has-selection="!!selectedMessageId"
+        @filter-select="handleCustomFilterSelect"
+        @filter-create="handleCustomFilterCreate"
+        @filter-remove="handleCustomFilterRemove"
+        @archive="handleArchive"
       />
 
-      <MessageDetail
-        :message="currentMessage"
-        :loading="loadingDetail"
-        :error="detailError"
-      />
+      <div class="app-container">
+        <MessageList
+          :messages="messages"
+          :selected-id="selectedMessageId"
+          :loading="loadingMessages"
+          :loading-more="loadingMore"
+          :has-more="hasMore"
+          :error="listError"
+          @select="handleSelectMessage"
+          @filter-change="handleFilterChange"
+          @refresh="handleRefresh"
+          @load-more="handleLoadMore"
+        />
+
+        <MessageDetail
+          :message="currentMessage"
+          :loading="loadingDetail"
+          :error="detailError"
+        />
+      </div>
     </div>
   </div>
 </template>
 
 <script>
 import AuthModal from './components/AuthModal.vue';
+import ActionBar from './components/ActionBar.vue';
 import MessageList from './components/MessageList.vue';
 import MessageDetail from './components/MessageDetail.vue';
 import { hasToken, setToken, clearToken } from './services/auth.js';
-import { getMessages, getMessage } from './services/api.js';
+import { getMessages, getMessage, archiveMessage } from './services/api.js';
 import { realtimeClient } from './services/realtime.js';
 
 export default {
   name: 'App',
   components: {
     AuthModal,
+    ActionBar,
     MessageList,
     MessageDetail
   },
@@ -56,7 +70,9 @@ export default {
       detailError: null,
       nextBefore: null,
       hasMore: false,
-      spamFilter: 'all'
+      spamFilter: 'all',
+      customFilters: this.loadFilters(),
+      activeFilterId: null
     };
   },
   mounted() {
@@ -108,10 +124,16 @@ export default {
 
         const response = await getMessages(params);
 
+        let items = response.items;
+
+        if (this.activeFilterId) {
+          items = items.filter(msg => this.applyCustomFilter(msg));
+        }
+
         if (reset) {
-          this.messages = response.items;
+          this.messages = items;
         } else {
-          this.messages = [...this.messages, ...response.items];
+          this.messages = [...this.messages, ...items];
         }
 
         this.nextBefore = response.nextBefore;
@@ -190,6 +212,87 @@ export default {
         this.currentMessage.spamStatus = event.spamStatus;
         this.currentMessage.spamConfidence = event.spamConfidence;
       }
+    },
+
+    loadFilters() {
+      const stored = localStorage.getItem('email_filters');
+      return stored ? JSON.parse(stored) : [];
+    },
+
+    saveFilters() {
+      localStorage.setItem('email_filters', JSON.stringify(this.customFilters));
+    },
+
+    handleCustomFilterCreate(filter) {
+      this.customFilters.push(filter);
+      this.saveFilters();
+      this.handleCustomFilterSelect(filter.id);
+    },
+
+    handleCustomFilterSelect(filterId) {
+      if (this.activeFilterId === filterId) {
+        this.activeFilterId = null;
+        this.spamFilter = 'all';
+      } else {
+        this.activeFilterId = filterId;
+        this.spamFilter = 'all';
+      }
+      this.handleRefresh();
+    },
+
+    handleCustomFilterRemove(filterId) {
+      this.customFilters = this.customFilters.filter(f => f.id !== filterId);
+      this.saveFilters();
+
+      if (this.activeFilterId === filterId) {
+        this.activeFilterId = null;
+        this.handleRefresh();
+      }
+    },
+
+    async handleArchive() {
+      if (!this.selectedMessageId) return;
+
+      try {
+        await archiveMessage(this.selectedMessageId);
+
+        this.messages = this.messages.filter(m => m.id !== this.selectedMessageId);
+
+        if (this.currentMessage && this.currentMessage.id === this.selectedMessageId) {
+          this.currentMessage = null;
+          this.selectedMessageId = null;
+        }
+
+        if (this.messages.length > 0 && !this.selectedMessageId) {
+          this.handleSelectMessage(this.messages[0].id);
+        }
+      } catch (error) {
+        alert('Failed to archive message: ' + error.message);
+      }
+    },
+
+    applyCustomFilter(message) {
+      if (!this.activeFilterId) return true;
+
+      const filter = this.customFilters.find(f => f.id === this.activeFilterId);
+      if (!filter) return true;
+
+      switch (filter.type) {
+        case 'sender':
+          if (filter.value.startsWith('@')) {
+            return message.from.toLowerCase().includes(filter.value.toLowerCase());
+          }
+          return message.from.toLowerCase().includes(filter.value.toLowerCase());
+
+        case 'subject':
+          return message.subject.toLowerCase().includes(filter.value.toLowerCase());
+
+        case 'spam':
+          return message.spamStatus === filter.value;
+
+        default:
+          return true;
+      }
     }
   }
 };
@@ -201,10 +304,17 @@ export default {
   overflow: hidden;
 }
 
+.app-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
 .app-container {
   display: grid;
   grid-template-columns: 400px 1fr;
-  height: 100vh;
+  flex: 1;
+  min-height: 0;
 }
 
 @media (max-width: 768px) {

@@ -70,3 +70,9 @@ export async function checkHealth() {
   const response = await fetch(`${API_BASE}/health`);
   return response.json();
 }
+
+export async function archiveMessage(id) {
+  return request(`/messages/${id}/archive`, {
+    method: 'POST'
+  });
+}

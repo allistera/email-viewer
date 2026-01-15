@@ -4,6 +4,8 @@ Vue.js 3 frontend for the email inbox application.
 
 ## Development
 
+### With Real Backend
+
 ```bash
 # Install dependencies
 npm install
@@ -13,6 +15,17 @@ npm run dev
 ```
 
 The dev server runs on `http://localhost:5173` and proxies `/api/*` requests to the worker running on `http://localhost:8787`.
+
+### With Mock Backend (Recommended for UI Development)
+
+```bash
+# Run both mock API and Vite dev server
+npm run dev:mock
+```
+
+This starts a mock API server with fake data, allowing you to develop the UI without setting up the full Cloudflare infrastructure. See [MOCK_DEV.md](./MOCK_DEV.md) for details.
+
+**Mock auth token**: `dev-token-12345`
 
 ## Build
 
