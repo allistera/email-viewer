@@ -32,7 +32,7 @@ script_name = "mail-app-worker"
 
 [[migrations]]
 tag = "v1"
-new_classes = ["RealtimeHub"]
+new_sqlite_classes = ["RealtimeHub"]
 
 # Environment Variables
 [vars]
@@ -69,3 +69,26 @@ name = "mail-app-worker"
 
 [env.production.vars]
 OPENAI_MODEL = "gpt-4o-mini"
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "maildb"
+database_id = "placeholder"
+
+[[env.production.r2_buckets]]
+binding = "MAILSTORE"
+bucket_name = "mailstore"
+
+[[env.production.queues.producers]]
+binding = "MAIL_EVENTS"
+queue = "mail-events"
+
+[[env.production.queues.consumers]]
+queue = "mail-events"
+max_batch_size = 10
+max_batch_timeout = 30
+
+[[env.production.durable_objects.bindings]]
+name = "REALTIME_HUB"
+class_name = "RealtimeHub"
+script_name = "mail-app-worker"
