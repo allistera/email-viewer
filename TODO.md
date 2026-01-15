@@ -7,8 +7,6 @@
   - Configure wrangler.toml with all bindings:
     - D1: `DB`
     - R2: `MAILSTORE`
-    - Queue producer: `MAIL_EVENTS`
-    - Queue consumer: `mail-events`
     - Durable Object: `REALTIME_HUB`
     - Secrets: `API_TOKEN`, `OPENAI_API_KEY`
     - Vars: `OPENAI_MODEL`
@@ -46,7 +44,7 @@
   - Save attachments to R2: `att/<messageId>/<attachmentId>/<filename>`
   - Insert messages row with parsed data
   - Insert attachments rows
-  - Enqueue `message.received` event
+  - **Trigger async post-processing via `ctx.waitUntil`**
   - Error handling: always save raw .eml even if parsing fails
 
 - [ ] **Create OpenAI spam classification client with input truncation**
@@ -59,8 +57,9 @@
   - Use structured output schema: `{is_spam, confidence, reason}`
   - Error handling: retry once, fallback to 'unknown'
 
-- [ ] **Implement Queue consumer for async spam processing**
-  - Handle `message.received` events
+- [ ] **Implement async processing function (background task)**
+  - Function: `processMessage(messageId, env)`
+  - Broadcast `message.received` event via Durable Object
   - Load message from D1
   - Call OpenAI spam classifier
   - Update D1 spam fields
@@ -94,7 +93,6 @@
 - [ ] **Build main worker entry point with routing**
   - Email handler: `async email(message, env, ctx)`
   - HTTP handler: route to API endpoints
-  - Queue consumer: `async queue(batch, env, ctx)`
   - Static file serving for web UI
   - Error logging (message IDs only, never full bodies)
 
@@ -170,7 +168,7 @@
 - ✅ Attachments saved to R2 and downloadable via API
 - ✅ REST API (list, detail, attachment download) working
 - ✅ Spam classification via OpenAI with proper truncation
-- ✅ Queue consumer updates spam fields in D1
+- ✅ Background task Updates spam fields in D1 (via `waitUntil`)
 - ✅ Realtime UI updates via SSE or WebSocket
 - ✅ Single-user bearer token authentication working
 - ✅ Todoist-inspired UI design implemented

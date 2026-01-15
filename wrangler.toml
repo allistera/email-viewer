@@ -2,30 +2,16 @@ name = "mail-app-worker"
 main = "src/worker.js"
 compatibility_date = "2024-01-01"
 
-# NOTE: D1 database must exist before deployment
-# Run: wrangler d1 create maildb
-# Then uncomment and update database_id below
-# [[d1_databases]]
-# binding = "DB"
-# database_name = "maildb"
-# database_id = "13ae0605-ffca-426d-b3ca-e682b296de0f"
+# D1 Database
+[[d1_databases]]
+binding = "DB"
+database_name = "maildb"
+database_id = "placeholder" # Replace with actual database ID after creation
 
-# NOTE: R2 must be enabled in Cloudflare Dashboard first
-# Go to R2 in dashboard, enable it, then create bucket
-# [[r2_buckets]]
-# binding = "MAILSTORE"
-# bucket_name = "mailstore"
-
-# NOTE: Queues require Cloudflare Workers Paid plan ($5/mo)
-# Uncomment below when ready to enable async spam classification
-# [[queues.producers]]
-# binding = "MAIL_EVENTS"
-# queue = "mail-events"
-#
-# [[queues.consumers]]
-# queue = "mail-events"
-# max_batch_size = 10
-# max_batch_timeout = 30
+# R2 Bucket
+[[r2_buckets]]
+binding = "MAILSTORE"
+bucket_name = "mailstore"
 
 # Durable Object
 [[durable_objects.bindings]]
@@ -35,7 +21,7 @@ script_name = "mail-app-worker"
 
 [[migrations]]
 tag = "v1"
-new_sqlite_classes = ["RealtimeHub"]
+new_classes = ["RealtimeHub"]
 
 # Environment Variables
 [vars]
@@ -72,29 +58,3 @@ name = "mail-app-worker"
 
 [env.production.vars]
 OPENAI_MODEL = "gpt-4o-mini"
-
-# NOTE: D1 database must exist first
-# [[env.production.d1_databases]]
-# binding = "DB"
-# database_name = "maildb"
-# database_id = "13ae0605-ffca-426d-b3ca-e682b296de0f"
-
-# NOTE: R2 must be enabled first
-# [[env.production.r2_buckets]]
-# binding = "MAILSTORE"
-# bucket_name = "mailstore"
-
-# NOTE: Queues require paid plan - commented out
-# [[env.production.queues.producers]]
-# binding = "MAIL_EVENTS"
-# queue = "mail-events"
-#
-# [[env.production.queues.consumers]]
-# queue = "mail-events"
-# max_batch_size = 10
-# max_batch_timeout = 30
-
-[[env.production.durable_objects.bindings]]
-name = "REALTIME_HUB"
-class_name = "RealtimeHub"
-script_name = "mail-app-worker"

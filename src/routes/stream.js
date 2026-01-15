@@ -1,31 +1,20 @@
-/**
- * SSE and WebSocket proxy routes
- */
+export const StreamRouter = {
+  async handle(urlString, request, env) {
+    const url = new URL(urlString);
+    const path = url.pathname.replace('/api/', '');
 
-/**
- * GET /api/stream - Proxy to Durable Object SSE endpoint
- */
-export async function handleSSEStream(request, env) {
-  const hubId = env.REALTIME_HUB.idFromName('global');
-  const hub = env.REALTIME_HUB.get(hubId);
+    if (path === 'stream' || path === 'ws') {
+      const id = env.REALTIME_HUB.idFromName('global');
+      const stub = env.REALTIME_HUB.get(id);
 
-  const hubRequest = new Request('https://internal/connect/sse', {
-    headers: request.headers
-  });
+      // Rewrite URL to match DO internal paths
+      const doUrl = new URL(request.url);
+      doUrl.pathname = path === 'stream' ? '/connect/sse' : '/connect/ws';
 
-  return hub.fetch(hubRequest);
-}
+      const newRequest = new Request(doUrl.toString(), request);
+      return stub.fetch(newRequest);
+    }
 
-/**
- * GET /api/ws - Proxy to Durable Object WebSocket endpoint
- */
-export async function handleWebSocketStream(request, env) {
-  const hubId = env.REALTIME_HUB.idFromName('global');
-  const hub = env.REALTIME_HUB.get(hubId);
-
-  const hubRequest = new Request('https://internal/connect/ws', {
-    headers: request.headers
-  });
-
-  return hub.fetch(hubRequest);
-}
+    return null; // Not a stream request
+  }
+};

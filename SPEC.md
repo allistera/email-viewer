@@ -7,7 +7,7 @@ A personal email web application that:
 - Stores:
   - Email metadata + bodies in **Cloudflare D1**
   - Raw `.eml` + attachments in **Cloudflare R2**
-- Uses **Cloudflare Queues** for post-processing
+- Uses **Worker `waitUntil`** for post-processing (removing the need for paid Queues)
 - Provides a **REST API** for UI data access
 - Provides **real-time updates** via **SSE and WebSocket**, implemented using a **Durable Object hub**
 - Adds an **OpenAI spam check** step (async, low cost) after ingestion
@@ -38,7 +38,6 @@ This spec assumes **one Worker** for minimal cost/ops:
   - Email handler (ingest)
   - HTTP API (REST + SSE + WS)
   - Static UI hosting
-  - Queue consumer
 
 ### 3.2 Durable Objects
 - `RealtimeHub` (single global hub)
@@ -53,12 +52,7 @@ This spec assumes **one Worker** for minimal cost/ops:
   - Raw emails: `raw/<message_id>.eml`
   - Attachments: `att/<message_id>/<attachment_id>/<filename>`
 
-### 3.5 Queues
-- Queue: `mail-events`
-  - `message.received` → spam classification + broadcast
-  - (Optional future) indexing/search, additional enrichment
-
-### 3.6 Email Routing
+### 3.5 Email Routing
 - Cloudflare Email Routing sends inbound mail to the Worker email handler.
 
 ---
@@ -169,27 +163,25 @@ Steps:
    - Extract attachments and store each attachment to R2
 7. Insert `messages` row (including snippet + has_attachments + body fields)
 8. Insert `attachments` rows
-9. Enqueue Queue event:
-   - `{ "type": "message.received", "messageId": "<uuid>" }`
+9. **Post-Processing (via `ctx.waitUntil`)**:
+   - Instead of using a Queue, we invoke an async function and pass it to `ctx.waitUntil()`. 
+   - This keeps the worker alive to finish processing without blocking the initial ingest handshake.
+   - Task: `processMessage(messageId, env)`
 
 Notes:
-- Keep ingest lightweight (no OpenAI calls here).
+- Keep main ingest path lightweight.
 - If parsing fails, still store raw `.eml` and insert a minimal `messages` row if possible.
 
-### 5.8 Async Post-Processing Flow (Queue Consumer)
+### 5.8 Async Post-Processing (Background Task)
 
-Queue: `mail-events`
+Function: `processMessage(messageId, env)`
 
-For each message:
+Steps:
 1. Load message from D1
-2. Run spam classification (OpenAI) if `spam_checked_at` is NULL
+2. **Broadcast** `message.received` event via Durable Object (UI updates to show new email)
+2. Run **spam classification** (OpenAI) if `spam_checked_at` is NULL
 3. Update D1 spam fields
-4. Broadcast real-time events via Durable Object
-
-#### 5.8.1 Queue Event Types
-- `message.received`:
-  - triggers spam check + initial broadcast
-- (Optional later) `message.reprocess`, `message.deleted`, etc.
+4. **Broadcast** `message.classified` event via Durable Object (UI updates spam status)
 
 ## 6. Spam Classification (OpenAI)
 
@@ -243,7 +235,7 @@ Endpoints inside DO:
 
 ### 10.2 Events
 - `message.received`
-  - emitted after ingest enqueues and/or after queue consumer begins processing
+  - emitted after ingest enqueues and/or after background processing begins
 - `message.classified`
   - emitted after spam check completes
 
@@ -372,7 +364,7 @@ Realtime:
 ```bash
 /
   src/
-    worker.js                 # entry: routes + email handler + queue consumer
+    worker.js                 # entry: routes + email handler + background tasks
     auth.js                   # bearer token validation
     db.js                     # D1 helpers
     r2.js                     # R2 helpers
@@ -394,8 +386,6 @@ Realtime:
 Must bind:
 - D1: `DB`
 - R2: `MAILSTORE`
-- Queue producer: `MAIL_EVENTS`
-- Queue consumer: `mail-events`
 - Durable Object: `REALTIME_HUB`
 - Vars/secrets:
   - `API_TOKEN`
@@ -424,7 +414,7 @@ Must have:
   - list + detail endpoints work
   - attachment download works
   - spamStatus filter works
-- Queue consumer:
+- Background Task (via `waitUntil`):
   - classifies spam via OpenAI
   - updates D1 spam fields
 - Realtime:

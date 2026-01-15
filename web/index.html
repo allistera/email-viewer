@@ -3,10 +3,142 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Email Inbox</title>
+  <title>Inbox</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="https://unpkg.com/marked/marked.min.js"></script>
+  <script src="https://unpkg.com/dompurify/dist/purify.min.js"></script>
 </head>
 <body>
-  <div id="app"></div>
-  <script type="module" src="/src/main.js"></script>
+  <div id="app">
+    <!-- Auth Modal -->
+    <div v-if="!token" class="modal-overlay">
+      <div class="modal auth-modal">
+        <h2>Login</h2>
+        <p>Please enter your API Token</p>
+        <form @submit.prevent="saveToken">
+          <input v-model="tokenInput" type="password" placeholder="API Token" required>
+          <button type="submit">Unlock</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Main App -->
+    <div v-if="token" class="layout">
+      <!-- Sidebar / List -->
+      <div class="sidebar">
+        <header class="sidebar-header">
+          <h1>Inbox</h1>
+          <div class="actions">
+            <button @click="refresh" title="Refresh" :disabled="loading">
+              <span v-if="loading">...</span>
+              <span v-else>↻</span>
+            </button>
+          </div>
+        </header>
+        
+        <div class="message-list">
+          <div 
+            v-for="msg in messages" 
+            :key="msg.id"
+            class="message-item"
+            :class="{ active: selectedId === msg.id, unread: false }" 
+            @click="selectMessage(msg)"
+          >
+            <div class="msg-header">
+              <span class="msg-from">{{ formatFrom(msg.from) }}</span>
+              <span class="msg-time">{{ formatTime(msg.receivedAt) }}</span>
+            </div>
+            <div class="msg-subject">{{ msg.subject || '(no subject)' }}</div>
+            <div class="msg-snippet">{{ msg.snippet }}</div>
+            <div class="msg-badges">
+              <span v-if="msg.hasAttachments" class="badge-icon">📎</span>
+              <span 
+                v-if="msg.spamStatus !== 'unknown' && msg.spamStatus !== 'ham'" 
+                class="badge spam"
+              >
+                {{ msg.spamStatus }}
+              </span>
+            </div>
+          </div>
+          
+          <div v-if="messages.length === 0 && !loading" class="empty-state">
+            No messages
+          </div>
+          
+          <button v-if="nextBefore" @click="loadMore" class="load-more">Load More</button>
+        </div>
+      </div>
+
+      <!-- Detail View -->
+      <div class="main-content">
+        <div v-if="selectedMessage" class="message-detail">
+          <header class="detail-header">
+            <div class="meta-row">
+              <h2>{{ selectedMessage.subject }}</h2>
+              <div class="spam-indicator" :class="selectedMessage.spamStatus">
+               {{ selectedMessage.spamStatus }} 
+               <span v-if="selectedMessage.spamConfidence">({{ Math.round(selectedMessage.spamConfidence * 100) }}%)</span>
+              </div>
+            </div>
+            <div class="meta-row sub">
+              <div class="parties">
+                <strong>{{ parseAddress(selectedMessage.from).name }}</strong> &lt;{{ parseAddress(selectedMessage.from).email }}&gt;
+                <span class="to">to {{ parseAddress(selectedMessage.to, true) }}</span>
+              </div>
+              <div class="time" :title="selectedMessage.date">
+                {{ formatFullTime(selectedMessage.receivedAt) }}
+              </div>
+            </div>
+          </header>
+
+          <!-- Attachments -->
+          <div v-if="selectedMessage.attachments && selectedMessage.attachments.length > 0" class="attachments-area">
+            <h3>Attachments</h3>
+            <div class="attachment-list">
+              <a 
+                v-for="att in selectedMessage.attachments" 
+                :key="att.id"
+                :href="getAttachmentUrl(selectedMessage.id, att.id)"
+                target="_blank"
+                class="attachment-pill"
+              >
+                📎 {{ att.filename }} ({{ formatSize(att.size_bytes) }})
+              </a>
+            </div>
+          </div>
+
+          <!-- Body Controls -->
+          <div class="body-controls">
+            <button 
+              :class="{ active: viewMode === 'text' }" 
+              @click="viewMode = 'text'" 
+              v-if="selectedMessage.textBody"
+            >Text</button>
+            <button 
+              :class="{ active: viewMode === 'html' }" 
+              @click="viewMode = 'html'"
+              v-if="selectedMessage.htmlBody"
+            >HTML</button>
+          </div>
+
+          <!-- Body -->
+          <div class="message-body">
+            <div v-if="viewMode === 'text'" class="text-view">
+              {{ selectedMessage.textBody }}
+            </div>
+            <div v-else class="html-view">
+              <iframe :srcdoc="sanitizedHtml" sandbox="allow-popups"></iframe>
+            </div>
+          </div>
+        </div>
+        
+        <div v-else class="empty-state-large">
+          Select a message to read
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="app.js"></script>
 </body>
 </html>

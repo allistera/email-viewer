@@ -1,148 +1,112 @@
 /**
- * RealtimeHub Durable Object
- * Manages SSE and WebSocket connections for real-time updates
+ * Durable Object: RealtimeHub
+ * Manages WebSocket and SSE connections for real-time updates.
  */
-
 export class RealtimeHub {
   constructor(state, env) {
     this.state = state;
     this.env = env;
-    this.sessions = new Map();
-    this.nextId = 0;
+
+    // In-memory storage for active connections
+    // DOs are single-threaded so we don't need locks, but state resets on restart.
+    this.sseSessions = new Set();
+    this.wsSessions = new Set();
   }
 
   async fetch(request) {
     const url = new URL(request.url);
+    const pathname = url.pathname;
 
-    if (url.pathname === '/connect/sse') {
+    // SSE Endpoint
+    if (pathname === '/connect/sse') {
       return this.handleSSE(request);
     }
 
-    if (url.pathname === '/connect/ws') {
-      return this.handleWebSocket(request);
+    // WebSocket Endpoint
+    if (pathname === '/connect/ws') {
+      return this.handleWS(request);
     }
 
-    if (url.pathname === '/broadcast' && request.method === 'POST') {
-      return this.handleBroadcast(request);
+    // Broadcast API (Internal)
+    if (pathname === '/broadcast' && request.method === 'POST') {
+      const payload = await request.json();
+      this.broadcast(payload);
+      return new Response('ok');
     }
 
     return new Response('Not Found', { status: 404 });
   }
 
-  /**
-   * Handle Server-Sent Events connection
-   */
-  async handleSSE(request) {
-    const sessionId = this.nextId++;
-
+  handleSSE(request) {
     const { readable, writable } = new TransformStream();
     const writer = writable.getWriter();
     const encoder = new TextEncoder();
 
-    this.sessions.set(sessionId, {
-      type: 'sse',
-      writer,
-      encoder
+    // Init stream
+    writer.write(encoder.encode('data: {"type":"connected"}\n\n'));
+
+    // Store session
+    this.sseSessions.add(writer);
+
+    // Remove on cancel (client disconnect)
+    request.signal.addEventListener('abort', () => {
+      this.sseSessions.delete(writer);
+      writer.close().catch(() => { });
     });
-
-    const keepAliveInterval = setInterval(() => {
-      try {
-        writer.write(encoder.encode(': keepalive\n\n'));
-      } catch {
-        clearInterval(keepAliveInterval);
-      }
-    }, 30000);
-
-    const cleanup = () => {
-      clearInterval(keepAliveInterval);
-      this.sessions.delete(sessionId);
-      try {
-        writer.close();
-      } catch {
-        // Already closed
-      }
-    };
-
-    request.signal?.addEventListener('abort', cleanup);
-
-    writer.write(encoder.encode(': connected\n\n'));
 
     return new Response(readable, {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive'
+        'Connection': 'keep-alive',
+        'Access-Control-Allow-Origin': '*'
       }
     });
   }
 
-  /**
-   * Handle WebSocket connection
-   */
-  async handleWebSocket(request) {
+  handleWS(request) {
     const upgradeHeader = request.headers.get('Upgrade');
     if (!upgradeHeader || upgradeHeader !== 'websocket') {
-      return new Response('Expected WebSocket', { status: 426 });
+      return new Response('Expected Upgrade: websocket', { status: 426 });
     }
 
-    const sessionId = this.nextId++;
-    const pair = new WebSocketPair();
-    const [client, server] = Object.values(pair);
-
-    this.sessions.set(sessionId, {
-      type: 'ws',
-      socket: server
-    });
+    const webSocketPair = new WebSocketPair();
+    const [client, server] = Object.values(webSocketPair);
 
     server.accept();
+    this.wsSessions.add(server);
 
     server.addEventListener('close', () => {
-      this.sessions.delete(sessionId);
+      this.wsSessions.delete(server);
     });
 
     server.addEventListener('error', () => {
-      this.sessions.delete(sessionId);
+      this.wsSessions.delete(server);
     });
-
-    server.send(JSON.stringify({ type: 'connected' }));
 
     return new Response(null, {
       status: 101,
-      webSocket: client
+      webSocket: client,
     });
   }
 
-  /**
-   * Handle broadcast request
-   */
-  async handleBroadcast(request) {
-    const event = await request.json();
+  broadcast(message) {
+    const data = JSON.stringify(message);
 
-    const message = JSON.stringify(event);
-    let successCount = 0;
-    let errorCount = 0;
-
-    for (const [sessionId, session] of this.sessions.entries()) {
-      try {
-        if (session.type === 'sse') {
-          session.writer.write(session.encoder.encode(`data: ${message}\n\n`));
-          successCount++;
-        } else if (session.type === 'ws') {
-          session.socket.send(message);
-          successCount++;
-        }
-      } catch (error) {
-        errorCount++;
-        this.sessions.delete(sessionId);
-      }
+    // 1. Broadcast to SSE
+    const encoder = new TextEncoder();
+    const ssePayload = encoder.encode(`data: ${data}\n\n`);
+    for (const writer of this.sseSessions) {
+      writer.write(ssePayload).catch(() => this.sseSessions.delete(writer));
     }
 
-    return new Response(JSON.stringify({
-      ok: true,
-      broadcasted: successCount,
-      errors: errorCount
-    }), {
-      headers: { 'Content-Type': 'application/json' }
-    });
+    // 2. Broadcast to WebSockets
+    for (const ws of this.wsSessions) {
+      try {
+        ws.send(data);
+      } catch (e) {
+        this.wsSessions.delete(ws);
+      }
+    }
   }
 }
