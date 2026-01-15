@@ -13,16 +13,16 @@ database_id = "13ae0605-ffca-426d-b3ca-e682b296de0f"
 binding = "MAILSTORE"
 bucket_name = "mailstore"
 
-# Queue Producer
-[[queues.producers]]
-binding = "MAIL_EVENTS"
-queue = "mail-events"
-
-# Queue Consumer
-[[queues.consumers]]
-queue = "mail-events"
-max_batch_size = 10
-max_batch_timeout = 30
+# NOTE: Queues require Cloudflare Workers Paid plan ($5/mo)
+# Uncomment below when ready to enable async spam classification
+# [[queues.producers]]
+# binding = "MAIL_EVENTS"
+# queue = "mail-events"
+#
+# [[queues.consumers]]
+# queue = "mail-events"
+# max_batch_size = 10
+# max_batch_timeout = 30
 
 # Durable Object
 [[durable_objects.bindings]]
@@ -79,14 +79,15 @@ database_id = "13ae0605-ffca-426d-b3ca-e682b296de0f"
 binding = "MAILSTORE"
 bucket_name = "mailstore"
 
-[[env.production.queues.producers]]
-binding = "MAIL_EVENTS"
-queue = "mail-events"
-
-[[env.production.queues.consumers]]
-queue = "mail-events"
-max_batch_size = 10
-max_batch_timeout = 30
+# NOTE: Queues require paid plan - commented out
+# [[env.production.queues.producers]]
+# binding = "MAIL_EVENTS"
+# queue = "mail-events"
+#
+# [[env.production.queues.consumers]]
+# queue = "mail-events"
+# max_batch_size = 10
+# max_batch_timeout = 30
 
 [[env.production.durable_objects.bindings]]
 name = "REALTIME_HUB"
