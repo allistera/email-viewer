@@ -10,7 +10,7 @@ import { insertMessage, insertAttachments, checkDedupe, insertDedupe } from './d
 /**
  * Handle incoming email from Cloudflare Email Routing
  */
-export async function handleIncomingEmail(message, env, ctx) {
+export async function handleIncomingEmail(message, env, _ctx) {
   const messageId = crypto.randomUUID();
 
   console.log(`[${messageId}] Processing incoming email`);

@@ -18,7 +18,8 @@
     "URLSearchParams": "readonly",
     "ReadableStream": "readonly",
     "TransformStream": "readonly",
-    "WritableStream": "readonly"
+    "WritableStream": "readonly",
+    "WebSocketPair": "readonly"
   },
   "rules": {
     "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],

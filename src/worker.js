@@ -6,7 +6,7 @@
 import { RealtimeHub } from './realtimeHub.js';
 import { handleIncomingEmail } from './ingest.js';
 import { processQueueBatch } from './queue.js';
-import { requireAuth, unauthorizedResponse } from './auth.js';
+import { requireAuth } from './auth.js';
 import { handleListMessages, handleGetMessage, handleDownloadAttachment } from './routes/api.js';
 import { handleSSEStream, handleWebSocketStream } from './routes/stream.js';
 
@@ -16,8 +16,8 @@ export default {
   /**
    * Email handler - called by Cloudflare Email Routing
    */
-  async email(message, env, ctx) {
-    await handleIncomingEmail(message, env, ctx);
+  async email(message, env, _ctx) {
+    await handleIncomingEmail(message, env, _ctx);
   },
 
   /**
@@ -63,7 +63,7 @@ export default {
   /**
    * Queue consumer - async post-processing
    */
-  async queue(batch, env, ctx) {
+  async queue(batch, env, _ctx) {
     await processQueueBatch(batch, env);
   }
 };
