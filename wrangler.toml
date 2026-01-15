@@ -6,7 +6,7 @@ compatibility_date = "2024-01-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "maildb"
-database_id = "placeholder" # Replace with actual database ID after creation
+database_id = "13ae0605-ffca-426d-b3ca-e682b296de0f"
 
 # R2 Bucket
 [[r2_buckets]]
@@ -73,7 +73,7 @@ OPENAI_MODEL = "gpt-4o-mini"
 [[env.production.d1_databases]]
 binding = "DB"
 database_name = "maildb"
-database_id = "placeholder"
+database_id = "13ae0605-ffca-426d-b3ca-e682b296de0f"
 
 [[env.production.r2_buckets]]
 binding = "MAILSTORE"
