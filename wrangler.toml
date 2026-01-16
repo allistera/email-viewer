@@ -59,6 +59,10 @@ name = "mail-app-worker"
 [env.production.vars]
 OPENAI_MODEL = "gpt-4o-mini"
 
+routes = [
+  { pattern = "api.infinitywave.design", custom_domain = true }
+]
+
 # Static Assets
 [assets]
 directory = "./web"
