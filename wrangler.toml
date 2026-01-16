@@ -60,10 +60,11 @@ name = "mail-app-worker"
 OPENAI_MODEL = "gpt-4o-mini"
 
 routes = [
-  { pattern = "api.infinitywave.design", custom_domain = true }
+  { pattern = "api.infinitywave.design", custom_domain = true },
+  { pattern = "mail.infinitywave.design", custom_domain = true }
 ]
 
 # Static Assets
 [assets]
-directory = "./web"
+directory = "./web/dist"
 binding = "ASSETS"
