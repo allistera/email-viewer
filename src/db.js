@@ -108,7 +108,7 @@ export const DB = {
     params.push(limit);
 
     const { results } = await db.prepare(query).bind(...params).all();
-    return results;
+    return results || [];
   },
 
   /**

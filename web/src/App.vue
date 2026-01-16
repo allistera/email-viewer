@@ -124,7 +124,7 @@ export default {
 
         const response = await getMessages(params);
 
-        let items = response.items;
+        let items = response.items || [];
 
         if (this.activeFilterId) {
           items = items.filter(msg => this.applyCustomFilter(msg));
@@ -137,7 +137,7 @@ export default {
         }
 
         this.nextBefore = response.nextBefore;
-        this.hasMore = response.items.length === params.limit && response.nextBefore !== null;
+        this.hasMore = (response.items || []).length === params.limit && response.nextBefore !== null;
 
         if (reset && this.messages.length > 0 && !this.selectedMessageId) {
           this.handleSelectMessage(this.messages[0].id);
