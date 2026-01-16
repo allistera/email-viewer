@@ -8,7 +8,7 @@
     <div v-if="!showAuthModal" class="app-layout">
       <ActionBar
         :filters="customFilters"
-        :active-filter-id="activeFilterId"
+        :active-filter-ids="activeFilterIds"
         :has-selection="!!selectedMessageId"
         @filter-select="handleCustomFilterSelect"
         @filter-create="handleCustomFilterCreate"
@@ -72,7 +72,7 @@ export default {
       hasMore: false,
       spamFilter: 'all',
       customFilters: this.loadFilters(),
-      activeFilterId: null
+      activeFilterIds: []
     };
   },
   mounted() {
@@ -126,8 +126,8 @@ export default {
 
         let items = response.items || [];
 
-        if (this.activeFilterId) {
-          items = items.filter(msg => this.applyCustomFilter(msg));
+        if (this.activeFilterIds.length > 0) {
+          items = items.filter(msg => this.applyCustomFilters(msg));
         }
 
         if (reset) {
@@ -226,16 +226,17 @@ export default {
     handleCustomFilterCreate(filter) {
       this.customFilters.push(filter);
       this.saveFilters();
-      this.handleCustomFilterSelect(filter.id);
+      // Auto-select
+      this.activeFilterIds.push(filter.id);
+      this.handleRefresh();
     },
 
     handleCustomFilterSelect(filterId) {
-      if (this.activeFilterId === filterId) {
-        this.activeFilterId = null;
-        this.spamFilter = 'all';
+      const index = this.activeFilterIds.indexOf(filterId);
+      if (index === -1) {
+        this.activeFilterIds.push(filterId);
       } else {
-        this.activeFilterId = filterId;
-        this.spamFilter = 'all';
+        this.activeFilterIds.splice(index, 1);
       }
       this.handleRefresh();
     },
@@ -243,10 +244,11 @@ export default {
     handleCustomFilterRemove(filterId) {
       this.customFilters = this.customFilters.filter(f => f.id !== filterId);
       this.saveFilters();
-
-      if (this.activeFilterId === filterId) {
-        this.activeFilterId = null;
-        this.handleRefresh();
+      
+      const index = this.activeFilterIds.indexOf(filterId);
+      if (index !== -1) {
+         this.activeFilterIds.splice(index, 1);
+         this.handleRefresh();
       }
     },
 
@@ -271,28 +273,25 @@ export default {
       }
     },
 
-    applyCustomFilter(message) {
-      if (!this.activeFilterId) return true;
+    applyCustomFilters(message) {
+      return this.activeFilterIds.every(filterId => {
+        const filter = this.customFilters.find(f => f.id === filterId);
+        if (!filter) return true;
 
-      const filter = this.customFilters.find(f => f.id === this.activeFilterId);
-      if (!filter) return true;
+        switch (filter.type) {
+          case 'sender':
+            return (message.from || '').toLowerCase().includes(filter.value.toLowerCase());
 
-      switch (filter.type) {
-        case 'sender':
-          if (filter.value.startsWith('@')) {
-            return message.from.toLowerCase().includes(filter.value.toLowerCase());
-          }
-          return message.from.toLowerCase().includes(filter.value.toLowerCase());
+          case 'subject':
+            return (message.subject || '').toLowerCase().includes(filter.value.toLowerCase());
 
-        case 'subject':
-          return message.subject.toLowerCase().includes(filter.value.toLowerCase());
+          case 'spam':
+            return message.spamStatus === filter.value;
 
-        case 'spam':
-          return message.spamStatus === filter.value;
-
-        default:
-          return true;
-      }
+          default:
+            return true;
+        }
+      });
     }
   }
 };

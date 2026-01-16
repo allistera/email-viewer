@@ -5,7 +5,7 @@
         <button
           v-for="filter in filters"
           :key="filter.id"
-          :class="['filter-chip', { active: activeFilterId === filter.id }]"
+          :class="['filter-chip', { active: activeFilterIds.includes(filter.id) }]"
           @click="$emit('filter-select', filter.id)"
         >
           {{ filter.name }}
@@ -49,9 +49,9 @@ export default {
       type: Array,
       default: () => []
     },
-    activeFilterId: {
-      type: String,
-      default: null
+    activeFilterIds: {
+      type: Array,
+      default: () => []
     },
     hasSelection: {
       type: Boolean,
