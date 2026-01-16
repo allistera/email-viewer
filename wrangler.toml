@@ -58,3 +58,8 @@ name = "mail-app-worker"
 
 [env.production.vars]
 OPENAI_MODEL = "gpt-4o-mini"
+
+# Static Assets
+[assets]
+directory = "./web"
+binding = "ASSETS"

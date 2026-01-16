@@ -3,8 +3,8 @@ import { MimeParser } from './mime.js';
 import { DB } from './db.js';
 import { R2 } from './r2.js';
 import { SpamClassifier } from './openai.js';
-import { ApiRouter } from './routes/api.js';
-import { StreamRouter } from './routes/stream.js';
+import { ApiRouter } from './api.js';
+import { StreamRouter } from './stream.js';
 export { RealtimeHub } from './realtimeHub.js';
 
 /**
@@ -57,12 +57,20 @@ export default {
   /**
    * HTTP Handler (API + Realtime Proxy)
    */
-  async fetch(request, env, ctx) {
-    // 1. Auth Check
+  async fetch(request, env, _ctx) {
+    const url = new URL(request.url);
+
+    // 1. Static Assets (Public)
+    // Serve / or specific files via ASSETS binding
+    if (url.pathname === '/' || url.pathname.startsWith('/index.html') || url.pathname.startsWith('/style.css') || url.pathname.startsWith('/app.js') || url.pathname.startsWith('/favicon.ico')) {
+      return env.ASSETS.fetch(request);
+    }
+
+    // 2. Auth Check (API & Stream)
     const authError = await authenticate(request, env);
     if (authError) return authError;
 
-    // 2. Route Handling
+    // 3. Route Handling
     const urlString = request.url;
 
     // Try Stream Router (SSE/WS)

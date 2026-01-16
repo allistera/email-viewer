@@ -133,7 +133,7 @@ export const DB = {
    * @param {string} id 
    * @param {Object} spamInfo 
    */
-  async updateSpamInfo(db, id, { attempts, is_spam, confidence, reason }) {
+  async updateSpamInfo(db, id, { attempts: _attempts, is_spam, confidence, reason }) {
     await db.prepare(`
       UPDATE messages 
       SET spam_status = ?, spam_confidence = ?, spam_reason = ?, spam_checked_at = ? 

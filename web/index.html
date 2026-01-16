@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,6 +10,7 @@
   <script src="https://unpkg.com/marked/marked.min.js"></script>
   <script src="https://unpkg.com/dompurify/dist/purify.min.js"></script>
 </head>
+
 <body>
   <div id="app">
     <!-- Auth Modal -->
@@ -25,10 +27,36 @@
 
     <!-- Main App -->
     <div v-if="token" class="layout">
-      <!-- Sidebar / List -->
-      <div class="sidebar">
-        <header class="sidebar-header">
-          <h1>Inbox</h1>
+      <!-- Nav Sidebar (Folders) -->
+      <div class="nav-sidebar">
+        <header class="nav-header">
+          <div class="user-menu">
+            <span class="avatar">U</span>
+            <span class="username">user@example.com</span>
+          </div>
+        </header>
+        <div class="nav-content">
+          <div class="nav-group">
+            <div class="nav-group-title">
+              <span>Favorites</span>
+            </div>
+            <div class="nav-item" :class="{ active: currentFolder === 'inbox' }" @click="currentFolder = 'inbox'">
+              <span class="icon">📥</span>
+              <span class="label">Inbox</span>
+              <span class="count" v-if="inboxCount > 0">{{ inboxCount }}</span>
+            </div>
+            <div class="nav-item" :class="{ active: currentFolder === 'spam' }" @click="currentFolder = 'spam'">
+              <span class="icon">⚠️</span>
+              <span class="label">Spam</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Message List -->
+      <div class="list-panel">
+        <header class="list-header">
+          <h1>{{ currentFolder === 'inbox' ? 'Inbox' : 'Spam' }}</h1>
           <div class="actions">
             <button @click="refresh" title="Refresh" :disabled="loading">
               <span v-if="loading">...</span>
@@ -36,15 +64,10 @@
             </button>
           </div>
         </header>
-        
+
         <div class="message-list">
-          <div 
-            v-for="msg in messages" 
-            :key="msg.id"
-            class="message-item"
-            :class="{ active: selectedId === msg.id, unread: false }" 
-            @click="selectMessage(msg)"
-          >
+          <div v-for="msg in filteredMessages" :key="msg.id" class="message-item"
+            :class="{ active: selectedId === msg.id }" @click="selectMessage(msg)">
             <div class="msg-header">
               <span class="msg-from">{{ formatFrom(msg.from) }}</span>
               <span class="msg-time">{{ formatTime(msg.receivedAt) }}</span>
@@ -53,37 +76,36 @@
             <div class="msg-snippet">{{ msg.snippet }}</div>
             <div class="msg-badges">
               <span v-if="msg.hasAttachments" class="badge-icon">📎</span>
-              <span 
-                v-if="msg.spamStatus !== 'unknown' && msg.spamStatus !== 'ham'" 
-                class="badge spam"
-              >
+              <span v-if="msg.spamStatus !== 'unknown' && msg.spamStatus !== 'ham'" class="badge spam">
                 {{ msg.spamStatus }}
               </span>
             </div>
           </div>
-          
-          <div v-if="messages.length === 0 && !loading" class="empty-state">
-            No messages
+
+          <div v-if="filteredMessages.length === 0 && !loading" class="empty-state">
+            No messages in {{ currentFolder }}
           </div>
-          
+
           <button v-if="nextBefore" @click="loadMore" class="load-more">Load More</button>
         </div>
       </div>
 
       <!-- Detail View -->
-      <div class="main-content">
+      <div class="detail-panel">
         <div v-if="selectedMessage" class="message-detail">
           <header class="detail-header">
             <div class="meta-row">
               <h2>{{ selectedMessage.subject }}</h2>
               <div class="spam-indicator" :class="selectedMessage.spamStatus">
-               {{ selectedMessage.spamStatus }} 
-               <span v-if="selectedMessage.spamConfidence">({{ Math.round(selectedMessage.spamConfidence * 100) }}%)</span>
+                {{ selectedMessage.spamStatus }}
+                <span v-if="selectedMessage.spamConfidence">({{ Math.round(selectedMessage.spamConfidence * 100)
+                  }}%)</span>
               </div>
             </div>
             <div class="meta-row sub">
               <div class="parties">
-                <strong>{{ parseAddress(selectedMessage.from).name }}</strong> &lt;{{ parseAddress(selectedMessage.from).email }}&gt;
+                <strong>{{ parseAddress(selectedMessage.from).name }}</strong> &lt;{{
+                parseAddress(selectedMessage.from).email }}&gt;
                 <span class="to">to {{ parseAddress(selectedMessage.to, true) }}</span>
               </div>
               <div class="time" :title="selectedMessage.date">
@@ -96,13 +118,8 @@
           <div v-if="selectedMessage.attachments && selectedMessage.attachments.length > 0" class="attachments-area">
             <h3>Attachments</h3>
             <div class="attachment-list">
-              <a 
-                v-for="att in selectedMessage.attachments" 
-                :key="att.id"
-                :href="getAttachmentUrl(selectedMessage.id, att.id)"
-                target="_blank"
-                class="attachment-pill"
-              >
+              <a v-for="att in selectedMessage.attachments" :key="att.id"
+                :href="getAttachmentUrl(selectedMessage.id, att.id)" target="_blank" class="attachment-pill">
                 📎 {{ att.filename }} ({{ formatSize(att.size_bytes) }})
               </a>
             </div>
@@ -110,16 +127,10 @@
 
           <!-- Body Controls -->
           <div class="body-controls">
-            <button 
-              :class="{ active: viewMode === 'text' }" 
-              @click="viewMode = 'text'" 
-              v-if="selectedMessage.textBody"
-            >Text</button>
-            <button 
-              :class="{ active: viewMode === 'html' }" 
-              @click="viewMode = 'html'"
-              v-if="selectedMessage.htmlBody"
-            >HTML</button>
+            <button :class="{ active: viewMode === 'text' }" @click="viewMode = 'text'"
+              v-if="selectedMessage.textBody">Text</button>
+            <button :class="{ active: viewMode === 'html' }" @click="viewMode = 'html'"
+              v-if="selectedMessage.htmlBody">HTML</button>
           </div>
 
           <!-- Body -->
@@ -132,7 +143,7 @@
             </div>
           </div>
         </div>
-        
+
         <div v-else class="empty-state-large">
           Select a message to read
         </div>
@@ -141,4 +152,5 @@
   </div>
   <script src="app.js"></script>
 </body>
+
 </html>

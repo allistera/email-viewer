@@ -1,5 +1,5 @@
-import { DB } from '../db.js';
-import { R2 } from '../r2.js';
+import { DB } from './db.js';
+
 
 export const ApiRouter = {
   async handle(urlString, request, env) {

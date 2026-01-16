@@ -10,6 +10,19 @@ createApp({
         const nextBefore = ref(null);
         const loading = ref(false);
         const viewMode = ref('html'); // 'html' or 'text'
+        const currentFolder = ref('inbox');
+
+        const filteredMessages = computed(() => {
+            if (currentFolder.value === 'spam') {
+                return messages.value.filter(m => m.spamStatus === 'spam');
+            }
+            // Inbox: show everything that is NOT spam
+            return messages.value.filter(m => m.spamStatus !== 'spam');
+        });
+
+        const inboxCount = computed(() => {
+            return messages.value.filter(m => m.spamStatus !== 'spam').length;
+        });
 
         const saveToken = () => {
             token.value = tokenInput.value;
@@ -93,7 +106,7 @@ createApp({
         const connectRealtime = () => {
             if (!token.value) return;
 
-            const es = new EventSource('/api/stream'); // Browser attaches cookies, but we use Token.
+            const es = new EventSource(`/api/stream?token=${token.value}`); // Browser attaches cookies, but we use Token via query param now.
             // EventSource doesn't support headers easily. Polyfill usually needed or URL param.
             // WORKAROUND: For this demo, let's assume we implement the "token in url" fallback in auth.js for /stream and downloads.
             // I will update auth.js silently or we rely on 'native' EventSource limitation awareness.
@@ -159,7 +172,8 @@ createApp({
             messages, loading, selectedId, selectedMessage,
             loadMore, refresh, selectMessage,
             viewMode, sanitizedHtml,
-            formatTime, formatFullTime, formatFrom, parseAddress, formatSize, getAttachmentUrl, nextBefore
+            formatTime, formatFullTime, formatFrom, parseAddress, formatSize, getAttachmentUrl, nextBefore,
+            currentFolder, filteredMessages, inboxCount
         };
     }
 }).mount('#app');

@@ -4,7 +4,7 @@
   "description": "Personal email inbox app on Cloudflare Workers",
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev",
+    "dev": "wrangler dev --assets web",
     "dev:web": "cd web && npm run dev",
     "deploy": "wrangler deploy",
     "deploy:dev": "wrangler deploy --env dev",
@@ -34,5 +34,8 @@
     "@cloudflare/workers-types": "^4.20241127.0",
     "eslint": "^8.57.0",
     "wrangler": "^4.59.2"
+  },
+  "dependencies": {
+    "postal-mime": "^2.7.3"
   }
 }
