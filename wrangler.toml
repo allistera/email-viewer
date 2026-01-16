@@ -6,7 +6,7 @@ compatibility_date = "2024-01-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "maildb"
-database_id = "placeholder" # Replace with actual database ID after creation
+database_id = "8f96a820-872b-42e9-bf7d-a5ae41aa4b7c"
 
 # R2 Bucket
 [[r2_buckets]]
@@ -63,6 +63,15 @@ routes = [
   { pattern = "api.infinitywave.design", custom_domain = true },
   { pattern = "mail.infinitywave.design", custom_domain = true }
 ]
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "maildb"
+database_id = "8f96a820-872b-42e9-bf7d-a5ae41aa4b7c"
+
+[[env.production.r2_buckets]]
+binding = "MAILSTORE"
+bucket_name = "mailstore"
 
 # Static Assets
 [assets]
