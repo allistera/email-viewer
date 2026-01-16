@@ -67,4 +67,12 @@ routes = [
 # Static Assets
 [assets]
 directory = "./web/dist"
-binding = "ASSETS"
+
+# Observability
+[observability]
+enabled = true
+head_sampling_rate = 1 # optional: defaults to 1
+
+[observability.logs]
+enabled = true
+invocation_logs = true
