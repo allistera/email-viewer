@@ -60,25 +60,32 @@ export default {
   async fetch(request, env, _ctx) {
     const url = new URL(request.url);
 
-    // 1. Static Assets (Public)
-    // Serve / or specific files via ASSETS binding
-    if (url.pathname === '/' || url.pathname.startsWith('/index.html') || url.pathname.startsWith('/style.css') || url.pathname.startsWith('/app.js') || url.pathname.startsWith('/favicon.ico')) {
-      return env.ASSETS.fetch(request);
+    // 1. API & Stream Handling (Authenticated)
+    if (url.pathname.startsWith('/api') || request.headers.get('Upgrade') === 'websocket') {
+
+      // Auth Check
+      const authError = await authenticate(request, env);
+      if (authError) return authError;
+
+      const urlString = request.url;
+
+      // Try Stream Router (SSE/WS)
+      const streamResponse = await StreamRouter.handle(urlString, request, env);
+      if (streamResponse) return streamResponse;
+
+      // Try API Router
+      return ApiRouter.handle(urlString, request, env);
     }
 
-    // 2. Auth Check (API & Stream)
-    const authError = await authenticate(request, env);
-    if (authError) return authError;
+    // 2. Static Assets (SPA Fallback)
+    // Cloudflare Workers Assets binding handles serving files from the assets directory
+    // and naturally returns 404 if not found (or index.html if configured as SPA fallback in wrangler?)
+    // Wrangler "worker sites" / "assets" binding usually doesn't do SPA fallback automatically 
+    // unless mapped specifically. But serving exact matches is step 1.
+    // If we want SPA behavior (all non-found -> index.html), we might need logic.
+    // However, usually `binding.fetch` serves the file.
 
-    // 3. Route Handling
-    const urlString = request.url;
-
-    // Try Stream Router (SSE/WS)
-    const streamResponse = await StreamRouter.handle(urlString, request, env);
-    if (streamResponse) return streamResponse;
-
-    // Try API Router
-    return ApiRouter.handle(urlString, request, env);
+    return env.ASSETS.fetch(request);
   },
 
   /**
