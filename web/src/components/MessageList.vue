@@ -1,7 +1,7 @@
 <template>
   <div class="message-list">
     <div class="list-header">
-      <h2>Inbox</h2>
+      <h2>All Emails</h2>
       <div class="filters">
         <select v-model="spamFilter" class="filter-select">
           <option value="all">All Messages</option>

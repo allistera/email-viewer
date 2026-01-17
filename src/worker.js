@@ -108,9 +108,18 @@ export default {
       const [rawKey, parsed] = await Promise.all([r2Promise, parsePromise]);
 
       // 3. Dedupe Check based on Message-ID + To (or derived ID)
+      const messageIdHeader = parsed.messageId || parsed.allHeaders['message-id'] || '';
+      const dedupeSource = messageIdHeader || [
+        parsed.from || '',
+        parsed.to || '',
+        parsed.subject || '',
+        parsed.date || '',
+        parsed.snippet || ''
+      ].join('|');
+
       const dedupeKey = await crypto.subtle.digest(
         'SHA-256',
-        new TextEncoder().encode((parsed.allHeaders['message-id'] || '') + '|' + (parsed.to || ''))
+        new TextEncoder().encode(dedupeSource)
       ).then(buf => new Uint8Array(buf).reduce((a, b) => a + b.toString(16).padStart(2, '0'), ''));
 
       const isUnique = await DB.checkDedupe(env.DB, dedupeKey, messageId);
@@ -141,14 +150,15 @@ export default {
       const attachmentInserts = [];
       for (const att of parsed.attachments) {
         const attId = crypto.randomUUID();
-        const attKey = await R2.saveAttachment(env.MAILSTORE, messageId, attId, att.filename, att.content);
+        const filename = att.filename || `attachment-${attId}`;
+        const attKey = await R2.saveAttachment(env.MAILSTORE, messageId, attId, filename, att.content);
 
         attachmentInserts.push({
           id: attId,
           message_id: messageId,
-          filename: att.filename,
-          content_type: att.mimeType,
-          size_bytes: att.content.byteLength,
+          filename,
+          content_type: att.mimeType || att.contentType || null,
+          size_bytes: att.content?.byteLength ?? 0,
           sha256: null, // skipped for now
           r2_key: attKey
         });

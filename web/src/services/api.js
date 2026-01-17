@@ -54,11 +54,18 @@ export async function getMessages(params = {}) {
   const query = queryParams.toString();
   const path = query ? `/messages?${query}` : '/messages';
 
-  return request(path);
+  const response = await request(path);
+  const items = (response.items || []).map(normalizeMessage);
+
+  return {
+    ...response,
+    items
+  };
 }
 
 export async function getMessage(id) {
-  return request(`/messages/${id}`);
+  const response = await request(`/messages/${id}`);
+  return normalizeMessage(response);
 }
 
 export async function getAttachmentUrl(messageId, attachmentId) {
@@ -75,4 +82,32 @@ export async function archiveMessage(id) {
   return request(`/messages/${id}/archive`, {
     method: 'POST'
   });
+}
+
+function normalizeMessage(message) {
+  if (!message) return message;
+
+  return {
+    ...message,
+    receivedAt: message.received_at ?? message.receivedAt,
+    from: message.from_addr ?? message.from,
+    to: message.to_addr ?? message.to,
+    hasAttachments: message.has_attachments ?? message.hasAttachments,
+    spamStatus: message.spam_status ?? message.spamStatus,
+    spamConfidence: message.spam_confidence ?? message.spamConfidence,
+    spamReason: message.spam_reason ?? message.spamReason,
+    textBody: message.text_body ?? message.textBody,
+    htmlBody: message.html_body ?? message.htmlBody,
+    attachments: (message.attachments || []).map(normalizeAttachment)
+  };
+}
+
+function normalizeAttachment(attachment) {
+  if (!attachment) return attachment;
+
+  return {
+    ...attachment,
+    sizeBytes: attachment.size_bytes ?? attachment.sizeBytes,
+    contentType: attachment.content_type ?? attachment.contentType
+  };
 }

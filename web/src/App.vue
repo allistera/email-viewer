@@ -17,6 +17,8 @@
       />
 
       <div class="app-container">
+        <TagSidebar />
+
         <MessageList
           :messages="messages"
           :selected-id="selectedMessageId"
@@ -43,6 +45,7 @@
 <script>
 import AuthModal from './components/AuthModal.vue';
 import ActionBar from './components/ActionBar.vue';
+import TagSidebar from './components/TagSidebar.vue';
 import MessageList from './components/MessageList.vue';
 import MessageDetail from './components/MessageDetail.vue';
 import { hasToken, setToken, clearToken } from './services/auth.js';
@@ -54,6 +57,7 @@ export default {
   components: {
     AuthModal,
     ActionBar,
+    TagSidebar,
     MessageList,
     MessageDetail
   },
@@ -311,7 +315,7 @@ export default {
 
 .app-container {
   display: grid;
-  grid-template-columns: 400px 1fr;
+  grid-template-columns: 220px 360px 1fr;
   flex: 1;
   min-height: 0;
 }
