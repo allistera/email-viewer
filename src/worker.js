@@ -2,7 +2,7 @@ import { authenticate } from './auth.js';
 import { MimeParser } from './mime.js';
 import { DB } from './db.js';
 import { R2 } from './r2.js';
-import { SpamClassifier } from './openai.js';
+import { SpamClassifier, TagClassifier } from './openai.js';
 import { ApiRouter } from './api.js';
 import { StreamRouter } from './stream.js';
 export { RealtimeHub } from './realtimeHub.js';
@@ -44,6 +44,30 @@ async function processMessage(messageId, env) {
             messageId: message.id,
             spamStatus: classification.is_spam ? 'spam' : 'ham',
             spamConfidence: classification.confidence
+          })
+        });
+      }
+    }
+
+    // 4. Tag classification
+    const tagList = (env.TAG_LIST || '')
+      .split(',')
+      .map(tag => tag.trim())
+      .filter(Boolean);
+
+    if (!message.tag && tagList.length > 0) {
+      const tagResult = await TagClassifier.classify(message, tagList, env.OPENAI_API_KEY, env.OPENAI_MODEL);
+
+      if (tagResult?.tag) {
+        await DB.updateTagInfo(env.DB, messageId, tagResult);
+
+        await hub.fetch('http://do/broadcast', {
+          method: 'POST',
+          body: JSON.stringify({
+            type: 'message.tagged',
+            messageId: message.id,
+            tag: tagResult.tag,
+            tagConfidence: tagResult.confidence
           })
         });
       }

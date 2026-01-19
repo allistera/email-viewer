@@ -145,5 +145,25 @@ export const DB = {
       Date.now(),
       id
     ).run();
+  },
+
+  /**
+   * Update tag info
+   * @param {D1Database} db
+   * @param {string} id
+   * @param {Object} tagInfo
+   */
+  async updateTagInfo(db, id, { tag, confidence, reason }) {
+    await db.prepare(`
+      UPDATE messages
+      SET tag = ?, tag_confidence = ?, tag_reason = ?, tagged_at = ?
+      WHERE id = ?
+    `).bind(
+      tag,
+      confidence,
+      reason,
+      Date.now(),
+      id
+    ).run();
   }
 };

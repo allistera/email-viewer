@@ -59,6 +59,10 @@ npx wrangler secret put API_TOKEN
 
 # Set your OpenAI Key
 npx wrangler secret put OPENAI_API_KEY
+
+# Optional: comma-separated tags for auto-tagging
+# Example: Marketing,Recruitment,Personal,Finance,Support,Other
+npx wrangler secret put TAG_LIST
 ```
 
 ### 4. Deploy
