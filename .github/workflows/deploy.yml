@@ -87,17 +87,15 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy --env production
 
-      # NOTE: D1 migrations disabled - uncomment when D1 is configured
-      # - name: Run D1 Migrations
-      #   uses: cloudflare/wrangler-action@v3
-      #   with:
-      #     apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      #     accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      #     command: d1 migrations apply maildb --remote
+      - name: Run D1 Migrations
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: d1 migrations apply maildb --remote --env production
 
       - name: Verify Deployment
         run: |
           sleep 5
           curl -f https://mail-app-worker.cloudflare-581.workers.dev/api/health || exit 1
-
 
