@@ -33,8 +33,8 @@ async function request(path, options = {}) {
     if (response.status === 401) {
       throw new ApiError('Unauthorized', 401);
     }
-    const error = await response.text();
-    throw new ApiError(error || 'Request failed', response.status);
+    const message = await getErrorMessage(response);
+    throw new ApiError(message, response.status);
   }
 
   if (response.headers.get('Content-Type')?.includes('application/json')) {
@@ -42,6 +42,32 @@ async function request(path, options = {}) {
   }
 
   return response;
+}
+
+async function getErrorMessage(response) {
+  const fallback = 'Request failed';
+  const contentType = response.headers.get('Content-Type') || '';
+
+  try {
+    if (contentType.includes('application/json')) {
+      const data = await response.json();
+      return data?.message || data?.error || JSON.stringify(data) || fallback;
+    }
+
+    const text = await response.text();
+    if (!text) {
+      return fallback;
+    }
+
+    if (contentType.includes('text/html') || /<!doctype|<html/i.test(text)) {
+      return 'Server returned an unexpected HTML error response.';
+    }
+
+    return text;
+  } catch (error) {
+    console.error('Failed to parse error response', error);
+    return fallback;
+  }
 }
 
 export async function getMessages(params = {}) {
