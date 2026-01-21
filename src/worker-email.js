@@ -57,15 +57,14 @@ export default {
         try {
             const messageId = crypto.randomUUID();
 
-            // 1. Read Raw Stream
-            const rawStream = message.raw; // ReadableStream
-            // We need to read it once for R2 and once for parsing (or parse in parallel)
-            // TEE is safely supported in workers
-            const [r2Stream, parseStream] = rawStream.tee();
+            // 1. Read Raw Content into Memory
+            // We read into an ArrayBuffer to avoid stream length issues with R2 after tee()
+            const rawBuffer = await new Response(message.raw).arrayBuffer();
 
             // 2. Write to R2 (Async) and Parse (Async)
-            const r2Promise = R2.saveRawEmail(env.MAILSTORE, messageId, r2Stream, message.rawSize);
-            const parsePromise = MimeParser.parse(parseStream);
+            // parse expects content, saveRawEmail expects buffer/stream
+            const r2Promise = R2.saveRawEmail(env.MAILSTORE, messageId, rawBuffer, rawBuffer.byteLength);
+            const parsePromise = MimeParser.parse(rawBuffer);
 
             const [rawKey, parsed] = await Promise.all([r2Promise, parsePromise]);
 
