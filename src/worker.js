@@ -13,11 +13,19 @@ export default {
     // 1. API & Stream Handling (Authenticated)
     if (url.pathname.startsWith('/api') || request.headers.get('Upgrade') === 'websocket') {
 
+      const urlString = request.url;
+      const path = url.pathname.replace('/api/', '');
+
+      // Health Check (Public)
+      if (path === 'health') {
+        return new Response(JSON.stringify({ ok: true, worker: 'api' }), {
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
       // Auth Check
       const authError = await authenticate(request, env);
       if (authError) return authError;
-
-      const urlString = request.url;
 
       // Try Stream Router (SSE/WS)
       const streamResponse = await StreamRouter.handle(urlString, request, env);

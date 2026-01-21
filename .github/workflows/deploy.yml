@@ -104,5 +104,5 @@ jobs:
       - name: Verify Deployment
         run: |
           sleep 5
-          curl -f https://mail-app-worker.cloudflare-581.workers.dev/api/health || exit 1
+          curl -f https://api.infinitywave.design/api/health || exit 1
 
