@@ -49,6 +49,12 @@ export default Sentry.withSentry(sentryOptions, {
     }
 
     // 2. Static Assets (SPA Fallback)
-    return env.ASSETS.fetch(request);
+    if (env.ASSETS) {
+      return env.ASSETS.fetch(request);
+    } else {
+      console.warn('env.ASSETS is not defined. Available bindings:', Object.keys(env));
+      // Fallback for when assets are not available (e.g. dev without assets, or misconfig)
+      return new Response('Assets binding missing / Not Found', { status: 404 });
+    }
   }
 });
