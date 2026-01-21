@@ -2,7 +2,7 @@ name = "mail-app-email"
 main = "src/worker-email.js"
 compatibility_date = "2024-01-01"
 compatibility_flags = ["nodejs_compat"]
-s
+
 
 # D1 Database
 [[d1_databases]]
