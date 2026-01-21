@@ -37,6 +37,14 @@ routes = [
   { pattern = "mail.infinitywave.design", custom_domain = true }
 ]
 
+[[env.production.durable_objects.bindings]]
+name = "REALTIME_HUB"
+class_name = "RealtimeHub"
+script_name = "mail-app-worker"
+
+[env.production.vars]
+OPENAI_MODEL = "gpt-4o-mini"
+
 [[env.production.d1_databases]]
 binding = "DB"
 database_name = "maildb"
