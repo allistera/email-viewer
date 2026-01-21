@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/cloudflare";
 import { MimeParser } from './mime.js';
 import { DB } from './db.js';
 import { R2 } from './r2.js';

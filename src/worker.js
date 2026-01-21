@@ -18,7 +18,7 @@ export default Sentry.withSentry(sentryOptions, {
   /**
    * HTTP Handler (API + Realtime Proxy)
    */
-  async fetch(request, env, ctx) {
+  async fetch(request, env, _ctx) {
     // ... existing logic
 
     const url = new URL(request.url);
