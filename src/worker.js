@@ -102,7 +102,7 @@ export default {
       const [r2Stream, parseStream] = rawStream.tee();
 
       // 2. Write to R2 (Async) and Parse (Async)
-      const r2Promise = R2.saveRawEmail(env.MAILSTORE, messageId, r2Stream);
+      const r2Promise = R2.saveRawEmail(env.MAILSTORE, messageId, r2Stream, message.rawSize);
       const parsePromise = MimeParser.parse(parseStream);
 
       const [rawKey, parsed] = await Promise.all([r2Promise, parsePromise]);
