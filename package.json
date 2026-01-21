@@ -4,11 +4,14 @@
   "description": "Personal email inbox app on Cloudflare Workers",
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev --assets web",
+    "dev": "npm run dev:api",
+    "dev:api": "wrangler dev --config wrangler.toml",
+    "dev:email": "wrangler dev --config wrangler-email.toml --port 8788",
     "dev:web": "cd web && npm run dev",
-    "deploy": "wrangler deploy",
-    "deploy:dev": "wrangler deploy --env dev",
-    "deploy:production": "wrangler deploy --env production",
+    "deploy": "npm run deploy:api && npm run deploy:email",
+    "deploy:api": "wrangler deploy --config wrangler.toml",
+    "deploy:email": "wrangler deploy --config wrangler-email.toml",
+    "deploy:production": "npm run deploy:api -- --env production && npm run deploy:email -- --env production",
     "deploy:pages": "cd web && npm run build && cd .. && wrangler pages deploy web/dist --project-name mail-app",
     "db:create": "wrangler d1 create maildb",
     "db:create:dev": "wrangler d1 create maildb-dev",
@@ -20,6 +23,7 @@
     "queue:create": "wrangler queues create mail-events",
     "pages:create": "wrangler pages project create mail-app",
     "tail": "wrangler tail",
+    "tail:email": "wrangler tail --config wrangler-email.toml",
     "lint": "eslint src"
   },
   "keywords": [

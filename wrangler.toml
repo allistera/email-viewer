@@ -13,7 +13,7 @@ database_id = "8f96a820-872b-42e9-bf7d-a5ae41aa4b7c"
 binding = "MAILSTORE"
 bucket_name = "mailstore"
 
-# Durable Object
+# Durable Object (Owns the Class)
 [[durable_objects.bindings]]
 name = "REALTIME_HUB"
 class_name = "RealtimeHub"
@@ -23,42 +23,15 @@ script_name = "mail-app-worker"
 tag = "v1"
 new_classes = ["RealtimeHub"]
 
-# Environment Variables
+# Vars (API worker might not need OpenAI anymore if it doesn't classify, but check if it's used elsewhere? 
+# Assuming only email worker uses it for classification. 
+# But let's keep it clean.)
 [vars]
-OPENAI_MODEL = "gpt-4o-mini"
+# OPENAI_MODEL = "gpt-4o-mini" # Removed as API doesn't use it
 
-# Secrets (set via: wrangler secret put <NAME>)
-# API_TOKEN - required for API authentication
-# OPENAI_API_KEY - required for spam classification
-
-# Routes for email handling
-[email]
-# Email routing will be configured in Cloudflare dashboard
-# to route to this worker
-
-# Development
-[env.dev]
-name = "mail-app-worker-dev"
-
-[env.dev.vars]
-OPENAI_MODEL = "gpt-4o-mini"
-
-[[env.dev.d1_databases]]
-binding = "DB"
-database_name = "maildb-dev"
-database_id = "placeholder-dev"
-
-[[env.dev.r2_buckets]]
-binding = "MAILSTORE"
-bucket_name = "mailstore-dev"
-
-# Production
+# Routes
 [env.production]
 name = "mail-app-worker"
-
-[env.production.vars]
-OPENAI_MODEL = "gpt-4o-mini"
-
 routes = [
   { pattern = "api.infinitywave.design", custom_domain = true },
   { pattern = "mail.infinitywave.design", custom_domain = true }
@@ -80,8 +53,21 @@ directory = "./web/dist"
 # Observability
 [observability]
 enabled = true
-head_sampling_rate = 1 # optional: defaults to 1
+head_sampling_rate = 1
 
 [observability.logs]
 enabled = true
 invocation_logs = true
+
+# Development
+[env.dev]
+name = "mail-app-worker-dev"
+
+[[env.dev.d1_databases]]
+binding = "DB"
+database_name = "maildb-dev"
+database_id = "placeholder-dev"
+
+[[env.dev.r2_buckets]]
+binding = "MAILSTORE"
+bucket_name = "mailstore-dev"

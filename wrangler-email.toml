@@ -1,0 +1,79 @@
+name = "mail-app-email"
+main = "src/worker-email.js"
+compatibility_date = "2024-01-01"
+
+# D1 Database
+[[d1_databases]]
+binding = "DB"
+database_name = "maildb"
+database_id = "8f96a820-872b-42e9-bf7d-a5ae41aa4b7c"
+
+# R2 Bucket
+[[r2_buckets]]
+binding = "MAILSTORE"
+bucket_name = "mailstore"
+
+# Durable Object (External Binding to API Worker)
+[[durable_objects.bindings]]
+name = "REALTIME_HUB"
+class_name = "RealtimeHub"
+script_name = "mail-app-worker"
+
+# Environment Variables
+[vars]
+OPENAI_MODEL = "gpt-4o-mini"
+
+# Email Configuration
+[email]
+# Email routing is configured in Cloudflare Dashboard to point to this worker
+
+# Development
+[env.dev]
+name = "mail-app-email-dev"
+
+[env.dev.vars]
+OPENAI_MODEL = "gpt-4o-mini"
+
+[[env.dev.d1_databases]]
+binding = "DB"
+database_name = "maildb-dev"
+database_id = "placeholder-dev"
+
+[[env.dev.r2_buckets]]
+binding = "MAILSTORE"
+bucket_name = "mailstore-dev"
+
+[[env.dev.durable_objects.bindings]]
+name = "REALTIME_HUB"
+class_name = "RealtimeHub"
+script_name = "mail-app-worker-dev"
+
+# Production
+[env.production]
+name = "mail-app-email"
+
+[env.production.vars]
+OPENAI_MODEL = "gpt-4o-mini"
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "maildb"
+database_id = "8f96a820-872b-42e9-bf7d-a5ae41aa4b7c"
+
+[[env.production.r2_buckets]]
+binding = "MAILSTORE"
+bucket_name = "mailstore"
+
+[[env.production.durable_objects.bindings]]
+name = "REALTIME_HUB"
+class_name = "RealtimeHub"
+script_name = "mail-app-worker"
+
+# Observability
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+invocation_logs = true
