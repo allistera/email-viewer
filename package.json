@@ -40,6 +40,7 @@
     "wrangler": "^4.59.2"
   },
   "dependencies": {
+    "@sentry/cloudflare": "^10.35.0",
     "postal-mime": "^2.7.3"
   }
 }

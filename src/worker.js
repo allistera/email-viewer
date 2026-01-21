@@ -3,11 +3,24 @@ import { ApiRouter } from './api.js';
 import { StreamRouter } from './stream.js';
 export { RealtimeHub } from './realtimeHub.js';
 
-export default {
+import * as Sentry from "@sentry/cloudflare";
+
+// ... existing imports
+
+const sentryOptions = (env) => ({
+  dsn: env.SENTRY_DSN,
+  tracesSampleRate: 1.0,
+  enableLogs: true,
+  sendDefaultPii: true,
+});
+
+export default Sentry.withSentry(sentryOptions, {
   /**
    * HTTP Handler (API + Realtime Proxy)
    */
-  async fetch(request, env, _ctx) {
+  async fetch(request, env, ctx) {
+    // ... existing logic
+
     const url = new URL(request.url);
 
     // 1. API & Stream Handling (Authenticated)
@@ -38,4 +51,4 @@ export default {
     // 2. Static Assets (SPA Fallback)
     return env.ASSETS.fetch(request);
   }
-};
+});

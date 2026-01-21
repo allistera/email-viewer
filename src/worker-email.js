@@ -49,7 +49,14 @@ async function processMessage(messageId, env) {
     }
 }
 
-export default {
+const sentryOptions = (env) => ({
+    dsn: env.SENTRY_DSN,
+    tracesSampleRate: 1.0,
+    enableLogs: true,
+    sendDefaultPii: true,
+});
+
+export default Sentry.withSentry(sentryOptions, {
     /**
      * Email Handler (Ingest)
      */
@@ -130,9 +137,10 @@ export default {
             ctx.waitUntil(processMessage(messageId, env));
 
         } catch (e) {
+            Sentry.captureException(e);
             console.error('Email Ingest Failed', e);
             // In production, we should try to save the raw email to a 'failed' bucket path if possible
             message.setReject('Internal Error');
         }
     }
-};
+});
