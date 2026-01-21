@@ -23,7 +23,7 @@ export class RealtimeClient {
     if (!token) return;
 
     try {
-      const url = `/api/stream`;
+      const url = `/api/stream?token=${encodeURIComponent(token)}`;
       this.eventSource = new EventSource(url);
 
       this.eventSource.onopen = () => {
@@ -57,7 +57,7 @@ export class RealtimeClient {
 
     try {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const url = `${protocol}//${window.location.host}/api/ws`;
+      const url = `${protocol}//${window.location.host}/api/ws?token=${encodeURIComponent(token)}`;
 
       this.webSocket = new WebSocket(url);
 

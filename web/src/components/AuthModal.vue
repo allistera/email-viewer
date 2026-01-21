@@ -6,7 +6,7 @@
 
       <form @submit.prevent="handleSubmit">
         <input
-          v-model="token"
+          v-model.trim="token"
           type="password"
           placeholder="API Token"
           class="token-input"

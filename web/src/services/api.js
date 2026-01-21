@@ -15,6 +15,7 @@ class ApiError extends Error {
 
 async function request(path, options = {}) {
   const token = getToken();
+  if (!token) console.warn('Making request without token');
 
   const headers = {
     ...options.headers
