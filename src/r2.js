@@ -8,11 +8,13 @@ export const R2 = {
    * @param {R2Bucket} bucket 
    * @param {string} messageId 
    * @param {ReadableStream|ArrayBuffer} content 
+   * @param {number | undefined} contentLength
    * @returns {string} The key used
    */
-  async saveRawEmail(bucket, messageId, content) {
+  async saveRawEmail(bucket, messageId, content, contentLength) {
     const key = `raw/${messageId}.eml`;
-    await bucket.put(key, content);
+    const options = Number.isFinite(contentLength) ? { contentLength } : undefined;
+    await bucket.put(key, content, options);
     return key;
   },
 
