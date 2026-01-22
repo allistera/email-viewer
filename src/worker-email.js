@@ -2,7 +2,7 @@ import * as Sentry from "@sentry/cloudflare";
 import { MimeParser } from './mime.js';
 import { DB } from './db.js';
 import { R2 } from './r2.js';
-import { SpamClassifier } from './openai.js';
+import { MessageClassifier } from './openai.js';
 
 /**
  * Async Background Processor
@@ -26,12 +26,25 @@ async function processMessage(messageId, env) {
             })
         });
 
-        // 3. Spam Check
-        if (!message.spam_checked_at) {
-            const classification = await SpamClassifier.classify(message, env.OPENAI_API_KEY, env.OPENAI_MODEL);
+        const tagLabels = (env.TAG_LABELS || '')
+            .split(',')
+            .map(tag => tag.trim())
+            .filter(Boolean);
 
-            if (classification) {
-                await DB.updateSpamInfo(env.DB, messageId, classification);
+        const shouldClassifySpam = !message.spam_checked_at;
+        const shouldClassifyTag = !message.tag_checked_at && tagLabels.length > 0;
+
+        // 3. Unified Classification (spam + tag)
+        if (shouldClassifySpam || shouldClassifyTag) {
+            const result = await MessageClassifier.classify(
+                message,
+                tagLabels,
+                env.OPENAI_API_KEY,
+                env.OPENAI_MODEL
+            );
+
+            if (result?.spam && shouldClassifySpam) {
+                await DB.updateSpamInfo(env.DB, messageId, result.spam);
 
                 // 4. Broadcast classified event
                 await hub.fetch('http://do/broadcast', {
@@ -39,10 +52,26 @@ async function processMessage(messageId, env) {
                     body: JSON.stringify({
                         type: 'message.classified',
                         messageId: message.id,
-                        spamStatus: classification.is_spam ? 'spam' : 'ham',
-                        spamConfidence: classification.confidence
+                        spamStatus: result.spam.is_spam ? 'spam' : 'ham',
+                        spamConfidence: result.spam.confidence
                     })
                 });
+            }
+
+            if (result?.tag && shouldClassifyTag) {
+                await DB.updateTagInfo(env.DB, messageId, result.tag);
+
+                if (result.tag.tag) {
+                    await hub.fetch('http://do/broadcast', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            type: 'message.tagged',
+                            messageId: message.id,
+                            tag: result.tag.tag,
+                            tagConfidence: result.tag.confidence
+                        })
+                    });
+                }
             }
         }
     } catch (e) {
