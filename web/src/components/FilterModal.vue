@@ -23,7 +23,7 @@
           <select v-model="filterType" class="select">
             <option value="sender">From (Sender)</option>
             <option value="subject">Subject Contains</option>
-            <option value="spam">Spam Status</option>
+            <option value="spam">Spam Tag</option>
           </select>
         </div>
 
@@ -50,11 +50,10 @@
         </div>
 
         <div v-else-if="filterType === 'spam'" class="form-group">
-          <label>Spam Status</label>
+          <label>Spam Tag</label>
           <select v-model="filterValue" class="select">
-            <option value="ham">Safe Only</option>
             <option value="spam">Spam Only</option>
-            <option value="unknown">Unknown Only</option>
+            <option value="not_spam">Not Spam</option>
           </select>
         </div>
       </div>

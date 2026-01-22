@@ -42,9 +42,9 @@ const messages = [
     has_attachments: true,
     text_body: 'Hi,\n\nI\'ve completed the Q4 report and attached the final PDF. Please review by Friday and let me know if you have any questions.\n\nBest regards,\nAlice',
     html_body: '<p>Hi,</p><p>I\'ve completed the Q4 report and attached the final PDF. Please review by Friday and let me know if you have any questions.</p><p>Best regards,<br>Alice</p>',
-    spam_status: 'ham',
-    spam_confidence: 0.05,
-    spam_reason: null,
+    tag: 'Finance',
+    tag_confidence: 0.82,
+    tag_reason: 'Contains report and finance-related language.',
     headers_json: JSON.stringify({
       'message-id': '<abc123@example.com>',
       'date': new Date(Date.now() - 3600000).toISOString()
@@ -60,9 +60,9 @@ const messages = [
     has_attachments: false,
     text_body: 'Dear valued customer,\n\nClick here NOW to claim your exclusive discount before it expires!\n\nThis is a limited time offer!\n\nUnsubscribe: click here',
     html_body: '<div><h1>AMAZING OFFER</h1><p>Dear valued customer,</p><p><a href="#">Click here NOW</a> to claim your exclusive discount before it expires!</p><p>This is a limited time offer!</p><p><small>Unsubscribe: <a href="#">click here</a></small></p></div>',
-    spam_status: 'spam',
-    spam_confidence: 0.94,
-    spam_reason: 'Promotional content with excessive urgency and capitalization',
+    tag: 'spam',
+    tag_confidence: 0.94,
+    tag_reason: 'Promotional content with excessive urgency and capitalization',
     headers_json: JSON.stringify({
       'message-id': '<xyz789@marketing.biz>',
       'date': new Date(Date.now() - 7200000).toISOString()
@@ -78,9 +78,9 @@ const messages = [
     has_attachments: false,
     text_body: 'Thanks for setting that up. I\'ll send the calendar invite shortly.\n\nBob',
     html_body: '<p>Thanks for setting that up. I\'ll send the calendar invite shortly.</p><p>Bob</p>',
-    spam_status: 'ham',
-    spam_confidence: 0.02,
-    spam_reason: null,
+    tag: 'Personal',
+    tag_confidence: 0.64,
+    tag_reason: 'Conversational tone about meetings.',
     headers_json: JSON.stringify({
       'message-id': '<reply456@company.com>',
       'date': new Date(Date.now() - 10800000).toISOString()
@@ -96,9 +96,9 @@ const messages = [
     has_attachments: false,
     text_body: 'We received a request to reset your password. If you did not make this request, please ignore this email.\n\nClick here to reset: https://service.io/reset?token=abc123',
     html_body: '<div><p>We received a request to reset your password. If you did not make this request, please ignore this email.</p><p><a href="https://service.io/reset?token=abc123">Click here to reset</a></p></div>',
-    spam_status: 'unknown',
-    spam_confidence: null,
-    spam_reason: null,
+    tag: null,
+    tag_confidence: null,
+    tag_reason: null,
     headers_json: JSON.stringify({
       'message-id': '<reset789@service.io>',
       'date': new Date(Date.now() - 14400000).toISOString()
@@ -125,13 +125,18 @@ app.get('/api/health', (req, res) => {
 app.get('/api/messages', requireAuth, (req, res) => {
   const limit = parseInt(req.query.limit) || 50;
   const before = req.query.before ? parseInt(req.query.before) : null;
-  const spamStatus = req.query.spamStatus;
+  const tag = req.query.tag;
+  const excludeTag = req.query.excludeTag;
 
   let filtered = [...messages];
 
-  // Filter by spam status
-  if (spamStatus && spamStatus !== 'all') {
-    filtered = filtered.filter(m => m.spam_status === spamStatus);
+  // Filter by tag
+  if (tag) {
+    filtered = filtered.filter(m => m.tag === tag);
+  }
+
+  if (excludeTag) {
+    filtered = filtered.filter(m => m.tag !== excludeTag);
   }
 
   // Filter by before timestamp
@@ -156,8 +161,8 @@ app.get('/api/messages', requireAuth, (req, res) => {
     snippet: m.snippet,
     receivedAt: m.received_at,
     hasAttachments: m.has_attachments,
-    spamStatus: m.spam_status,
-    spamConfidence: m.spam_confidence
+    tag: m.tag,
+    tagConfidence: m.tag_confidence
   }));
 
   res.json({
@@ -185,9 +190,9 @@ app.get('/api/messages/:id', requireAuth, (req, res) => {
     textBody: message.text_body,
     htmlBody: message.html_body,
     hasAttachments: message.has_attachments,
-    spamStatus: message.spam_status,
-    spamConfidence: message.spam_confidence,
-    spamReason: message.spam_reason,
+    tag: message.tag,
+    tagConfidence: message.tag_confidence,
+    tagReason: message.tag_reason,
     headers: JSON.parse(message.headers_json),
     attachments: messageAttachments.map(a => ({
       id: a.id,
@@ -266,9 +271,9 @@ setInterval(() => {
     has_attachments: false,
     text_body: 'This is a simulated email for testing real-time updates.',
     html_body: '<p>This is a simulated email for testing real-time updates.</p>',
-    spam_status: 'unknown',
-    spam_confidence: null,
-    spam_reason: null,
+    tag: null,
+    tag_confidence: null,
+    tag_reason: null,
     headers_json: JSON.stringify({
       'message-id': `<test${Date.now()}@example.com>`,
       'date': new Date().toISOString()
@@ -285,24 +290,24 @@ setInterval(() => {
 
   console.log(`[Mock] New email received: ${newMessage.id}`);
 
-  // Simulate spam classification after 3 seconds
+  // Simulate tag classification after 3 seconds
   setTimeout(() => {
     const isSpam = Math.random() > 0.7;
-    newMessage.spam_status = isSpam ? 'spam' : 'ham';
-    newMessage.spam_confidence = Math.random();
-    newMessage.spam_reason = isSpam ? 'Simulated spam detection' : null;
+    newMessage.tag = isSpam ? 'spam' : 'Support';
+    newMessage.tag_confidence = Math.random();
+    newMessage.tag_reason = isSpam ? 'Simulated spam detection' : 'Simulated tag selection';
 
     eventBus.emit('broadcast', {
-      type: 'message.classified',
+      type: 'message.tagged',
       data: {
         messageId: newMessage.id,
-        spam_status: newMessage.spam_status,
-        spam_confidence: newMessage.spam_confidence,
-        spam_reason: newMessage.spam_reason
+        tag: newMessage.tag,
+        tagConfidence: newMessage.tag_confidence,
+        tagReason: newMessage.tag_reason
       }
     });
 
-    console.log(`[Mock] Email classified: ${newMessage.id} -> ${newMessage.spam_status}`);
+    console.log(`[Mock] Email tagged: ${newMessage.id} -> ${newMessage.tag}`);
   }, 3000);
 }, 30000);
 

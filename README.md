@@ -1,6 +1,6 @@
 # Cloudflare Email Inbox
 
-A self-hosted, single-user email inbox built on Cloudflare Workers. It uses **Email Routing** to ingest emails, **OpenAI** for spam classification, and **Durable Objects** for real-time updates.
+A self-hosted, single-user email inbox built on Cloudflare Workers. It uses **Email Routing** to ingest emails, **OpenAI** for tag classification (including a mandatory `spam` tag), and **Durable Objects** for real-time updates.
 
 ## Features
 
@@ -8,8 +8,8 @@ A self-hosted, single-user email inbox built on Cloudflare Workers. It uses **Em
 - **Storage**:
     - **D1**: Stores email metadata (Sender, Subject, Date, etc.) searchable via SQL.
     - **R2**: Stores the raw `.eml` file and extracted attachments.
-- **Spam Check**: Uses OpenAI (`gpt-4o-mini`) to classify emails asynchronously (background task via `ctx.waitUntil`).
-- **Realtime**: Pushes new emails and spam status updates to the UI via SSE/WebSockets.
+- **Tagging**: Uses OpenAI (`gpt-4o-mini`) to classify emails asynchronously, including a `spam` tag (background task via `ctx.waitUntil`).
+- **Realtime**: Pushes new emails and tag updates to the UI via SSE/WebSockets.
 - **UI**: A clean, "Todoist-inspired" single-page application built with Vue.js (no build step for the JS logic, just plain ES modules).
 
 ## Project Structure
@@ -23,7 +23,7 @@ A self-hosted, single-user email inbox built on Cloudflare Workers. It uses **Em
     auth.js           # Auth middleware
     db.js             # D1 database helpers
     mime.js           # MIME parsing logic
-    openai.js         # Spam classifier client
+    openai.js         # Tag classifier client
     r2.js             # R2 storage helpers
     realtimeHub.js    # Durable Object class
   web/                # Frontend assets (index.html, app.js, style.css)

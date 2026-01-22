@@ -74,7 +74,7 @@ export default {
       detailError: null,
       nextBefore: null,
       hasMore: false,
-      spamFilter: 'all',
+      tagFilter: 'all',
       customFilters: this.loadFilters(),
       activeFilterIds: []
     };
@@ -118,9 +118,14 @@ export default {
 
       try {
         const params = {
-          limit: 50,
-          spamStatus: this.spamFilter === 'all' ? null : this.spamFilter
+          limit: 50
         };
+
+        if (this.tagFilter === 'spam') {
+          params.tag = 'spam';
+        } else if (this.tagFilter === 'not_spam') {
+          params.excludeTag = 'spam';
+        }
 
         if (!reset && this.nextBefore) {
           params.before = this.nextBefore;
@@ -180,7 +185,7 @@ export default {
     },
 
     async handleFilterChange(filter) {
-      this.spamFilter = filter;
+      this.tagFilter = filter;
       await this.loadMessages(true);
     },
 
@@ -194,7 +199,7 @@ export default {
 
     connectRealtime() {
       realtimeClient.on('message.received', this.handleMessageReceived);
-      realtimeClient.on('message.classified', this.handleMessageClassified);
+      realtimeClient.on('message.tagged', this.handleMessageTagged);
       realtimeClient.connect();
     },
 
@@ -203,18 +208,18 @@ export default {
       this.handleRefresh();
     },
 
-    handleMessageClassified(event) {
-      console.log('Message classified:', event);
+    handleMessageTagged(event) {
+      console.log('Message tagged:', event);
 
       const messageInList = this.messages.find(m => m.id === event.messageId);
       if (messageInList) {
-        messageInList.spamStatus = event.spamStatus;
-        messageInList.spamConfidence = event.spamConfidence;
+        messageInList.tag = event.tag;
+        messageInList.tagConfidence = event.tagConfidence;
       }
 
       if (this.currentMessage && this.currentMessage.id === event.messageId) {
-        this.currentMessage.spamStatus = event.spamStatus;
-        this.currentMessage.spamConfidence = event.spamConfidence;
+        this.currentMessage.tag = event.tag;
+        this.currentMessage.tagConfidence = event.tagConfidence;
       }
     },
 
@@ -290,7 +295,13 @@ export default {
             return (message.subject || '').toLowerCase().includes(filter.value.toLowerCase());
 
           case 'spam':
-            return message.spamStatus === filter.value;
+            if (filter.value === 'spam') {
+              return message.tag === 'spam';
+            }
+            if (filter.value === 'not_spam') {
+              return message.tag !== 'spam';
+            }
+            return true;
 
           default:
             return true;

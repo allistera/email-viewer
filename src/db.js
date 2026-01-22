@@ -83,9 +83,9 @@ export const DB = {
   /**
    * List messages for inbox
    * @param {D1Database} db 
-   * @param {Object} filters { limit, before, spamStatus }
+   * @param {Object} filters { limit, before, tag, excludeTag }
    */
-  async listMessages(db, { limit = 50, before = null, spamStatus = null } = {}) {
+  async listMessages(db, { limit = 50, before = null, tag = null, excludeTag = null } = {}) {
     let query = 'SELECT * FROM messages';
     const params = [];
     const conditions = [];
@@ -95,9 +95,14 @@ export const DB = {
       params.push(before);
     }
 
-    if (spamStatus) {
-      conditions.push('spam_status = ?');
-      params.push(spamStatus);
+    if (tag) {
+      conditions.push('tag = ?');
+      params.push(tag);
+    }
+
+    if (excludeTag) {
+      conditions.push('(tag IS NULL OR tag != ?)');
+      params.push(excludeTag);
     }
 
     if (conditions.length > 0) {
@@ -125,26 +130,6 @@ export const DB = {
       .all();
 
     return { ...msg, attachments };
-  },
-
-  /**
-   * Update spam info
-   * @param {D1Database} db 
-   * @param {string} id 
-   * @param {Object} spamInfo 
-   */
-  async updateSpamInfo(db, id, { attempts: _attempts, is_spam, confidence, reason }) {
-    await db.prepare(`
-      UPDATE messages 
-      SET spam_status = ?, spam_confidence = ?, spam_reason = ?, spam_checked_at = ? 
-      WHERE id = ?
-    `).bind(
-      is_spam ? 'spam' : (is_spam === false ? 'ham' : 'unknown'),
-      confidence,
-      reason,
-      Date.now(),
-      id
-    ).run();
   },
 
   /**

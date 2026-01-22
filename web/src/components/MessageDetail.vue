@@ -10,13 +10,13 @@
       Select a message to view details
     </div>
 
-    <div v-else class="detail-content">
-      <div class="detail-header">
-        <h2>{{ message.subject }}</h2>
-        <SpamBadge :status="message.spamStatus" :confidence="message.spamConfidence" />
-      </div>
+      <div v-else class="detail-content">
+        <div class="detail-header">
+          <h2>{{ message.subject }}</h2>
+        <TagBadge :tag="message.tag" />
+        </div>
 
-      <div class="meta">
+        <div class="meta">
         <div class="meta-row">
           <span class="label">From:</span>
           <span class="value">{{ message.from }}</span>
@@ -29,9 +29,17 @@
           <span class="label">Date:</span>
           <span class="value">{{ formatDate(message.receivedAt) }}</span>
         </div>
-        <div v-if="message.spamReason" class="meta-row">
-          <span class="label">Classification:</span>
-          <span class="value">{{ message.spamReason }}</span>
+        <div v-if="message.tag" class="meta-row">
+          <span class="label">Tag:</span>
+          <span class="value">{{ message.tag }}</span>
+        </div>
+        <div v-if="message.tagConfidence !== null && message.tagConfidence !== undefined" class="meta-row">
+          <span class="label">Tag Confidence:</span>
+          <span class="value">{{ formatConfidence(message.tagConfidence) }}</span>
+        </div>
+        <div v-if="message.tagReason" class="meta-row">
+          <span class="label">Tag Reason:</span>
+          <span class="value">{{ message.tagReason }}</span>
         </div>
       </div>
 
@@ -87,13 +95,13 @@
 </template>
 
 <script>
-import SpamBadge from './SpamBadge.vue';
+import TagBadge from './TagBadge.vue';
 import { getAttachmentUrl } from '../services/api.js';
 
 export default {
   name: 'MessageDetail',
   components: {
-    SpamBadge
+    TagBadge
   },
   props: {
     message: {
@@ -139,6 +147,9 @@ export default {
       const sizes = ['B', 'KB', 'MB', 'GB'];
       const i = Math.floor(Math.log(bytes) / Math.log(k));
       return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+    },
+    formatConfidence(value) {
+      return `${Math.round(value * 100)}%`;
     },
     getAttachmentUrl(attachmentId) {
       return getAttachmentUrl(this.message.id, attachmentId);

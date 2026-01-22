@@ -10,7 +10,7 @@ A personal email web application that:
 - Uses **Worker `waitUntil`** for post-processing (removing the need for paid Queues)
 - Provides a **REST API** for UI data access
 - Provides **real-time updates** via **SSE and WebSocket**, implemented using a **Durable Object hub**
-- Adds an **OpenAI spam check** step (async, low cost) after ingestion
+- Adds an **OpenAI tag classification** step (async, low cost) after ingestion, with a mandatory `spam` tag
 
 Target scale: ~30 emails/day, single user, minimal cost and operational overhead.
 
@@ -179,11 +179,11 @@ Function: `processMessage(messageId, env)`
 Steps:
 1. Load message from D1
 2. **Broadcast** `message.received` event via Durable Object (UI updates to show new email)
-2. Run **spam classification** (OpenAI) if `spam_checked_at` is NULL
-3. Update D1 spam fields
-4. **Broadcast** `message.classified` event via Durable Object (UI updates spam status)
+2. Run **tag classification** (OpenAI) if `tag_checked_at` is NULL, with `spam` always included in the tag list
+3. Update D1 tag fields
+4. **Broadcast** `message.tagged` event via Durable Object (UI updates tag status)
 
-## 6. Spam Classification (OpenAI)
+## 6. Tag Classification (OpenAI)
 
 ### 6.1 Goals
 - Minimal cost
@@ -215,7 +215,7 @@ Never include:
 The model must return JSON:
 
 ```json
-{ "is_spam": true, "confidence": 0.93, "reason": "Short explanation" }
+{ "tag": "spam", "confidence": 0.93, "reason": "Short explanation" }
 ```
 
 ## 10. Realtime (Durable Objects)
@@ -236,8 +236,8 @@ Endpoints inside DO:
 ### 10.2 Events
 - `message.received`
   - emitted after ingest enqueues and/or after background processing begins
-- `message.classified`
-  - emitted after spam check completes
+- `message.tagged`
+  - emitted after tag classification completes
 
 Payload examples:
 
@@ -247,16 +247,16 @@ Payload examples:
 
 ```json
 {
-  "type": "message.classified",
+  "type": "message.tagged",
   "messageId": "uuid",
-  "spamStatus": "spam",
-  "spamConfidence": 0.93
+  "tag": "spam",
+  "tagConfidence": 0.93
 }
 ```
 
 ### 10.3 UI Behavior
 - On `message.received`: insert/update the message row (or refetch first page)
-- On `message.classified`: update spam badge/status in-place
+- On `message.tagged`: update tag badge/status in-place
 
 ---
 
@@ -270,7 +270,8 @@ Auth required on all endpoints except optional `/api/health`
 - `{ "ok": true }`
 
 ### 11.2 List Messages (Inbox)
-- `GET /api/messages?limit=50&before=<ms>&spamStatus=ham|spam|unknown`
+- `GET /api/messages?limit=50&before=<ms>&tag=spam`
+- `GET /api/messages?limit=50&before=<ms>&excludeTag=spam`
 
 Keyset pagination:
 - default: newest first
@@ -289,8 +290,8 @@ Response:
       "subject": "hi",
       "snippet": "first line...",
       "hasAttachments": true,
-      "spamStatus": "unknown",
-      "spamConfidence": null
+      "tag": "spam",
+      "tagConfidence": 0.93
     }
   ],
   "nextBefore": 122
@@ -312,9 +313,9 @@ Response:
   "textBody": "...",
   "htmlBody": "...",
   "headers": { "message-id": "...", "date": "...", "...": "..." },
-  "spamStatus": "ham",
-  "spamConfidence": 0.12,
-  "spamReason": "Looks like a legit notification",
+  "tag": "spam",
+  "tagConfidence": 0.12,
+  "tagReason": "Looks like spam",
   "attachments": [
     { "id": "...", "filename": "...", "contentType": "...", "sizeBytes": 123 }
   ]
@@ -342,13 +343,13 @@ Proxies to DO `/connect/ws`
 Single-page UI:
 - **Inbox list**
   - subject, from, received time, snippet
-  - badge: spam/ham/unknown
+  - badge: tag (including spam)
 - **Message detail panel**
   - text view
   - html view (sanitized)
   - attachments list + download links
   - Controls:
-    - toggle: show/hide spam
+    - toggle: show/hide spam-tagged messages
     - refresh button (optional)
 
 Auth:
@@ -369,7 +370,7 @@ Realtime:
     db.js                     # D1 helpers
     r2.js                     # R2 helpers
     mime.js                   # email parsing + snippet generation
-    openai.js                 # spam classifier client
+    openai.js                 # tag classifier client
     realtimeHub.js            # Durable Object class
     routes/
       api.js                  # REST routes
@@ -377,7 +378,7 @@ Realtime:
   web/                        # web application
   migrations/
     0001_init.sql
-    0002_spam.sql
+    0003_tags.sql
   wrangler.toml
 ```
 
@@ -413,13 +414,13 @@ Must have:
 - REST API:
   - list + detail endpoints work
   - attachment download works
-  - spamStatus filter works
+  - spam tag filter works
 - Background Task (via `waitUntil`):
-  - classifies spam via OpenAI
-  - updates D1 spam fields
+  - classifies tag via OpenAI (including spam)
+  - updates D1 tag fields
 - Realtime:
   - UI updates without refresh on new email
-  - spam badge updates when classification completes
+  - tag badge updates when classification completes
 - Single-user auth:
   - API token required for `/api/*` endpoints (except health if you choose)
 - Simple user interface that copies the colours and design from Todoist
