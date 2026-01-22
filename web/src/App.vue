@@ -152,7 +152,7 @@ export default {
           this.handleSelectMessage(this.messages[0].id);
         }
       } catch (error) {
-        if (error.status === 401 || (error.message && error.message.includes('401'))) {
+        if (error.status === 401) {
           clearToken();
           this.showAuthModal = true;
         } else {
@@ -173,7 +173,7 @@ export default {
       try {
         this.currentMessage = await getMessage(messageId);
       } catch (error) {
-        if (error.status === 401) {
+        if (error.status === 401 && !hasToken()) {
           clearToken();
           this.showAuthModal = true;
         } else {
