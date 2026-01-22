@@ -43,6 +43,8 @@ export default Sentry.withSentry(sentryOptions, {
     // 1. API & Stream Handling
     if (url.pathname.startsWith('/api') || request.headers.get('Upgrade') === 'websocket') {
 
+      console.log(`Processing API Request: ${request.method} ${request.url}`);
+
       // Handle CORS Preflight
       const optionsResponse = handleOptions(request);
       if (optionsResponse) return optionsResponse;
