@@ -117,6 +117,14 @@ const attachments = [
   }
 ];
 
+const tags = [
+  { id: 'tag-1', name: 'Finance', created_at: Date.now() - 100000 },
+  { id: 'tag-2', name: 'Projects/Alpha', created_at: Date.now() - 90000 },
+  { id: 'tag-3', name: 'Projects/Alpha/Design', created_at: Date.now() - 80000 },
+  { id: 'tag-4', name: 'Personal', created_at: Date.now() - 70000 },
+  { id: 'tag-5', name: 'Spam', created_at: 0 }
+];
+
 // Routes
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: Date.now() });
@@ -132,7 +140,7 @@ app.get('/api/messages', requireAuth, (req, res) => {
 
   // Filter by tag
   if (tag) {
-    filtered = filtered.filter(m => m.tag === tag);
+    filtered = filtered.filter(m => m.tag === tag || m.tag?.startsWith(`${tag}/`));
   }
 
   if (excludeTag) {
@@ -169,6 +177,36 @@ app.get('/api/messages', requireAuth, (req, res) => {
     items,
     nextBefore
   });
+});
+
+app.get('/api/tags', requireAuth, (req, res) => {
+  res.json(tags);
+});
+
+app.post('/api/tags', requireAuth, (req, res) => {
+  const { name } = req.body || {};
+  if (!name) {
+    return res.status(400).json({ error: 'Tag name is required' });
+  }
+  const tag = {
+    id: `tag-${Date.now()}`,
+    name,
+    created_at: Date.now()
+  };
+  tags.unshift(tag);
+  res.status(201).json(tag);
+});
+
+app.delete('/api/tags/:id', requireAuth, (req, res) => {
+  const index = tags.findIndex(tag => tag.id === req.params.id);
+  if (index === -1) {
+    return res.status(404).json({ error: 'Tag not found' });
+  }
+  if (tags[index].name === 'Spam') {
+    return res.status(400).json({ error: 'Cannot delete system tag: Spam' });
+  }
+  tags.splice(index, 1);
+  res.json({ success: true });
 });
 
 app.get('/api/messages/:id', requireAuth, (req, res) => {

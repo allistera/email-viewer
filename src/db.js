@@ -96,8 +96,8 @@ export const DB = {
     }
 
     if (tag) {
-      conditions.push('tag = ?');
-      params.push(tag);
+      conditions.push('(tag = ? OR tag LIKE ?)');
+      params.push(tag, `${tag}/%`);
     }
 
     if (excludeTag) {

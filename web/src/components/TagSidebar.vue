@@ -16,15 +16,15 @@
 
     <ul class="tag-list">
       <li 
-        v-for="tag in tags" 
+        v-for="tag in displayTags" 
         :key="tag.id" 
         class="tag-item"
         :class="{ active: selectedTag === tag.name }"
-        @click="$emit('select', tag.name)"
+        @click="handleSelectTag(tag.name)"
       >
-        <div class="tag-info">
+        <div class="tag-info" :style="{ paddingLeft: `${tag.depth * 12}px` }">
           <span class="tag-dot"></span>
-          <span class="tag-label">{{ tag.name }}</span>
+          <span class="tag-label" :title="tag.name">{{ tag.label }}</span>
         </div>
         <button 
           v-if="userCreated(tag)" 
@@ -43,14 +43,32 @@ import { getTags, createTag, deleteTag } from '../services/api.js';
 export default {
   name: 'TagSidebar',
   emits: ['select'],
+  props: {
+    selectedTag: {
+      type: String,
+      default: null
+    }
+  },
   data() {
     return {
       tags: [],
       newTagName: '',
       showAdd: false,
-      selectedTag: null,
       defaultTags: ['Spam']
     };
+  },
+  computed: {
+    displayTags() {
+      return this.tags.map((tag) => {
+        const parts = tag.name.split('/').filter(Boolean);
+        const label = parts.length > 0 ? parts[parts.length - 1] : tag.name;
+        return {
+          ...tag,
+          label,
+          depth: Math.max(0, parts.length - 1)
+        };
+      });
+    }
   },
   async mounted() {
     await this.loadTags();
@@ -100,6 +118,10 @@ export default {
       } catch (e) {
         alert('Failed to delete tag');
       }
+    },
+    handleSelectTag(tagName) {
+      const nextSelection = this.selectedTag === tagName ? null : tagName;
+      this.$emit('select', nextSelection);
     }
   }
 };
