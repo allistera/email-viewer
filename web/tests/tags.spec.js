@@ -13,13 +13,16 @@ test.describe('Tags CRUD', () => {
             });
         });
 
-        // Mock initial Tags
+        // Mock initial Tags with Spam and a User tag
         await page.route('**/api/tags', async route => {
             if (route.request().method() === 'GET') {
                 await route.fulfill({
                     status: 200,
                     contentType: 'application/json',
-                    body: JSON.stringify([{ id: '1', name: 'ExistingTag' }])
+                    body: JSON.stringify([
+                        { id: '1', name: 'ExistingTag' },
+                        { id: 'spam-id', name: 'Spam' }
+                    ])
                 });
             } else {
                 await route.continue();
@@ -34,8 +37,21 @@ test.describe('Tags CRUD', () => {
         await expect(page.locator('.modal')).toBeHidden();
     });
 
-    test('should display existing tags', async ({ page }) => {
+    test('should display existing tags including Spam', async ({ page }) => {
         await expect(page.locator('.tag-label', { hasText: 'ExistingTag' })).toBeVisible();
+        await expect(page.locator('.tag-label', { hasText: 'Spam' })).toBeVisible();
+    });
+
+    test('should not show delete button for Spam tag', async ({ page }) => {
+        const spamItem = page.locator('.tag-item', { hasText: 'Spam' });
+        await spamItem.hover();
+        await expect(spamItem.locator('button[aria-label="Delete Tag"]')).toBeHidden();
+    });
+
+    test('should show delete button for user tag', async ({ page }) => {
+        const userItem = page.locator('.tag-item', { hasText: 'ExistingTag' });
+        await userItem.hover();
+        await expect(userItem.locator('button[aria-label="Delete Tag"]')).toBeVisible();
     });
 
     test('should add a new tag', async ({ page }) => {
