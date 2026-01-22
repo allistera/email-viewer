@@ -2,7 +2,7 @@ import * as Sentry from "@sentry/cloudflare";
 import { MimeParser } from './mime.js';
 import { DB } from './db.js';
 import { R2 } from './r2.js';
-import { SpamClassifier } from './openai.js';
+import { SpamClassifier, TagClassifier } from './openai.js';
 
 /**
  * Async Background Processor
@@ -26,6 +26,11 @@ async function processMessage(messageId, env) {
             })
         });
 
+        const tagLabels = (env.TAG_LABELS || '')
+            .split(',')
+            .map(tag => tag.trim())
+            .filter(Boolean);
+
         // 3. Spam Check
         if (!message.spam_checked_at) {
             const classification = await SpamClassifier.classify(message, env.OPENAI_API_KEY, env.OPENAI_MODEL);
@@ -43,6 +48,32 @@ async function processMessage(messageId, env) {
                         spamConfidence: classification.confidence
                     })
                 });
+            }
+        }
+
+        // 4. Tag Classification
+        if (!message.tag_checked_at && tagLabels.length > 0) {
+            const tagResult = await TagClassifier.classify(
+                message,
+                tagLabels,
+                env.OPENAI_API_KEY,
+                env.OPENAI_MODEL
+            );
+
+            if (tagResult) {
+                await DB.updateTagInfo(env.DB, messageId, tagResult);
+
+                if (tagResult.tag) {
+                    await hub.fetch('http://do/broadcast', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            type: 'message.tagged',
+                            messageId: message.id,
+                            tag: tagResult.tag,
+                            tagConfidence: tagResult.confidence
+                        })
+                    });
+                }
             }
         }
     } catch (e) {
