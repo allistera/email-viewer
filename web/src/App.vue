@@ -17,7 +17,10 @@
       />
 
       <div class="app-container">
-        <TagSidebar />
+        <TagSidebar
+          :selected-tag="selectedTag"
+          @select="handleTagSelect"
+        />
 
         <MessageList
           :messages="messages"
@@ -75,6 +78,7 @@ export default {
       nextBefore: null,
       hasMore: false,
       tagFilter: 'all',
+      selectedTag: null,
       customFilters: this.loadFilters(),
       activeFilterIds: []
     };
@@ -121,7 +125,9 @@ export default {
           limit: 50
         };
 
-        if (this.tagFilter === 'spam') {
+        if (this.selectedTag) {
+          params.tag = this.selectedTag;
+        } else if (this.tagFilter === 'spam') {
           params.tag = 'spam';
         } else if (this.tagFilter === 'not_spam') {
           params.excludeTag = 'spam';
@@ -186,6 +192,13 @@ export default {
 
     async handleFilterChange(filter) {
       this.tagFilter = filter;
+      this.selectedTag = null;
+      await this.loadMessages(true);
+    },
+
+    async handleTagSelect(tag) {
+      this.selectedTag = tag;
+      this.tagFilter = 'all';
       await this.loadMessages(true);
     },
 
