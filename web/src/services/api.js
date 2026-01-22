@@ -130,6 +130,8 @@ function normalizeMessage(message) {
   };
 }
 
+
+
 function normalizeAttachment(attachment) {
   if (!attachment) return attachment;
 
@@ -138,4 +140,22 @@ function normalizeAttachment(attachment) {
     sizeBytes: attachment.size_bytes ?? attachment.sizeBytes,
     contentType: attachment.content_type ?? attachment.contentType
   };
+}
+
+export async function getTags() {
+  return request('/tags');
+}
+
+export async function createTag(name) {
+  return request('/tags', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name })
+  });
+}
+
+export async function deleteTag(id) {
+  return request(`/tags/${id}`, {
+    method: 'DELETE'
+  });
 }

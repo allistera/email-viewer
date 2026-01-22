@@ -150,5 +150,36 @@ export const DB = {
       Date.now(),
       id
     ).run();
+  },
+
+  /**
+   * Get all tags
+   * @param {D1Database} db
+   */
+  async getTags(db) {
+    const { results } = await db.prepare('SELECT * FROM tags ORDER BY created_at DESC').all();
+    return results || [];
+  },
+
+  /**
+   * Create a new tag
+   * @param {D1Database} db
+   * @param {string} name
+   */
+  async createTag(db, name) {
+    const id = crypto.randomUUID();
+    await db.prepare('INSERT INTO tags (id, name, created_at) VALUES (?, ?, ?)')
+      .bind(id, name, Date.now())
+      .run();
+    return { id, name };
+  },
+
+  /**
+   * Delete a tag
+   * @param {D1Database} db
+   * @param {string} id
+   */
+  async deleteTag(db, id) {
+    await db.prepare('DELETE FROM tags WHERE id = ?').bind(id).run();
   }
 };

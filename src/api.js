@@ -74,6 +74,33 @@ export const ApiRouter = {
         }
       }
 
+      // GET /api/tags
+      if (path === 'tags' && request.method === 'GET') {
+        const tags = await DB.getTags(env.DB);
+        return jsonResponse(tags);
+      }
+
+      // POST /api/tags
+      if (path === 'tags' && request.method === 'POST') {
+        const { name } = await request.json();
+        if (!name) return new Response('Name is required', { status: 400 });
+
+        try {
+          const tag = await DB.createTag(env.DB, name);
+          return jsonResponse(tag, { status: 201 });
+        } catch (e) {
+          // Unique constraint
+          return new Response('Tag already exists', { status: 409 });
+        }
+      }
+
+      // DELETE /api/tags/:id
+      if (path.startsWith('tags/') && request.method === 'DELETE') {
+        const id = path.split('/')[1];
+        await DB.deleteTag(env.DB, id);
+        return jsonResponse({ ok: true });
+      }
+
       // GET /api/health
       if (path === 'health') {
         return jsonResponse({ ok: true });

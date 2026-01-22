@@ -26,12 +26,12 @@ async function processMessage(messageId, env) {
             })
         });
 
-        const tagLabels = new Set(
-            (env.TAG_LABELS || '')
-                .split(',')
-                .map(tag => tag.trim())
-                .filter(Boolean)
-        );
+        const dbTags = await DB.getTags(env.DB);
+        const tagLabels = new Set(dbTags.map(t => t.name));
+        // Fallback or auxiliary from env if needed, but primary is DB now
+        if (env.TAG_LABELS) {
+            env.TAG_LABELS.split(',').forEach(t => tagLabels.add(t.trim()));
+        }
         tagLabels.add('spam');
 
         const shouldClassifyTag = !message.tag_checked_at;
