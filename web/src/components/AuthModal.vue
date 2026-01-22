@@ -40,6 +40,14 @@ export default {
       error: ''
     };
   },
+  watch: {
+    show(value) {
+      if (value) {
+        this.token = '';
+        this.error = '';
+      }
+    }
+  },
   methods: {
     handleSubmit() {
       if (!this.token) return;
