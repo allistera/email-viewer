@@ -310,10 +310,6 @@ body {
     color: var(--text-secondary);
 }
 
-.badge.spam {
-    background: #ffebee;
-    color: var(--accent-color);
-}
 
 /* Main Content */
 .detail-panel {
@@ -392,20 +388,6 @@ body {
     font-size: 12px;
 }
 
-.spam-indicator {
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    padding: 3px 8px;
-    border-radius: 4px;
-    background: #eee;
-    color: var(--text-secondary);
-}
-
-.spam-indicator.spam {
-    background: #ffebee;
-    color: var(--accent-color);
-}
 
 /* Attachments */
 .attachments-area {

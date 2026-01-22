@@ -76,7 +76,8 @@ export async function getMessages(params = {}) {
 
   if (params.limit) queryParams.set('limit', params.limit);
   if (params.before) queryParams.set('before', params.before);
-  if (params.spamStatus) queryParams.set('spamStatus', params.spamStatus);
+  if (params.tag) queryParams.set('tag', params.tag);
+  if (params.excludeTag) queryParams.set('excludeTag', params.excludeTag);
 
   const query = queryParams.toString();
   const path = query ? `/messages?${query}` : '/messages';
@@ -120,9 +121,9 @@ function normalizeMessage(message) {
     from: message.from_addr ?? message.from,
     to: message.to_addr ?? message.to,
     hasAttachments: message.has_attachments ?? message.hasAttachments,
-    spamStatus: message.spam_status ?? message.spamStatus,
-    spamConfidence: message.spam_confidence ?? message.spamConfidence,
-    spamReason: message.spam_reason ?? message.spamReason,
+    tag: message.tag,
+    tagConfidence: message.tag_confidence ?? message.tagConfidence,
+    tagReason: message.tag_reason ?? message.tagReason,
     textBody: message.text_body ?? message.textBody,
     htmlBody: message.html_body ?? message.htmlBody,
     attachments: (message.attachments || []).map(normalizeAttachment)

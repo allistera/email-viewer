@@ -17,15 +17,15 @@ This will start both the mock API server and Vite dev server simultaneously.
 The mock server (`mock-server.js`) provides:
 
 - **Mock authentication**: Use token `dev-token-12345`
-- **Fake email data**: 4 pre-loaded messages with different spam statuses
+- **Fake email data**: 4 pre-loaded messages with different tags (including spam)
 - **All API endpoints**:
   - `GET /api/health`
-  - `GET /api/messages` (with pagination and spam filtering)
+  - `GET /api/messages` (with pagination and tag filtering)
   - `GET /api/messages/:id`
   - `GET /api/messages/:messageId/attachments/:attachmentId`
   - `GET /api/stream` (Server-Sent Events)
 - **Real-time simulation**: New emails arrive every 30 seconds
-- **Spam classification simulation**: New emails get classified 3 seconds after arrival
+- **Tag classification simulation**: New emails get tagged 3 seconds after arrival
 
 ## Usage
 
@@ -62,10 +62,10 @@ This token is hardcoded in the mock server for convenience.
 
 The server includes 4 sample messages:
 
-1. **Ham**: Work email with attachment
+1. **Tagged**: Work email with attachment
 2. **Spam**: Marketing email with high confidence
-3. **Ham**: Meeting reply
-4. **Unknown**: Password reset (not yet classified)
+3. **Tagged**: Meeting reply
+4. **Untagged**: Password reset (not yet classified)
 
 Every 30 seconds, a new random email is generated and broadcast via SSE.
 
@@ -74,7 +74,7 @@ Every 30 seconds, a new random email is generated and broadcast via SSE.
 The mock server simulates real-time events:
 
 - **message.received**: Fired immediately when a new email arrives
-- **message.classified**: Fired 3 seconds later with spam classification
+- **message.tagged**: Fired 3 seconds later with tag classification
 
 Connect to `GET /api/stream` to receive these events.
 

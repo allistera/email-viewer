@@ -31,9 +31,10 @@ export const ApiRouter = {
       if (path === 'messages' && request.method === 'GET') {
         const limit = parseInt(url.searchParams.get('limit')) || 50;
         const before = parseInt(url.searchParams.get('before')) || null;
-        const spamStatus = url.searchParams.get('spamStatus') || null;
+        const tag = url.searchParams.get('tag') || null;
+        const excludeTag = url.searchParams.get('excludeTag') || null;
 
-        const items = await DB.listMessages(env.DB, { limit, before, spamStatus });
+        const items = await DB.listMessages(env.DB, { limit, before, tag, excludeTag });
         const nextBefore = items.length > 0 ? items[items.length - 1].received_at : null;
 
         return jsonResponse({ items, nextBefore });

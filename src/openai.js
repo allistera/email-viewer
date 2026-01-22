@@ -1,5 +1,5 @@
 /**
- * OpenAI Spam Classifier Client
+ * OpenAI Tag Classifier Client
  */
 
 const buildInput = (message) => {
@@ -20,7 +20,7 @@ const buildInput = (message) => {
 
 export const MessageClassifier = {
   /**
-   * Classify email for spam and best matching tag in a single call.
+   * Classify email into a single best matching tag (including "spam").
    * @param {Object} message
    * @param {string[]} tags
    * @param {string} apiKey
@@ -44,15 +44,15 @@ export const MessageClassifier = {
               role: 'system',
               content: `You are a specialized email classification system.
               Analyze the metadata and body provided.
-              Decide spam vs ham, and optionally choose the single best tag from the provided list.
-              If no tag clearly matches, return null for tag.
+              Choose the single best tag from the provided list.
+              Use the "spam" tag when the email is spam.
+              If no tag clearly matches (including spam), return null for tag.
               Return JSON matching this schema:
               {
-                "spam": { "is_spam": boolean, "confidence": number (0-1), "reason": "string" },
                 "tag": { "tag": string|null, "confidence": number (0-1), "reason": "string" }
               }
               Only output tags from the provided list.
-              High confidence (0.9+) is required to mark spam as true.`
+              Only output a single tag.`
             },
             {
               role: 'user',
@@ -75,7 +75,6 @@ export const MessageClassifier = {
 
       if (tagValue && !safeTags.includes(tagValue)) {
         return {
-          spam: parsed.spam ?? null,
           tag: { tag: null, confidence: parsed?.tag?.confidence ?? 0, reason: 'Tag not in list' }
         };
       }

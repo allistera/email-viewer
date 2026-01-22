@@ -17,7 +17,7 @@ export default {
   name: 'TagSidebar',
   data() {
     return {
-      tags: ['Marketing', 'Recruitment', 'Personal', 'Finance', 'Support', 'Other']
+      tags: ['Spam', 'Marketing', 'Recruitment', 'Personal', 'Finance', 'Support', 'Other']
     };
   }
 };

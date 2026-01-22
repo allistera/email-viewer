@@ -3,11 +3,10 @@
     <div class="list-header">
       <h2>All Emails</h2>
       <div class="filters">
-        <select v-model="spamFilter" class="filter-select">
+        <select v-model="tagFilter" class="filter-select">
           <option value="all">All Messages</option>
-          <option value="ham">Safe Only</option>
           <option value="spam">Spam Only</option>
-          <option value="unknown">Unknown</option>
+          <option value="not_spam">Not Spam</option>
         </select>
         <button @click="$emit('refresh')" class="btn-icon" title="Refresh">
           ↻
@@ -42,7 +41,7 @@
         <div class="message-footer">
           <span class="snippet">{{ message.snippet }}</span>
           <div class="badges">
-            <SpamBadge :status="message.spamStatus" :confidence="message.spamConfidence" />
+            <TagBadge :tag="message.tag" />
             <span v-if="message.hasAttachments" class="attachment-icon" title="Has attachments">
               📎
             </span>
@@ -60,12 +59,12 @@
 </template>
 
 <script>
-import SpamBadge from './SpamBadge.vue';
+import TagBadge from './TagBadge.vue';
 
 export default {
   name: 'MessageList',
   components: {
-    SpamBadge
+    TagBadge
   },
   props: {
     messages: {
@@ -95,11 +94,11 @@ export default {
   },
   data() {
     return {
-      spamFilter: 'all'
+      tagFilter: 'all'
     };
   },
   watch: {
-    spamFilter(newValue) {
+    tagFilter(newValue) {
       this.$emit('filter-change', newValue);
     }
   },

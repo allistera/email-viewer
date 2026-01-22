@@ -60,7 +60,7 @@ Tests run in GitHub Actions on every push:
 
 Tests use the mock server (`mock-server.js`) which provides:
 - **Auth token**: `dev-token-12345`
-- **4 sample messages**: mix of ham, spam, and unknown
+- **4 sample messages**: mix of tagged, spam, and untagged
 - **API endpoints**: All REST and SSE endpoints
 
 ## Resources
