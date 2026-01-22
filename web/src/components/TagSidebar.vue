@@ -59,10 +59,22 @@ export default {
     async loadTags() {
       try {
         const remoteTags = await getTags();
-        this.tags = remoteTags;
+        this.tags = this.ensureDefaultTags(remoteTags);
       } catch (e) {
         console.error('Failed to load tags', e);
       }
+    },
+    ensureDefaultTags(tags) {
+      const defaultTags = this.defaultTags.map((name) => ({
+        id: `default-${name.toLowerCase()}`,
+        name
+      }));
+      const existingNames = new Set(tags.map((tag) => tag.name.toLowerCase()));
+      const missingDefaultTags = defaultTags.filter(
+        (tag) => !existingNames.has(tag.name.toLowerCase())
+      );
+
+      return [...missingDefaultTags, ...tags];
     },
     userCreated(tag) {
       // Assuming Spam is system reserved or handled specially, though "Spam" tag exists in DB logic?

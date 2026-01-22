@@ -114,3 +114,37 @@ test.describe('Tags CRUD', () => {
         await expect(page.locator('.tag-label', { hasText: 'ExistingTag' })).toBeHidden();
     });
 });
+
+test.describe('Spam tag fallback', () => {
+    test.beforeEach(async ({ page }) => {
+        await page.route('**/api/messages*', async route => {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({ items: [] })
+            });
+        });
+
+        await page.route('**/api/tags', async route => {
+            if (route.request().method() === 'GET') {
+                await route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify([
+                        { id: '1', name: 'ExistingTag' }
+                    ])
+                });
+            }
+        });
+
+        await page.goto('/');
+
+        await page.fill('input[type="password"]', 'dummy-token');
+        await page.click('button[type="submit"]');
+        await expect(page.locator('.modal')).toBeHidden();
+    });
+
+    test('should always display Spam tag even when missing from API', async ({ page }) => {
+        await expect(page.locator('.tag-label', { hasText: 'Spam' })).toBeVisible();
+    });
+});
