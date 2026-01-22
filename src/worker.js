@@ -23,8 +23,29 @@ export default Sentry.withSentry(sentryOptions, {
 
     const url = new URL(request.url);
 
-    // 1. API & Stream Handling (Authenticated)
+    // CORS Helper
+    const corsHeaders = {
+      'Access-Control-Allow-Origin': '*', // Or specific domain
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, Upgrade',
+      'Access-Control-Max-Age': '86400',
+    };
+
+    function handleOptions(request) {
+      if (request.method === 'OPTIONS') {
+        return new Response(null, {
+          headers: corsHeaders
+        });
+      }
+      return null;
+    }
+
+    // 1. API & Stream Handling
     if (url.pathname.startsWith('/api') || request.headers.get('Upgrade') === 'websocket') {
+
+      // Handle CORS Preflight
+      const optionsResponse = handleOptions(request);
+      if (optionsResponse) return optionsResponse;
 
       const urlString = request.url;
       const path = url.pathname.replace('/api/', '');
@@ -32,20 +53,38 @@ export default Sentry.withSentry(sentryOptions, {
       // Health Check (Public)
       if (path === 'health') {
         return new Response(JSON.stringify({ ok: true, worker: 'api' }), {
-          headers: { 'Content-Type': 'application/json' }
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
 
       // Auth Check
       const authError = await authenticate(request, env);
-      if (authError) return authError;
+      if (authError) {
+        // Append CORS to auth error too
+        const newHeaders = new Headers(authError.headers);
+        Object.keys(corsHeaders).forEach(k => newHeaders.set(k, corsHeaders[k]));
+        return new Response(authError.body, { status: authError.status, headers: newHeaders });
+      }
 
       // Try Stream Router (SSE/WS)
-      const streamResponse = await StreamRouter.handle(urlString, request, env);
-      if (streamResponse) return streamResponse;
+      let response = await StreamRouter.handle(urlString, request, env);
+      if (!response) {
+        // Try API Router
+        response = await ApiRouter.handle(urlString, request, env);
+      }
 
-      // Try API Router
-      return ApiRouter.handle(urlString, request, env);
+      // Append CORS Headers to final response
+      if (response) {
+        const newHeaders = new Headers(response.headers);
+        Object.keys(corsHeaders).forEach(k => newHeaders.set(k, corsHeaders[k]));
+        return new Response(response.body, {
+          status: response.status,
+          statusText: response.statusText,
+          headers: newHeaders
+        });
+      }
+
+      return new Response('Not Found', { status: 404, headers: corsHeaders });
     }
 
     // 2. Static Assets (SPA Fallback)
