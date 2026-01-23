@@ -27,7 +27,7 @@ export default Sentry.withSentry(sentryOptions, {
     const corsHeaders = {
       'Access-Control-Allow-Origin': '*', // Or specific domain
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization, Upgrade',
+      'Access-Control-Allow-Headers': '*', // Allow all headers
       'Access-Control-Max-Age': '86400',
     };
 
