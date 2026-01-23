@@ -102,6 +102,14 @@ export default {
 
       try {
         await this.loadMessages();
+        
+        // If loadMessages failed with 401, it clears the token.
+        // We must check if authentication succeeded.
+        if (!hasToken()) {
+          alert('Wrong API Key. Please try again.');
+          return;
+        }
+
         this.showAuthModal = false;
         this.connectRealtime();
       } catch (error) {
