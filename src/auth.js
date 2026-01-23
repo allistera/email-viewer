@@ -29,29 +29,17 @@ export async function authenticate(request, env) {
   }
 
   if (!token) {
-    console.log('Auth failed: No token provided');
     return new Response(JSON.stringify({ error: 'Missing or invalid Authorization header' }), {
       status: 401,
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Debug-Auth-Error': 'missing-token'
-      }
+      headers: { 'Content-Type': 'application/json' }
     });
   }
 
   // Basic constant-time comparison
-  console.log('Verifying token. Environment has API_TOKEN:', !!env.API_TOKEN);
   if (token !== env.API_TOKEN) {
-    console.log('Auth failed: Token mismatch');
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Debug-Auth-Error': 'token-mismatch',
-        'X-Debug-Token-Len': token.length.toString(),
-        'X-Debug-Env-Len': (env.API_TOKEN || '').length.toString(),
-        'X-Debug-Token-Start': token.substring(0, 3)
-      }
+      headers: { 'Content-Type': 'application/json' }
     });
   }
 

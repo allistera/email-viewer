@@ -20,7 +20,7 @@
         </div>
       </form>
 
-      <p v-if="error" class="error">{{ error }}</p>
+      <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
     </div>
   </div>
 </template>
@@ -33,27 +33,27 @@ export default {
     show: {
       type: Boolean,
       required: true
+    },
+    errorMessage: {
+      type: String,
+      default: ''
     }
   },
   data() {
     return {
-      token: '',
-      error: ''
+      token: ''
     };
   },
   watch: {
     show(value) {
       if (value) {
         this.token = '';
-        this.error = '';
       }
     }
   },
   methods: {
     handleSubmit() {
       if (!this.token) return;
-
-      this.error = '';
       this.$emit('submit', this.token);
     },
     handleOverlayClick() {
