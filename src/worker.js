@@ -77,6 +77,10 @@ export default Sentry.withSentry(sentryOptions, {
 
       // Append CORS Headers to final response
       if (response) {
+        if (response.status < 200 || response.status > 599) {
+          return response;
+        }
+
         const newHeaders = new Headers(response.headers);
         Object.keys(corsHeaders).forEach(k => newHeaders.set(k, corsHeaders[k]));
         return new Response(response.body, {
