@@ -4,7 +4,9 @@
 
 import { getToken } from './auth.js';
 
-const API_BASE = '/api';
+const API_BASE = import.meta.env.PROD
+  ? 'https://api.infinitywave.design/api'
+  : '/api';
 
 class ApiError extends Error {
   constructor(message, status) {
