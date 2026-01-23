@@ -4,7 +4,7 @@
       <h2>Authentication Required</h2>
       <p>Enter your API token to access the email inbox</p>
 
-      <form @submit.prevent="handleSubmit">
+      <form @submit.prevent.stop="handleSubmit">
         <input
           v-model.trim="token"
           type="password"
@@ -28,6 +28,7 @@
 <script>
 export default {
   name: 'AuthModal',
+  emits: ['submit'],
   props: {
     show: {
       type: Boolean,
