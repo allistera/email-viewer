@@ -47,7 +47,10 @@ export async function authenticate(request, env) {
       status: 401,
       headers: {
         'Content-Type': 'application/json',
-        'X-Debug-Auth-Error': 'token-mismatch'
+        'X-Debug-Auth-Error': 'token-mismatch',
+        'X-Debug-Token-Len': token.length.toString(),
+        'X-Debug-Env-Len': (env.API_TOKEN || '').length.toString(),
+        'X-Debug-Token-Start': token.substring(0, 3)
       }
     });
   }
