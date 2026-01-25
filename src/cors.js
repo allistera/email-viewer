@@ -22,9 +22,15 @@ export function withCors(response) {
         newHeaders.set(key, value);
     });
 
-    return new Response(response.body, {
+    const init = {
         status: response.status,
         statusText: response.statusText,
         headers: newHeaders
-    });
+    };
+
+    if (response.webSocket) {
+        init.webSocket = response.webSocket;
+    }
+
+    return new Response(response.body, init);
 }
