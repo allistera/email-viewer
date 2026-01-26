@@ -1,6 +1,7 @@
 import { authenticate } from './auth.js';
 import { ApiRouter } from './api.js';
 import { StreamRouter } from './stream.js';
+import { handleOptions, withCors } from './cors.js';
 export { RealtimeHub } from './realtimeHub.js';
 
 import * as Sentry from "@sentry/cloudflare";
@@ -23,27 +24,8 @@ export default Sentry.withSentry(sentryOptions, {
 
     const url = new URL(request.url);
 
-    // CORS Helper
-    const corsHeaders = {
-      'Access-Control-Allow-Origin': '*', // Or specific domain
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': '*', // Allow all headers
-      'Access-Control-Max-Age': '86400',
-    };
-
-    function handleOptions(request) {
-      if (request.method === 'OPTIONS') {
-        return new Response(null, {
-          headers: corsHeaders
-        });
-      }
-      return null;
-    }
-
     // 1. API & Stream Handling
     if (url.pathname.startsWith('/api') || request.headers.get('Upgrade') === 'websocket') {
-
-      console.log(`Processing API Request: ${request.method} ${request.url}`);
 
       // Handle CORS Preflight
       const optionsResponse = handleOptions(request);
@@ -54,18 +36,16 @@ export default Sentry.withSentry(sentryOptions, {
 
       // Health Check (Public)
       if (path === 'health') {
-        return new Response(JSON.stringify({ ok: true, worker: 'api' }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        const res = new Response(JSON.stringify({ ok: true, worker: 'api' }), {
+          headers: { 'Content-Type': 'application/json' }
         });
+        return withCors(res);
       }
 
       // Auth Check
       const authError = await authenticate(request, env);
       if (authError) {
-        // Append CORS to auth error too
-        const newHeaders = new Headers(authError.headers);
-        Object.keys(corsHeaders).forEach(k => newHeaders.set(k, corsHeaders[k]));
-        return new Response(authError.body, { status: authError.status, headers: newHeaders });
+        return withCors(authError);
       }
 
       // Try Stream Router (SSE/WS)
@@ -77,20 +57,10 @@ export default Sentry.withSentry(sentryOptions, {
 
       // Append CORS Headers to final response
       if (response) {
-        if (response.status < 200 || response.status > 599) {
-          return response;
-        }
-
-        const newHeaders = new Headers(response.headers);
-        Object.keys(corsHeaders).forEach(k => newHeaders.set(k, corsHeaders[k]));
-        return new Response(response.body, {
-          status: response.status,
-          statusText: response.statusText,
-          headers: newHeaders
-        });
+        return withCors(response);
       }
 
-      return new Response('Not Found', { status: 404, headers: corsHeaders });
+      return withCors(new Response('Not Found', { status: 404 }));
     }
 
     // 2. Static Assets (SPA Fallback)

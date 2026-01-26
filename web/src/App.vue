@@ -2,6 +2,7 @@
   <div id="app">
     <AuthModal
       :show="showAuthModal"
+      :error-message="authError"
       @submit="handleAuthSubmit"
     />
 
@@ -80,7 +81,8 @@ export default {
       tagFilter: 'all',
       selectedTag: null,
       customFilters: this.loadFilters(),
-      activeFilterIds: []
+      activeFilterIds: [],
+      authError: ''
     };
   },
   mounted() {
@@ -98,6 +100,7 @@ export default {
     },
 
     async handleAuthSubmit(token) {
+      this.authError = '';
       setToken(token);
 
       try {
@@ -106,7 +109,7 @@ export default {
         // If loadMessages failed with 401, it clears the token.
         // We must check if authentication succeeded.
         if (!hasToken()) {
-          alert('Wrong API Key. Please try again.');
+          this.authError = 'Wrong API Key. Please try again.';
           return;
         }
 
@@ -114,7 +117,7 @@ export default {
         this.connectRealtime();
       } catch (error) {
         clearToken();
-        alert('Invalid token. Please try again.');
+        this.authError = 'Invalid token. Please try again.';
       }
     },
 
