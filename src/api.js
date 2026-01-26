@@ -94,6 +94,23 @@ export const ApiRouter = {
         }
       }
 
+      // PUT /api/tags/:id
+      if (path.startsWith('tags/') && request.method === 'PUT') {
+        const id = path.split('/')[1];
+        const { name } = await request.json();
+        if (!name) return new Response('Name is required', { status: 400 });
+
+        try {
+          await DB.updateTag(env.DB, id, name);
+          return jsonResponse({ ok: true });
+        } catch (e) {
+          if (e.message.includes('already exists')) {
+            return new Response('Tag name already exists', { status: 409 });
+          }
+          throw e;
+        }
+      }
+
       // DELETE /api/tags/:id
       if (path.startsWith('tags/') && request.method === 'DELETE') {
         const id = path.split('/')[1];

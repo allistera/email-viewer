@@ -21,6 +21,10 @@
         class="tag-item"
         :class="{ active: selectedTag === tag.name }"
         @click="handleSelectTag(tag.name)"
+        draggable="true"
+        @dragstart="onDragStart($event, tag)"
+        @dragover="onDragOver($event)"
+        @drop="onDrop($event, tag)"
       >
         <div class="tag-info" :style="{ paddingLeft: `${tag.depth * 12}px` }">
           <span class="tag-dot"></span>
@@ -38,7 +42,7 @@
 </template>
 
 <script>
-import { getTags, createTag, deleteTag } from '../services/api.js';
+import { getTags, createTag, deleteTag, updateTag } from '../services/api.js';
 
 export default {
   name: 'TagSidebar',
@@ -54,12 +58,16 @@ export default {
       tags: [],
       newTagName: '',
       showAdd: false,
-      defaultTags: ['Spam']
+      defaultTags: ['Spam'],
+      draggedTag: null
     };
   },
   computed: {
     displayTags() {
-      return this.tags.map((tag) => {
+      // Sort keys to ensure parent always before child if needed? 
+      // Actually standard sort by name handles it naturally for 'A' and 'A/B'.
+      const sorted = [...this.tags].sort((a, b) => a.name.localeCompare(b.name));
+      return sorted.map((tag) => {
         const parts = tag.name.split('/').filter(Boolean);
         const label = parts.length > 0 ? parts[parts.length - 1] : tag.name;
         return {
@@ -95,15 +103,13 @@ export default {
       return [...missingDefaultTags, ...tags];
     },
     userCreated(tag) {
-      // Assuming Spam is system reserved or handled specially, though "Spam" tag exists in DB logic?
-      // Actually DB is simplified. Let's just allow deleting anything for now or exclude 'Spam'.
-      return tag.name !== 'Spam'; // Example simple rule
+      return tag.name !== 'Spam';
     },
     async handleAddTag() {
       if (!this.newTagName) return;
       try {
         const tag = await createTag(this.newTagName);
-        this.tags.unshift(tag); // Add to top
+        this.tags.push(tag);
         this.newTagName = '';
         this.showAdd = false;
       } catch (e) {
@@ -122,6 +128,48 @@ export default {
     handleSelectTag(tagName) {
       const nextSelection = this.selectedTag === tagName ? null : tagName;
       this.$emit('select', nextSelection);
+    },
+
+    // Drag and Drop Logic
+    onDragStart(event, tag) {
+      if (!this.userCreated(tag)) {
+        event.preventDefault();
+        return;
+      }
+      this.draggedTag = tag;
+      event.dataTransfer.effectAllowed = 'move';
+      // Store ID if needed, but we have component state
+    },
+
+    onDragOver(event) {
+      event.preventDefault(); // Allow drop
+      event.dataTransfer.dropEffect = 'move';
+    },
+
+    async onDrop(event, targetTag) {
+      event.preventDefault();
+      const dragged = this.draggedTag;
+      this.draggedTag = null;
+
+      if (!dragged || !targetTag) return;
+      if (dragged.id === targetTag.id) return;
+      
+      // Prevent nesting inside itself
+      if (targetTag.name.startsWith(dragged.name + '/')) return;
+
+      const newName = `${targetTag.name}/${dragged.label}`;
+      
+      try {
+        await updateTag(dragged.id, newName);
+        await this.loadTags(); // Refresh to get updated list/order
+      } catch (e) {
+        alert('Failed to move tag: ' + e.message);
+      }
+    },
+    
+    // Allow dropping on header to move to root?
+    async onDropCheckRoot(event) {
+        // Advanced: Handle moving to root if needed
     }
   }
 };

@@ -191,6 +191,38 @@ export const DB = {
   },
 
   /**
+   * Update a tag name (supporting hierarchy rename)
+   * @param {D1Database} db
+   * @param {string} id
+   * @param {string} newName
+   */
+  async updateTag(db, id, newName) {
+    const oldTag = await db.prepare('SELECT name FROM tags WHERE id = ?').bind(id).first();
+    if (!oldTag) throw new Error('Tag not found');
+    const oldName = oldTag.name;
+
+    if (oldName === newName) return;
+
+    // Check collision
+    const existing = await db.prepare('SELECT id FROM tags WHERE name = ? AND id != ?').bind(newName, id).first();
+    if (existing) throw new Error('Tag name already exists');
+
+    // Update Tag Name
+    await db.prepare('UPDATE tags SET name = ? WHERE id = ?').bind(newName, id).run();
+
+    // Update Messages (Exact match)
+    await db.prepare('UPDATE messages SET tag = ? WHERE tag = ?').bind(newName, oldName).run();
+
+    // Update Messages (Children / Hierarchy)
+    // Replace prefix match
+    await db.prepare(`
+      UPDATE messages 
+      SET tag = ? || SUBSTR(tag, LENGTH(?) + 1) 
+      WHERE tag LIKE ? || '/%'
+    `).bind(newName, oldName, oldName).run();
+  },
+
+  /**
    * Delete a tag
    * @param {D1Database} db
    * @param {string} id

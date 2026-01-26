@@ -156,6 +156,14 @@ export async function createTag(name) {
   });
 }
 
+export async function updateTag(id, name) {
+  return request(`/tags/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name })
+  });
+}
+
 export async function deleteTag(id) {
   return request(`/tags/${id}`, {
     method: 'DELETE'
