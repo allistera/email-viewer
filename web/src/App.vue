@@ -15,10 +15,12 @@
         @filter-create="handleCustomFilterCreate"
         @filter-remove="handleCustomFilterRemove"
         @archive="handleArchive"
+        @add-tag="showTagModal = true"
       />
 
       <div class="app-container">
         <TagSidebar
+          ref="sidebar"
           :selected-tag="selectedTag"
           @select="handleTagSelect"
         />
@@ -53,7 +55,7 @@ import TagSidebar from './components/TagSidebar.vue';
 import MessageList from './components/MessageList.vue';
 import MessageDetail from './components/MessageDetail.vue';
 import { hasToken, setToken, clearToken } from './services/auth.js';
-import { getMessages, getMessage, archiveMessage } from './services/api.js';
+import { getMessages, getMessage, archiveMessage, createTag } from './services/api.js';
 import { realtimeClient } from './services/realtime.js';
 
 export default {
@@ -208,9 +210,23 @@ export default {
     },
 
     async handleTagSelect(tag) {
-      this.selectedTag = tag;
-      this.tagFilter = 'all';
+      if (this.selectedTag === tag) {
+        this.selectedTag = null; // Toggle off
+      } else {
+        this.selectedTag = tag;
+        this.tagFilter = 'all';
+      }
       await this.loadMessages(true);
+    },
+
+    async handleCreateTag(tagName) {
+      this.showTagModal = false;
+      try {
+        await createTag(tagName);
+        await this.$refs.sidebar.loadTags();
+      } catch (e) {
+        alert('Failed to create tag');
+      }
     },
 
     async handleRefresh() {

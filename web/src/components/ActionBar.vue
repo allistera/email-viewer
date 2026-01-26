@@ -11,8 +11,11 @@
           {{ filter.name }}
           <span class="filter-remove" @click.stop="$emit('filter-remove', filter.id)">×</span>
         </button>
-        <button class="filter-add" @click="showFilterModal = true">
-          + Add Filter
+        <button class="filter-add" @click="$emit('add-tag')">
+          + New Tag
+        </button>
+        <button class="filter-add" @click="showFilterModal = true" title="Create explicit rule">
+          + New Rule
         </button>
       </div>
     </div>
