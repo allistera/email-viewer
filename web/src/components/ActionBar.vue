@@ -2,20 +2,8 @@
   <div class="action-bar">
     <div class="filters-section">
       <div class="filters-list">
-        <button
-          v-for="filter in filters"
-          :key="filter.id"
-          :class="['filter-chip', { active: activeFilterIds.includes(filter.id) }]"
-          @click="$emit('filter-select', filter.id)"
-        >
-          {{ filter.name }}
-          <span class="filter-remove" @click.stop="$emit('filter-remove', filter.id)">×</span>
-        </button>
         <button class="filter-add" @click="$emit('add-tag')">
           + New Tag
-        </button>
-        <button class="filter-add" @click="showFilterModal = true" title="Create explicit rule">
-          + New Rule
         </button>
       </div>
     </div>
@@ -30,46 +18,16 @@
         📦 Archive
       </button>
     </div>
-
-    <FilterModal
-      :show="showFilterModal"
-      @close="showFilterModal = false"
-      @create="handleCreateFilter"
-    />
   </div>
 </template>
 
 <script>
-import FilterModal from './FilterModal.vue';
-
 export default {
   name: 'ActionBar',
-  components: {
-    FilterModal
-  },
   props: {
-    filters: {
-      type: Array,
-      default: () => []
-    },
-    activeFilterIds: {
-      type: Array,
-      default: () => []
-    },
     hasSelection: {
       type: Boolean,
       default: false
-    }
-  },
-  data() {
-    return {
-      showFilterModal: false
-    };
-  },
-  methods: {
-    handleCreateFilter(filter) {
-      this.$emit('filter-create', filter);
-      this.showFilterModal = false;
     }
   }
 };

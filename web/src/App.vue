@@ -8,12 +8,7 @@
 
     <div v-if="!showAuthModal" class="app-layout">
       <ActionBar
-        :filters="customFilters"
-        :active-filter-ids="activeFilterIds"
         :has-selection="!!selectedMessageId"
-        @filter-select="handleCustomFilterSelect"
-        @filter-create="handleCustomFilterCreate"
-        @filter-remove="handleCustomFilterRemove"
         @archive="handleArchive"
         @add-tag="showTagModal = true"
       />
@@ -81,9 +76,8 @@ export default {
       nextBefore: null,
       hasMore: false,
       tagFilter: 'all',
+      tagFilter: 'all',
       selectedTag: null,
-      customFilters: this.loadFilters(),
-      activeFilterIds: [],
       authError: ''
     };
   },
@@ -152,11 +146,7 @@ export default {
 
         const response = await getMessages(params);
 
-        let items = response.items || [];
-
-        if (this.activeFilterIds.length > 0) {
-          items = items.filter(msg => this.applyCustomFilters(msg));
-        }
+        const items = response.items || [];
 
         if (reset) {
           this.messages = items;
@@ -263,44 +253,6 @@ export default {
       }
     },
 
-    loadFilters() {
-      const stored = localStorage.getItem('email_filters');
-      return stored ? JSON.parse(stored) : [];
-    },
-
-    saveFilters() {
-      localStorage.setItem('email_filters', JSON.stringify(this.customFilters));
-    },
-
-    handleCustomFilterCreate(filter) {
-      this.customFilters.push(filter);
-      this.saveFilters();
-      // Auto-select
-      this.activeFilterIds.push(filter.id);
-      this.handleRefresh();
-    },
-
-    handleCustomFilterSelect(filterId) {
-      const index = this.activeFilterIds.indexOf(filterId);
-      if (index === -1) {
-        this.activeFilterIds.push(filterId);
-      } else {
-        this.activeFilterIds.splice(index, 1);
-      }
-      this.handleRefresh();
-    },
-
-    handleCustomFilterRemove(filterId) {
-      this.customFilters = this.customFilters.filter(f => f.id !== filterId);
-      this.saveFilters();
-      
-      const index = this.activeFilterIds.indexOf(filterId);
-      if (index !== -1) {
-         this.activeFilterIds.splice(index, 1);
-         this.handleRefresh();
-      }
-    },
-
     async handleArchive() {
       if (!this.selectedMessageId) return;
 
@@ -320,33 +272,6 @@ export default {
       } catch (error) {
         alert('Failed to archive message: ' + error.message);
       }
-    },
-
-    applyCustomFilters(message) {
-      return this.activeFilterIds.every(filterId => {
-        const filter = this.customFilters.find(f => f.id === filterId);
-        if (!filter) return true;
-
-        switch (filter.type) {
-          case 'sender':
-            return (message.from || '').toLowerCase().includes(filter.value.toLowerCase());
-
-          case 'subject':
-            return (message.subject || '').toLowerCase().includes(filter.value.toLowerCase());
-
-          case 'spam':
-            if (filter.value === 'spam') {
-              return message.tag === 'spam';
-            }
-            if (filter.value === 'not_spam') {
-              return message.tag !== 'spam';
-            }
-            return true;
-
-          default:
-            return true;
-        }
-      });
     }
   }
 };
