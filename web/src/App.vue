@@ -76,7 +76,6 @@ export default {
       nextBefore: null,
       hasMore: false,
       tagFilter: 'all',
-      tagFilter: 'all',
       selectedTag: null,
       authError: ''
     };

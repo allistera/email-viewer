@@ -50,11 +50,13 @@
                 class="action-btn edit-btn" 
                 @click.stop="startRename(tag)"
                 title="Rename"
+                aria-label="Rename Tag"
               >✎</button>
               <button 
                 class="action-btn delete-btn" 
                 @click.stop="handleDeleteTag(tag.id)"
                 title="Delete"
+                aria-label="Delete Tag"
               >&times;</button>
             </div>
         </div>
