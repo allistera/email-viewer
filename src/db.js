@@ -210,6 +210,13 @@ export const DB = {
     // Update Tag Name
     await db.prepare('UPDATE tags SET name = ? WHERE id = ?').bind(newName, id).run();
 
+    // Update Child Tags (Hierarchy)
+    await db.prepare(`
+      UPDATE tags 
+      SET name = ? || SUBSTR(name, LENGTH(?) + 1) 
+      WHERE name LIKE ? || '/%'
+    `).bind(newName, oldName, oldName).run();
+
     // Update Messages (Exact match)
     await db.prepare('UPDATE messages SET tag = ? WHERE tag = ?').bind(newName, oldName).run();
 
