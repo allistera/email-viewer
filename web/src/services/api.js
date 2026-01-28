@@ -114,6 +114,14 @@ export async function archiveMessage(id) {
   });
 }
 
+export async function updateMessageTag(id, tag) {
+  return request(`/messages/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tag })
+  });
+}
+
 function normalizeMessage(message) {
   if (!message) return message;
 

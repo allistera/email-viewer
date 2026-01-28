@@ -72,6 +72,20 @@ export const ApiRouter = {
             }
           });
         }
+
+        // PATCH /api/messages/:id (Update Tag)
+        if (parts.length === 2 && request.method === 'PATCH') {
+          const body = await request.json();
+          // Verify message exists
+          const msg = await DB.getMessage(env.DB, id);
+          if (!msg) return new Response('Message Not Found', { status: 404 });
+
+          if (body.tag !== undefined) {
+            await DB.updateTagInfo(env.DB, id, { tag: body.tag, confidence: 1.0, reason: 'Manual update' });
+          }
+
+          return jsonResponse({ ok: true });
+        }
       }
 
       // GET /api/tags

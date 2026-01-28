@@ -13,7 +13,26 @@
       <div v-else class="detail-content">
         <div class="detail-header">
           <h2>{{ message.subject }}</h2>
-        <TagBadge :tag="message.tag" />
+          <div class="tag-display">
+            <template v-if="isEditingTag">
+              <div class="tag-edit-container">
+                <select v-model="selectedNewTag" class="tag-select">
+                  <option value="">No Tag</option>
+                  <option v-for="tag in availableTags" :key="tag.id" :value="tag.name">
+                    {{ tag.name }}
+                  </option>
+                </select>
+                <button @click="saveTag" class="save-tag-btn">Save</button>
+                <button @click="cancelEditingTag" class="cancel-tag-btn">Cancel</button>
+              </div>
+            </template>
+            <template v-else>
+              <TagBadge :tag="message.tag" />
+              <button @click="startEditingTag" class="edit-tag-btn" title="Edit Tag">
+                ✎
+              </button>
+            </template>
+          </div>
         </div>
 
         <div class="meta">
@@ -96,7 +115,7 @@
 
 <script>
 import TagBadge from './TagBadge.vue';
-import { getAttachmentUrl } from '../services/api.js';
+import { getAttachmentUrl, updateMessageTag, getTags } from '../services/api.js';
 
 export default {
   name: 'MessageDetail',
@@ -119,7 +138,10 @@ export default {
   },
   data() {
     return {
-      viewMode: 'text'
+      viewMode: 'text',
+      isEditingTag: false,
+      availableTags: [],
+      selectedNewTag: ''
     };
   },
   computed: {
@@ -135,9 +157,42 @@ export default {
   watch: {
     message() {
       this.viewMode = 'text';
+      this.cancelEditingTag();
     }
   },
+  async mounted() {
+    await this.loadTags();
+  },
   methods: {
+    async loadTags() {
+      try {
+        const tags = await getTags();
+        this.availableTags = tags || [];
+      } catch (e) {
+        console.error('Failed to load tags in detail view', e);
+      }
+    },
+    startEditingTag() {
+      this.selectedNewTag = this.message.tag || '';
+      this.isEditingTag = true;
+      // Refresh tags to be sure
+      this.loadTags();
+    },
+    cancelEditingTag() {
+      this.isEditingTag = false;
+      this.selectedNewTag = '';
+    },
+    async saveTag() {
+      if (!this.message) return;
+      try {
+        await updateMessageTag(this.message.id, this.selectedNewTag);
+        // Optimistically update
+        this.message.tag = this.selectedNewTag;
+        this.isEditingTag = false;
+      } catch (e) {
+        alert('Failed to update tag: ' + e.message);
+      }
+    },
     formatDate(timestamp) {
       return new Date(timestamp).toLocaleString();
     },
@@ -159,6 +214,51 @@ export default {
 </script>
 
 <style scoped>
+.tag-edit-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tag-select {
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--color-border);
+  font-size: 13px;
+}
+
+.edit-tag-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  padding: 2px 6px;
+  margin-left: 8px;
+  border-radius: 4px;
+}
+
+.edit-tag-btn:hover {
+  background: var(--color-bg-secondary);
+  color: var(--color-primary);
+}
+
+.save-tag-btn, .cancel-tag-btn {
+  padding: 4px 8px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  color: white;
+}
+
+.save-tag-btn {
+  background: var(--color-primary);
+}
+
+.cancel-tag-btn {
+  background: #999;
+}
 .message-detail {
   display: flex;
   flex-direction: column;
