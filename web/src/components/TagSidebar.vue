@@ -14,9 +14,40 @@
       >
     </div>
 
+    <div class="system-tags">
+       <div 
+        class="tag-item"
+        :class="{ active: selectedTag === 'archive' }"
+        @click="$emit('select', 'archive')"
+      >
+        <div class="tag-content">
+           <div class="tag-info">
+             <span class="tag-icon">🗃️</span>
+             <span class="tag-label">Archive</span>
+           </div>
+        </div>
+      </div>
+       <div 
+        class="tag-item"
+        :class="{ active: selectedTag === 'spam' }"
+        @click="$emit('select', 'spam')"
+      >
+        <div class="tag-content">
+           <div class="tag-info">
+             <span class="tag-icon">🚫</span>
+             <span class="tag-label">Spam</span>
+           </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tag-header user-tags-header">
+       <span class="header-label">Folders</span>
+    </div>
+
     <ul class="tag-list">
       <li 
-        v-for="tag in displayTags" 
+        v-for="tag in userTags" 
         :key="tag.id" 
         class="tag-item"
         :class="{ active: selectedTag === tag.name }"
@@ -45,7 +76,7 @@
               <span class="tag-label" :title="tag.name">{{ tag.label }}</span>
             </div>
             
-            <div v-if="userCreated(tag)" class="tag-actions">
+            <div class="tag-actions">
               <button 
                 class="action-btn edit-btn" 
                 @click.stop="startRename(tag)"
@@ -84,9 +115,11 @@ export default {
     };
   },
   computed: {
-    displayTags() {
-      // Sort tags alphabetically by name
-      const sorted = [...this.tags].sort((a, b) => a.name.localeCompare(b.name));
+    userTags() {
+      // Sort tags alphabetically by name, exclude Spam
+      const sorted = this.tags
+        .filter(t => t.name !== 'Spam')
+        .sort((a, b) => a.name.localeCompare(b.name));
       
       return sorted.map(tag => {
         const parts = tag.name.split('/');
@@ -106,19 +139,14 @@ export default {
       try {
         const res = await getTags();
         this.tags = res || [];
-        
-        // Ensure Spam tag exists locally as fallback
-        if (!this.tags.find(t => t.name === 'Spam')) {
-          this.tags.push({ id: 'spam-local', name: 'Spam' });
-        }
+        // Spam is handled manually now if we keep it in DB, 
+        // but we filter it out of user list.
       } catch (e) {
         console.error('Failed to load tags', e);
-        // Even on error, show Spam
-        if (!this.tags.find(t => t.name === 'Spam')) {
-          this.tags.push({ id: 'spam-local', name: 'Spam' });
-        }
       }
     },
+    
+    // ... rest of methods unchanged ...
 
     handleSelectTag(name) {
       this.$emit('select', name);
@@ -134,7 +162,7 @@ export default {
         const newTag = await createTag(this.newTagName);
         this.newTagName = '';
         this.showAdd = false;
-        // Optimistically add tag locally to satisfy checking tests that mock the backend
+        // Optimistically add tag locally
         this.tags.push(newTag);
       } catch (e) {
         alert('Failed to create tag: ' + e.message);
@@ -145,7 +173,6 @@ export default {
       if (!confirm('Delete this tag?')) return;
       try {
         await deleteTag(id);
-        // Optimistically remove tag locally
         this.tags = this.tags.filter(t => t.id !== id);
       } catch (e) {
         alert('Failed to delete tag: ' + e.message);
@@ -157,7 +184,6 @@ export default {
       this.editName = tag.label;
       this.$nextTick(() => {
         const inputs = this.$refs.editInput;
-        // In v-for ref is an array if multiple, but here inside li
         if (inputs && inputs.length > 0) {
             inputs[0].focus();
         } else if (inputs && inputs.focus) {
@@ -187,9 +213,8 @@ export default {
         return;
       }
 
-      // Reconstruct full name preserving parent hierarchy
       const parts = tag.name.split('/');
-      parts.pop(); // Remove old label
+      parts.pop(); 
       parts.push(this.editName.trim());
       const newFullName = parts.join('/');
 
@@ -224,8 +249,6 @@ export default {
             if (confirm(`Apply tag "${targetTag.label}" to the dropped message?`)) {
                 try {
                     await updateMessageTag(messageId, targetTag.name);
-                    // Optionally ask parent to refresh message list if needed, 
-                    // though realtime might handle it or we assume user sees it next time.
                     alert(`Tag "${targetTag.label}" applied.`);
                 } catch (e) {
                     alert('Failed to apply tag: ' + e.message);
@@ -240,13 +263,11 @@ export default {
         
         if (!dragged || dragged.id === targetTag.id) return;
 
-        // Prevent dropping parent into child (circular dependency)
         if (targetTag.name.startsWith(dragged.name + '/')) {
             alert("Cannot move a parent tag into its own child.");
             return;
         }
 
-        // New name: target/draggedLabel
         const parts = dragged.name.split('/');
         const label = parts[parts.length - 1];
         const newName = `${targetTag.name}/${label}`;
@@ -279,6 +300,21 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.user-tags-header {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  background-color: #eee;
+  border-top: 1px solid #ddd;
+  border-bottom: 1px solid #ddd;
+}
+
+.header-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #666;
+    text-transform: uppercase;
 }
 
 .tag-header h2 {
@@ -326,6 +362,10 @@ export default {
   flex: 1;
 }
 
+.system-tags {
+    border-bottom: 1px solid #eee;
+}
+
 .tag-item {
   padding: 8px 16px;
   cursor: pointer;
@@ -354,6 +394,10 @@ export default {
   background: #ccc;
   border-radius: 50%;
   margin-right: 8px;
+}
+
+.tag-icon {
+    margin-right: 8px;
 }
 
 .tag-item.active .tag-dot {

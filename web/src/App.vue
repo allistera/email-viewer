@@ -131,12 +131,26 @@ export default {
           limit: 50
         };
 
-        if (this.selectedTag) {
+        if (this.selectedTag === 'archive') {
+           params.archived = true;
+        } else if (this.selectedTag === 'spam') {
+           params.tag = 'Spam'; // DB tag name is title case usually, but search likely case insensitive or exact. "Spam" is seeded.
+        } else if (this.selectedTag) {
           params.tag = this.selectedTag;
-        } else if (this.tagFilter === 'spam') {
-          params.tag = 'spam';
-        } else if (this.tagFilter === 'not_spam') {
-          params.excludeTag = 'spam';
+          // Exclude archived by default unless viewing archive
+          params.archived = false; 
+        } else {
+          // Inbox view (no specific tag selected)
+          // Default filter logic (e.g. all non-spam, non-archived)
+          if (this.tagFilter === 'spam') {
+             params.tag = 'Spam';
+          } else if (this.tagFilter === 'not_spam') { // "All Messages" in UI dropdown maps here?
+             params.excludeTag = 'Spam';
+             params.archived = false;
+          } else {
+             // 'all' filter from dropdown
+             params.archived = false;
+          }
         }
 
         if (!reset && this.nextBefore) {
@@ -200,10 +214,11 @@ export default {
 
     async handleTagSelect(tag) {
       if (this.selectedTag === tag) {
-        this.selectedTag = null; // Toggle off
+        this.selectedTag = null; // Toggle off -> Go to Inbox
       } else {
         this.selectedTag = tag;
-        this.tagFilter = 'all';
+        // When selecting a sidebar folder, we reset any local list filters to default
+        this.tagFilter = 'all'; 
       }
       await this.loadMessages(true);
     },

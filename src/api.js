@@ -33,8 +33,10 @@ export const ApiRouter = {
         const before = parseInt(url.searchParams.get('before')) || null;
         const tag = url.searchParams.get('tag') || null;
         const excludeTag = url.searchParams.get('excludeTag') || null;
+        // Parse 'archived'; 'true' -> true, else false
+        const archived = url.searchParams.get('archived') === 'true';
 
-        const items = await DB.listMessages(env.DB, { limit, before, tag, excludeTag });
+        const items = await DB.listMessages(env.DB, { limit, before, tag, excludeTag, archived });
         const nextBefore = items.length > 0 ? items[items.length - 1].received_at : null;
 
         return jsonResponse({ items, nextBefore });
@@ -42,6 +44,7 @@ export const ApiRouter = {
 
       // GET /api/messages/:id
       // GET /api/messages/:id/attachments/:attId
+      // POST /api/messages/:id/archive
       if (path.startsWith('messages/')) {
         const parts = path.split('/');
         const id = parts[1];
@@ -51,6 +54,12 @@ export const ApiRouter = {
           const msg = await DB.getMessage(env.DB, id);
           if (!msg) return new Response('Not Found', { status: 404 });
           return jsonResponse(msg);
+        }
+
+        // Archive
+        if (parts.length === 3 && parts[2] === 'archive' && request.method === 'POST') {
+          await DB.archiveMessage(env.DB, id);
+          return jsonResponse({ ok: true });
         }
 
         // Download Attachment

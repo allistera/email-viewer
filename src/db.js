@@ -83,9 +83,9 @@ export const DB = {
   /**
    * List messages for inbox
    * @param {D1Database} db 
-   * @param {Object} filters { limit, before, tag, excludeTag }
+   * @param {Object} filters { limit, before, tag, excludeTag, archived }
    */
-  async listMessages(db, { limit = 50, before = null, tag = null, excludeTag = null } = {}) {
+  async listMessages(db, { limit = 50, before = null, tag = null, excludeTag = null, archived = false } = {}) {
     let query = 'SELECT * FROM messages';
     const params = [];
     const conditions = [];
@@ -105,6 +105,16 @@ export const DB = {
       params.push(excludeTag);
     }
 
+    // Archived filter:
+    // true: show only archived
+    // false: show only unarchived (inbox)
+    // null: show all (if ever needed)
+    if (archived === true) {
+      conditions.push('is_archived = 1');
+    } else if (archived === false) {
+      conditions.push('(is_archived = 0 OR is_archived IS NULL)');
+    }
+
     if (conditions.length > 0) {
       query += ' WHERE ' + conditions.join(' AND ');
     }
@@ -117,7 +127,26 @@ export const DB = {
   },
 
   /**
+   * Archive a message
+   * @param {D1Database} db 
+   * @param {string} id 
+   */
+  async archiveMessage(db, id) {
+    await db.prepare('UPDATE messages SET is_archived = 1 WHERE id = ?').bind(id).run();
+  },
+
+  /**
+   * Unarchive a message
+   * @param {D1Database} db 
+   * @param {string} id 
+   */
+  async unarchiveMessage(db, id) {
+    await db.prepare('UPDATE messages SET is_archived = 0 WHERE id = ?').bind(id).run();
+  },
+
+  /**
    * Get full message detail
+
    * @param {D1Database} db 
    * @param {string} id 
    */
