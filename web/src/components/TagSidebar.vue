@@ -19,6 +19,8 @@
         class="tag-item"
         :class="{ active: selectedTag === 'archive' }"
         @click="$emit('select', 'archive')"
+        @dragover="onDragOver($event)"
+        @drop="onDropSystem($event, 'archive')"
       >
         <div class="tag-content">
            <div class="tag-info">
@@ -31,6 +33,8 @@
         class="tag-item"
         :class="{ active: selectedTag === 'spam' }"
         @click="$emit('select', 'spam')"
+        @dragover="onDragOver($event)"
+        @drop="onDropSystem($event, 'spam')"
       >
         <div class="tag-content">
            <div class="tag-info">
@@ -97,7 +101,7 @@
 </template>
 
 <script>
-import { getTags, createTag, deleteTag, updateTag, updateMessageTag } from '../services/api.js';
+import { getTags, createTag, deleteTag, updateTag, updateMessageTag, archiveMessage } from '../services/api.js';
 
 export default {
   name: 'TagSidebar',
@@ -278,6 +282,32 @@ export default {
                 await this.loadTags();
             } catch (e) {
                 alert('Failed to move tag: ' + e.message);
+            }
+        }
+    },
+    
+    async onDropSystem(event, type) {
+        event.preventDefault();
+        const messageId = event.dataTransfer.getData('application/x-message-id');
+        if (!messageId) return;
+
+        if (type === 'archive') {
+            if (confirm('Archive this message?')) {
+                try {
+                    await archiveMessage(messageId);
+                    alert('Message archived.');
+                } catch (e) {
+                    alert('Failed to archive: ' + e.message);
+                }
+            }
+        } else if (type === 'spam') {
+            if (confirm('Mark this message as Spam?')) {
+                try {
+                     await updateMessageTag(messageId, 'Spam');
+                     alert('Marked as Spam.');
+                } catch (e) {
+                    alert('Failed to mark as Spam: ' + e.message);
+                }
             }
         }
     }

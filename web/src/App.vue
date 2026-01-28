@@ -7,12 +7,6 @@
     />
 
     <div v-if="!showAuthModal" class="app-layout">
-      <ActionBar
-        :has-selection="!!selectedMessageId"
-        @archive="handleArchive"
-        @add-tag="showTagModal = true"
-      />
-
       <div class="app-container">
         <TagSidebar
           ref="sidebar"
@@ -45,7 +39,6 @@
 
 <script>
 import AuthModal from './components/AuthModal.vue';
-import ActionBar from './components/ActionBar.vue';
 import TagSidebar from './components/TagSidebar.vue';
 import MessageList from './components/MessageList.vue';
 import MessageDetail from './components/MessageDetail.vue';
@@ -57,7 +50,6 @@ export default {
   name: 'App',
   components: {
     AuthModal,
-    ActionBar,
     TagSidebar,
     MessageList,
     MessageDetail
