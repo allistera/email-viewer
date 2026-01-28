@@ -66,7 +66,7 @@
 </template>
 
 <script>
-import { getTags, createTag, deleteTag, updateTag } from '../services/api.js';
+import { getTags, createTag, deleteTag, updateTag, updateMessageTag } from '../services/api.js';
 
 export default {
   name: 'TagSidebar',
@@ -217,6 +217,24 @@ export default {
 
     async onDrop(event, targetTag) {
         event.preventDefault();
+
+        // 1. Handle Message Drop (Tagging)
+        const messageId = event.dataTransfer.getData('application/x-message-id');
+        if (messageId) {
+            if (confirm(`Apply tag "${targetTag.label}" to the dropped message?`)) {
+                try {
+                    await updateMessageTag(messageId, targetTag.name);
+                    // Optionally ask parent to refresh message list if needed, 
+                    // though realtime might handle it or we assume user sees it next time.
+                    alert(`Tag "${targetTag.label}" applied.`);
+                } catch (e) {
+                    alert('Failed to apply tag: ' + e.message);
+                }
+            }
+            return;
+        }
+
+        // 2. Handle Tag Drop (Reordering/Nesting)
         const dragged = this.draggedTag;
         this.draggedTag = null;
         

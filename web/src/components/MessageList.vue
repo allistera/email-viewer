@@ -29,6 +29,8 @@
         v-for="message in messages"
         :key="message.id"
         :class="['message-item', { active: selectedId === message.id }]"
+        draggable="true"
+        @dragstart="onDragStart($event, message)"
         @click="$emit('select', message.id)"
       >
         <div class="message-header">
@@ -117,6 +119,14 @@ export default {
       if (diffDays < 7) return `${diffDays}d ago`;
 
       return date.toLocaleDateString();
+    },
+
+    onDragStart(event, message) {
+      event.dataTransfer.effectAllowed = 'copy';
+      // Use a custom format or JSON to indicate this is a message, not a tag
+      // We'll use 'application/x-message-id' to be safe, or just check format in drop target
+      event.dataTransfer.setData('application/x-message-id', message.id);
+      event.dataTransfer.setData('text/plain', message.subject); // Fallback
     }
   }
 };
