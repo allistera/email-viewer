@@ -106,8 +106,17 @@ export default {
       try {
         const res = await getTags();
         this.tags = res || [];
+        
+        // Ensure Spam tag exists locally as fallback
+        if (!this.tags.find(t => t.name === 'Spam')) {
+          this.tags.push({ id: 'spam-local', name: 'Spam' });
+        }
       } catch (e) {
         console.error('Failed to load tags', e);
+        // Even on error, show Spam
+        if (!this.tags.find(t => t.name === 'Spam')) {
+          this.tags.push({ id: 'spam-local', name: 'Spam' });
+        }
       }
     },
 
