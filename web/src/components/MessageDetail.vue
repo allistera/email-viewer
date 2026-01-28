@@ -79,34 +79,16 @@
         </div>
       </div>
 
-      <div class="body-tabs">
-        <button
-          :class="['tab', { active: viewMode === 'text' }]"
-          @click="viewMode = 'text'"
-        >
-          Text
-        </button>
-        <button
-          :class="['tab', { active: viewMode === 'html' }]"
-          @click="viewMode = 'html'"
-          :disabled="!message.htmlBody"
-        >
-          HTML
-        </button>
-      </div>
-
       <div class="body-content">
-        <div v-if="viewMode === 'text'" class="text-body">
-          <pre>{{ message.textBody || 'No text body' }}</pre>
-        </div>
-        <div v-else class="html-body">
+        <div v-if="message.htmlBody" class="html-body">
           <iframe
-            v-if="message.htmlBody"
             :srcdoc="sanitizedHtml"
             sandbox="allow-same-origin"
             class="html-iframe"
           ></iframe>
-          <p v-else class="no-content">No HTML body</p>
+        </div>
+        <div v-else class="text-body">
+          <pre>{{ message.textBody || 'No content' }}</pre>
         </div>
       </div>
     </div>
@@ -138,7 +120,6 @@ export default {
   },
   data() {
     return {
-      viewMode: 'text',
       isEditingTag: false,
       availableTags: [],
       selectedNewTag: ''
@@ -156,7 +137,6 @@ export default {
   },
   watch: {
     message() {
-      this.viewMode = 'text';
       this.cancelEditingTag();
     }
   },
