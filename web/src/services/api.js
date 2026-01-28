@@ -123,6 +123,22 @@ export async function updateMessageTag(id, tag) {
   });
 }
 
+export async function addMessageTag(id, tag) {
+  return request(`/messages/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ addTag: tag })
+  });
+}
+
+export async function removeMessageTag(id, tag) {
+  return request(`/messages/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ removeTag: tag })
+  });
+}
+
 function normalizeMessage(message) {
   if (!message) return message;
 

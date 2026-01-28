@@ -45,10 +45,6 @@
       </div>
     </div>
 
-    <div class="tag-header user-tags-header">
-       <span class="header-label">Folders</span>
-    </div>
-
     <ul class="tag-list">
       <li 
         v-for="tag in userTags" 
@@ -317,7 +313,6 @@ export default {
 
 <style scoped>
 .tag-sidebar {
-  width: 200px;
   background: #f5f5f5;
   border-right: 1px solid #ddd;
   display: flex;

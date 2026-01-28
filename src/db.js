@@ -85,44 +85,69 @@ export const DB = {
    * @param {D1Database} db 
    * @param {Object} filters { limit, before, tag, excludeTag, archived }
    */
+
   async listMessages(db, { limit = 50, before = null, tag = null, excludeTag = null, archived = false } = {}) {
-    let query = 'SELECT * FROM messages';
+    let query = 'SELECT m.* FROM messages m';
     const params = [];
     const conditions = [];
 
     if (before) {
-      conditions.push('received_at < ?');
+      conditions.push('m.received_at < ?');
       params.push(before);
     }
 
     if (tag) {
-      conditions.push('(tag = ? OR tag LIKE ?)');
+      conditions.push('EXISTS (SELECT 1 FROM message_tags mt JOIN tags t ON mt.tag_id = t.id WHERE mt.message_id = m.id AND (t.name = ? OR t.name LIKE ?))');
       params.push(tag, `${tag}/%`);
     }
 
     if (excludeTag) {
-      conditions.push('(tag IS NULL OR tag != ?)');
+      conditions.push('NOT EXISTS (SELECT 1 FROM message_tags mt JOIN tags t ON mt.tag_id = t.id WHERE mt.message_id = m.id AND t.name = ?)');
       params.push(excludeTag);
     }
 
     // Archived filter:
-    // true: show only archived
-    // false: show only unarchived (inbox)
-    // null: show all (if ever needed)
     if (archived === true) {
-      conditions.push('is_archived = 1');
+      conditions.push('m.is_archived = 1');
     } else if (archived === false) {
-      conditions.push('(is_archived = 0 OR is_archived IS NULL)');
+      conditions.push('(m.is_archived = 0 OR m.is_archived IS NULL)');
     }
 
     if (conditions.length > 0) {
       query += ' WHERE ' + conditions.join(' AND ');
     }
 
-    query += ' ORDER BY received_at DESC LIMIT ?';
+    query += ' ORDER BY m.received_at DESC LIMIT ?';
     params.push(limit);
 
     const { results } = await db.prepare(query).bind(...params).all();
+
+    // Enrich with tags (N+1 but limited to 50, acceptable for NOW, or use group_concat query above)
+    // Optimization: Fetch all tags for these messages
+    if (results && results.length > 0) {
+      const ids = results.map(r => `'${r.id}'`).join(',');
+      const tagsQuery = `
+           SELECT mt.message_id, t.name 
+           FROM message_tags mt 
+           JOIN tags t ON mt.tag_id = t.id 
+           WHERE mt.message_id IN (${ids})
+         `;
+      const { results: allTags } = await db.prepare(tagsQuery).all();
+
+      const tagsMap = {};
+      if (allTags) {
+        for (const t of allTags) {
+          if (!tagsMap[t.message_id]) tagsMap[t.message_id] = [];
+          tagsMap[t.message_id].push(t.name);
+        }
+      }
+
+      for (const r of results) {
+        r.tags = tagsMap[r.id] || [];
+        r.tag = r.tags[0] || null; // Backward compat
+      }
+    }
+
     return results || [];
   },
 
@@ -146,7 +171,6 @@ export const DB = {
 
   /**
    * Get full message detail
-
    * @param {D1Database} db 
    * @param {string} id 
    */
@@ -158,22 +182,102 @@ export const DB = {
       .bind(id)
       .all();
 
-    return { ...msg, attachments };
+    const { results: tags } = await db.prepare(`
+        SELECT t.name 
+        FROM message_tags mt 
+        JOIN tags t ON mt.tag_id = t.id 
+        WHERE mt.message_id = ?
+    `).bind(id).all();
+
+    const tagNames = tags ? tags.map(t => t.name) : [];
+
+    return {
+      ...msg,
+      attachments,
+      tags: tagNames,
+      tag: tagNames[0] || null
+    };
   },
 
   /**
-   * Update tag info
+   * Add a tag to a message
+   * @param {D1Database} db
+   * @param {string} messageId
+   * @param {string} tagName
+   */
+  async addMessageTag(db, messageId, tagName) {
+    // Ensure tag exists
+    let tag = await db.prepare('SELECT id FROM tags WHERE name = ?').bind(tagName).first();
+    if (!tag) {
+      tag = await this.createTag(db, tagName);
+    }
+
+    await db.prepare('INSERT OR IGNORE INTO message_tags (message_id, tag_id) VALUES (?, ?)').bind(messageId, tag.id).run();
+
+    // Update legacy field for now (though we are moving away)
+    await db.prepare('UPDATE messages SET tag = ? WHERE id = ?').bind(tagName, messageId).run();
+  },
+
+  /**
+   * Remove a tag from a message
+   * @param {D1Database} db
+   * @param {string} messageId
+   * @param {string} tagName
+   */
+  async removeMessageTag(db, messageId, tagName) {
+    const tag = await db.prepare('SELECT id FROM tags WHERE name = ?').bind(tagName).first();
+    if (!tag) return;
+
+    await db.prepare('DELETE FROM message_tags WHERE message_id = ? AND tag_id = ?').bind(messageId, tag.id).run();
+
+    // Legacy cleanup: if we deleted the tag that is in messages.tag, grab another one
+    const remainingTag = await db.prepare(`
+        SELECT t.name FROM message_tags mt JOIN tags t ON mt.tag_id = t.id 
+        WHERE mt.message_id = ? LIMIT 1
+      `).bind(messageId).first();
+
+    await db.prepare('UPDATE messages SET tag = ? WHERE id = ?').bind(remainingTag ? remainingTag.name : null, messageId).run();
+  },
+
+  /**
+   * Set list of tags (Replace)
+   * @param {D1Database} db
+   * @param {string} messageId
+   * @param {string[]} tags
+   */
+  async setMessageTags(db, messageId, tags) {
+    // Clear existing
+    await db.prepare('DELETE FROM message_tags WHERE message_id = ?').bind(messageId).run();
+
+    if (tags && tags.length > 0) {
+      for (const tagName of tags) {
+        await this.addMessageTag(db, messageId, tagName);
+      }
+    } else {
+      await db.prepare('UPDATE messages SET tag = NULL WHERE id = ?').bind(messageId).run();
+    }
+  },
+
+  /**
+   * Update tag info (Legacy/Single Tag wrapper)
    * @param {D1Database} db
    * @param {string} id
    * @param {Object} tagInfo
    */
   async updateTagInfo(db, id, { tag, confidence, reason }) {
+    // Treat as "Set this tag" (and remove others? Or add?)
+    // "Tag the highlighted email" usually implies adding or setting primary.
+    // The previous behavior was "replace".
+    if (tag) {
+      await this.setMessageTags(db, id, [tag]);
+    }
+
+    // Update metadata if needed (confidence/reason still on messages table? Yes)
     await db.prepare(`
       UPDATE messages
-      SET tag = ?, tag_confidence = ?, tag_reason = ?, tag_checked_at = ?
+      SET tag_confidence = ?, tag_reason = ?, tag_checked_at = ?
       WHERE id = ?
     `).bind(
-      tag ?? null,
       confidence ?? null,
       reason ?? null,
       Date.now(),

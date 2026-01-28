@@ -14,24 +14,25 @@
         <div class="detail-header">
           <h2>{{ message.subject }}</h2>
           <div class="tag-display">
-            <template v-if="isEditingTag">
-              <div class="tag-edit-container">
-                <select v-model="selectedNewTag" class="tag-select">
-                  <option value="">No Tag</option>
-                  <option v-for="tag in availableTags" :key="tag.id" :value="tag.name">
-                    {{ tag.name }}
-                  </option>
-                </select>
-                <button @click="saveTag" class="save-tag-btn">Save</button>
-                <button @click="cancelEditingTag" class="cancel-tag-btn">Cancel</button>
-              </div>
-            </template>
-            <template v-else>
-              <TagBadge :tag="message.tag" />
-              <button @click="startEditingTag" class="edit-tag-btn" title="Edit Tag">
-                ✎
-              </button>
-            </template>
+             <div class="tag-list">
+                 <div v-for="tag in currentTags" :key="tag" class="tag-chip">
+                     <TagBadge :tag="tag" />
+                     <button class="remove-tag-btn" @click="handleRemoveTag(tag)" title="Remove Tag">&times;</button>
+                 </div>
+             </div>
+            
+             <template v-if="isAddingTag">
+                <div class="tag-add-container">
+                   <select v-model="selectedAddTag" @change="confirmAddTag" class="tag-select" ref="addTagSelect">
+                      <option value="" disabled>Select Tag...</option>
+                      <option v-for="tag in availableTags" :key="tag.id" :value="tag.name" :disabled="currentTags.includes(tag.name)">
+                         {{ tag.name }}
+                      </option>
+                   </select>
+                   <button @click="cancelAddingTag" class="cancel-add-btn" title="Cancel">&times;</button>
+                </div>
+             </template>
+             <button v-else @click="startAddingTag" class="add-tag-btn" title="Add Tag">+</button>
           </div>
         </div>
 
@@ -48,10 +49,7 @@
           <span class="label">Date:</span>
           <span class="value">{{ formatDate(message.receivedAt) }}</span>
         </div>
-        <div v-if="message.tag" class="meta-row">
-          <span class="label">Tag:</span>
-          <span class="value">{{ message.tag }}</span>
-        </div>
+        <!-- Hide legacy single tag row if we show them in header -->
         <div v-if="message.tagConfidence !== null && message.tagConfidence !== undefined" class="meta-row">
           <span class="label">Tag Confidence:</span>
           <span class="value">{{ formatConfidence(message.tagConfidence) }}</span>
@@ -97,7 +95,7 @@
 
 <script>
 import TagBadge from './TagBadge.vue';
-import { getAttachmentUrl, updateMessageTag, getTags } from '../services/api.js';
+import { getAttachmentUrl, updateMessageTag, addMessageTag, removeMessageTag, getTags } from '../services/api.js';
 
 export default {
   name: 'MessageDetail',
@@ -120,9 +118,9 @@ export default {
   },
   data() {
     return {
-      isEditingTag: false,
+      isAddingTag: false,
       availableTags: [],
-      selectedNewTag: ''
+      selectedAddTag: ''
     };
   },
   computed: {
@@ -133,11 +131,20 @@ export default {
         .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
         .replace(/on\w+="[^"]*"/gi, '')
         .replace(/javascript:/gi, '');
+    },
+    currentTags() {
+      if (!this.message) return [];
+      // Prefer tags array (new per-message list), fallback to tag string wrapped in array
+      if (this.message.tags && Array.isArray(this.message.tags)) {
+           // Filter out null/duplicates if any
+           return [...new Set(this.message.tags.filter(t => t))]; 
+      }
+      return this.message.tag ? [this.message.tag] : [];
     }
   },
   watch: {
     message() {
-      this.cancelEditingTag();
+      this.cancelAddingTag();
     }
   },
   async mounted() {
@@ -152,26 +159,53 @@ export default {
         console.error('Failed to load tags in detail view', e);
       }
     },
-    startEditingTag() {
-      this.selectedNewTag = this.message.tag || '';
-      this.isEditingTag = true;
-      // Refresh tags to be sure
-      this.loadTags();
+    startAddingTag() {
+      this.selectedAddTag = '';
+      this.isAddingTag = true;
+      this.loadTags(); // Ensure fresh
+      this.$nextTick(() => {
+          if (this.$refs.addTagSelect) this.$refs.addTagSelect.focus();
+      });
     },
-    cancelEditingTag() {
-      this.isEditingTag = false;
-      this.selectedNewTag = '';
+    cancelAddingTag() {
+      this.isAddingTag = false;
+      this.selectedAddTag = '';
     },
-    async saveTag() {
-      if (!this.message) return;
-      try {
-        await updateMessageTag(this.message.id, this.selectedNewTag);
-        // Optimistically update
-        this.message.tag = this.selectedNewTag;
-        this.isEditingTag = false;
-      } catch (e) {
-        alert('Failed to update tag: ' + e.message);
-      }
+    async confirmAddTag() {
+       if (!this.selectedAddTag) return;
+       const tagToAdd = this.selectedAddTag;
+       this.cancelAddingTag();
+       
+       try {
+           await addMessageTag(this.message.id, tagToAdd);
+           // Optimistic update
+           if (!this.message.tags) this.message.tags = [];
+           if (this.message.tag && !this.message.tags.includes(this.message.tag)) {
+               this.message.tags.push(this.message.tag);
+           }
+           if (!this.message.tags.includes(tagToAdd)) {
+               this.message.tags.push(tagToAdd);
+           }
+           // Update legacy field just in case
+           this.message.tag = this.message.tags[0]; 
+       } catch (e) {
+           alert("Failed to add tag: " + e.message);
+       }
+    },
+    async handleRemoveTag(tag) {
+        if (!confirm(`Remove tag "${tag}"?`)) return;
+        try {
+            await removeMessageTag(this.message.id, tag);
+            // Optimistic update
+            if (this.message.tags) {
+                this.message.tags = this.message.tags.filter(t => t !== tag);
+            }
+            if (this.message.tag === tag) {
+                this.message.tag = this.message.tags && this.message.tags.length > 0 ? this.message.tags[0] : null;
+            }
+        } catch (e) {
+            alert("Failed to remove tag: " + e.message);
+        }
     },
     formatDate(timestamp) {
       return new Date(timestamp).toLocaleString();
@@ -194,10 +228,74 @@ export default {
 </script>
 
 <style scoped>
-.tag-edit-container {
+.tag-display {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.tag-list {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.tag-chip {
+    display: flex;
+    align-items: center;
+    background: #f0f0f0;
+    border-radius: 12px;
+    padding-right: 6px;
+}
+
+/* Override TagBadge margin if any */
+.tag-chip :deep(.tag-badge) {
+    margin: 0;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.remove-tag-btn {
+    border: none;
+    background: none;
+    color: #666;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    padding: 0 4px;
+    margin-left: 2px;
+    opacity: 0.6;
+}
+
+.remove-tag-btn:hover {
+    opacity: 1;
+    color: #cc0000;
+}
+
+.add-tag-btn {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 1px dashed #ccc;
+    background: #fff;
+    color: #666;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+}
+
+.add-tag-btn:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+.tag-add-container {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
 }
 
 .tag-select {
@@ -205,40 +303,22 @@ export default {
   border-radius: 4px;
   border: 1px solid var(--color-border);
   font-size: 13px;
+  max-width: 150px;
 }
 
-.edit-tag-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 12px;
-  color: var(--color-text-secondary);
-  padding: 2px 6px;
-  margin-left: 8px;
-  border-radius: 4px;
+.cancel-add-btn {
+    background: none;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    color: #999;
 }
 
-.edit-tag-btn:hover {
-  background: var(--color-bg-secondary);
-  color: var(--color-primary);
+.cancel-add-btn:hover {
+    color: #333;
 }
 
-.save-tag-btn, .cancel-tag-btn {
-  padding: 4px 8px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 12px;
-  color: white;
-}
-
-.save-tag-btn {
-  background: var(--color-primary);
-}
-
-.cancel-tag-btn {
-  background: #999;
-}
+/* ... existing styles ... */
 .message-detail {
   display: flex;
   flex-direction: column;

@@ -83,13 +83,22 @@ export const ApiRouter = {
         }
 
         // PATCH /api/messages/:id (Update Tag)
+        // Supports: 
+        // - tag: string (Replace all tags with this one, legacy)
+        // - addTag: string (Add this tag)
+        // - removeTag: string (Remove this tag)
         if (parts.length === 2 && request.method === 'PATCH') {
           const body = await request.json();
           // Verify message exists
           const msg = await DB.getMessage(env.DB, id);
           if (!msg) return new Response('Message Not Found', { status: 404 });
 
-          if (body.tag !== undefined) {
+          if (body.addTag) {
+            await DB.addMessageTag(env.DB, id, body.addTag);
+          } else if (body.removeTag) {
+            await DB.removeMessageTag(env.DB, id, body.removeTag);
+          } else if (body.tag !== undefined) {
+            // Legacy/Single mode: Replace
             await DB.updateTagInfo(env.DB, id, { tag: body.tag, confidence: 1.0, reason: 'Manual update' });
           }
 
