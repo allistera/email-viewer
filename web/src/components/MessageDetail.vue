@@ -95,7 +95,7 @@
 
 <script>
 import TagBadge from './TagBadge.vue';
-import { getAttachmentUrl, updateMessageTag, addMessageTag, removeMessageTag, getTags } from '../services/api.js';
+import { getAttachmentUrl, addMessageTag, removeMessageTag, getTags } from '../services/api.js';
 
 export default {
   name: 'MessageDetail',
