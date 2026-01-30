@@ -34,13 +34,13 @@ export default defineConfig({
       command: 'npm run mock',
       port: 8787,
       timeout: 10000,
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: true,
     },
     {
       command: 'npm run dev',
       port: 5173,
       timeout: 10000,
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: true,
     },
   ],
 });

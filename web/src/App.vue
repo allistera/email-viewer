@@ -24,7 +24,6 @@
           @select="handleSelectMessage"
           @filter-change="handleFilterChange"
           @search="handleSearch"
-          @refresh="handleRefresh"
           @load-more="handleLoadMore"
         />
 
