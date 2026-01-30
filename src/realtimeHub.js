@@ -57,6 +57,9 @@ export class RealtimeHub {
     this.sseSessions.add(writer);
 
     // Cleanup when writer closes (client disconnect)
+    // Note: We use both writer.closed and request.signal for redundant cleanup.
+    // This "belt and suspenders" approach ensures cleanup happens regardless of
+    // how the connection ends. Duplicate delete calls are safe (Set.delete is idempotent).
     writer.closed
       .then(() => {
         this.sseSessions.delete(writer);
@@ -65,7 +68,7 @@ export class RealtimeHub {
         this.sseSessions.delete(writer);
       });
 
-    // Also handle abort signal if available (belt and suspenders)
+    // Also handle abort signal if available
     if (request.signal) {
       request.signal.addEventListener('abort', () => {
         this.sseSessions.delete(writer);

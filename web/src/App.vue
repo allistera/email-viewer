@@ -280,17 +280,7 @@ export default {
 
       try {
         await archiveMessage(this.selectedMessageId);
-
-        this.messages = this.messages.filter(m => m.id !== this.selectedMessageId);
-
-        if (this.currentMessage && this.currentMessage.id === this.selectedMessageId) {
-          this.currentMessage = null;
-          this.selectedMessageId = null;
-        }
-
-        if (this.messages.length > 0 && !this.selectedMessageId) {
-          this.handleSelectMessage(this.messages[0].id);
-        }
+        this.handleMessageArchived(this.selectedMessageId);
       } catch (error) {
         alert('Failed to archive message: ' + error.message);
       }
