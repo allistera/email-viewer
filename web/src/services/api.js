@@ -4,9 +4,9 @@
 
 import { getToken } from './auth.js';
 
-const API_BASE = import.meta.env.PROD
-  ? 'https://api.infinitywave.design/api'
-  : '/api';
+// API base URL - configurable via environment variable VITE_API_BASE
+// Falls back to relative /api path for same-origin deployments
+const API_BASE = import.meta.env.VITE_API_BASE || '/api';
 
 class ApiError extends Error {
   constructor(message, status) {

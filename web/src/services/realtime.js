@@ -12,9 +12,15 @@ export class RealtimeClient {
     this.reconnectAttempts = 0;
     this.maxReconnectAttempts = 5;
     this.reconnectDelay = 1000;
+    this.reconnectTimeoutId = null;
+    this.isDisconnecting = false;
   }
 
   connect() {
+    // Don't connect if we're in the process of disconnecting
+    if (this.isDisconnecting) {
+      return;
+    }
     this.connectSSE();
   }
 
@@ -90,6 +96,11 @@ export class RealtimeClient {
   }
 
   attemptReconnect() {
+    // Don't reconnect if we're disconnecting
+    if (this.isDisconnecting) {
+      return;
+    }
+    
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
       console.error('Max reconnection attempts reached');
       return;
@@ -100,7 +111,9 @@ export class RealtimeClient {
 
     console.log(`Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`);
 
-    setTimeout(() => {
+    // Store the timeout ID so we can cancel it on disconnect
+    this.reconnectTimeoutId = setTimeout(() => {
+      this.reconnectTimeoutId = null;
       this.connect();
     }, delay);
   }
@@ -134,8 +147,17 @@ export class RealtimeClient {
   }
 
   disconnect() {
-    // Reset reconnect attempts to prevent reconnection after explicit disconnect
-    this.reconnectAttempts = this.maxReconnectAttempts;
+    // Set flag to prevent any pending reconnection attempts
+    this.isDisconnecting = true;
+    
+    // Cancel any pending reconnection timeout
+    if (this.reconnectTimeoutId) {
+      clearTimeout(this.reconnectTimeoutId);
+      this.reconnectTimeoutId = null;
+    }
+    
+    // Reset reconnect attempts
+    this.reconnectAttempts = 0;
     
     if (this.eventSource) {
       this.eventSource.close();
@@ -146,6 +168,9 @@ export class RealtimeClient {
       this.webSocket = null;
     }
     this.listeners.clear();
+    
+    // Reset disconnecting flag after cleanup (allow future connections)
+    this.isDisconnecting = false;
   }
 }
 
