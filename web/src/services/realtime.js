@@ -134,6 +134,9 @@ export class RealtimeClient {
   }
 
   disconnect() {
+    // Reset reconnect attempts to prevent reconnection after explicit disconnect
+    this.reconnectAttempts = this.maxReconnectAttempts;
+    
     if (this.eventSource) {
       this.eventSource.close();
       this.eventSource = null;

@@ -159,10 +159,10 @@ export default {
         console.error('Failed to load tags in detail view', e);
       }
     },
-    startAddingTag() {
+    async startAddingTag() {
       this.selectedAddTag = '';
       this.isAddingTag = true;
-      this.loadTags(); // Ensure fresh
+      await this.loadTags(); // Ensure fresh
       this.$nextTick(() => {
           if (this.$refs.addTagSelect) this.$refs.addTagSelect.focus();
       });
@@ -211,10 +211,12 @@ export default {
       return new Date(timestamp).toLocaleString();
     },
     formatBytes(bytes) {
+      if (bytes === null || bytes === undefined || isNaN(bytes)) return 'Unknown';
       if (bytes === 0) return '0 B';
+      if (bytes < 0) return 'Unknown';
       const k = 1024;
       const sizes = ['B', 'KB', 'MB', 'GB'];
-      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      const i = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), sizes.length - 1);
       return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
     },
     formatConfidence(value) {
