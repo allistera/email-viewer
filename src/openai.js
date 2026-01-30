@@ -69,14 +69,27 @@ export const MessageClassifier = {
       }
 
       const data = await response.json();
+      
+      // Validate response structure
+      if (!data?.choices?.[0]?.message?.content) {
+        console.error('Invalid OpenAI response structure:', data);
+        return null;
+      }
+      
       const content = data.choices[0].message.content;
       const parsed = JSON.parse(content);
       const tagValue = parsed?.tag?.tag ?? null;
 
-      if (tagValue && !safeTags.includes(tagValue)) {
-        return {
-          tag: { tag: null, confidence: parsed?.tag?.confidence ?? 0, reason: 'Tag not in list' }
-        };
+      // Case-insensitive tag validation - find matching tag from the list
+      if (tagValue) {
+        const matchedTag = safeTags.find(t => t.toLowerCase() === tagValue.toLowerCase());
+        if (!matchedTag) {
+          return {
+            tag: { tag: null, confidence: parsed?.tag?.confidence ?? 0, reason: 'Tag not in list' }
+          };
+        }
+        // Use the original tag name from our list to ensure consistency
+        parsed.tag.tag = matchedTag;
       }
 
       return parsed;

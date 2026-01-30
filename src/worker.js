@@ -6,8 +6,6 @@ export { RealtimeHub } from './realtimeHub.js';
 
 import * as Sentry from "@sentry/cloudflare";
 
-// ... existing imports
-
 const sentryOptions = (env) => ({
   dsn: env.SENTRY_DSN,
   tracesSampleRate: 1.0,
@@ -20,8 +18,6 @@ export default Sentry.withSentry(sentryOptions, {
    * HTTP Handler (API + Realtime Proxy)
    */
   async fetch(request, env, _ctx) {
-    // ... existing logic
-
     const url = new URL(request.url);
 
     // 1. API & Stream Handling

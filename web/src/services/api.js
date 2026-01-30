@@ -100,9 +100,9 @@ export async function getMessage(id) {
   return normalizeMessage(response);
 }
 
-export async function getAttachmentUrl(messageId, attachmentId) {
+export function getAttachmentUrl(messageId, attachmentId) {
   const token = getToken();
-  return `${API_BASE}/messages/${messageId}/attachments/${attachmentId}?token=${token}`;
+  return `${API_BASE}/messages/${messageId}/attachments/${attachmentId}?token=${encodeURIComponent(token)}`;
 }
 
 export async function checkHealth() {
