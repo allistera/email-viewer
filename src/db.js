@@ -137,17 +137,17 @@ export const DB = {
 
     const { results } = await db.prepare(query).bind(...params).all();
 
-    // Enrich with tags (N+1 but limited to 50, acceptable for NOW, or use group_concat query above)
-    // Optimization: Fetch all tags for these messages
+    // Enrich with tags using parameterized query to prevent SQL injection
     if (results && results.length > 0) {
-      const ids = results.map(r => `'${r.id}'`).join(',');
+      const placeholders = results.map(() => '?').join(',');
+      const messageIds = results.map(r => r.id);
       const tagsQuery = `
            SELECT mt.message_id, t.name 
            FROM message_tags mt 
            JOIN tags t ON mt.tag_id = t.id 
-           WHERE mt.message_id IN (${ids})
+           WHERE mt.message_id IN (${placeholders})
          `;
-      const { results: allTags } = await db.prepare(tagsQuery).all();
+      const { results: allTags } = await db.prepare(tagsQuery).bind(...messageIds).all();
 
       const tagsMap = {};
       if (allTags) {
@@ -190,6 +190,8 @@ export const DB = {
    * @param {string} id 
    */
   async getMessage(db, id) {
+    if (!id) return null;
+    
     const msg = await db.prepare('SELECT * FROM messages WHERE id = ?').bind(id).first();
     if (!msg) return null;
 
@@ -208,7 +210,7 @@ export const DB = {
 
     return {
       ...msg,
-      attachments,
+      attachments: attachments || [],
       tags: tagNames,
       tag: tagNames[0] || null
     };
