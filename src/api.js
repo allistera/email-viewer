@@ -40,7 +40,7 @@ const isMissingTableError = (error) =>
 export const ApiRouter = {
   async handle(urlString, request, env) {
     const url = new URL(urlString);
-    const path = url.pathname.replace('/api/', '');
+    const path = url.pathname.replace('/api/', '').replace(/\/$/, '');
 
     try {
       // GET /api/messages

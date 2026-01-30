@@ -114,7 +114,7 @@ export default Sentry.withSentry(sentryOptions, {
 
             const isUnique = await DB.checkDedupe(env.DB, dedupeKey, messageId);
             if (!isUnique) {
-                console.log(`Duplicate message skipped: ${parsed.allHeaders['message-id']}`);
+                console.log(`Duplicate message skipped: ${parsed.allHeaders['message-id'] || 'unknown-id'}`);
                 return;
             }
 

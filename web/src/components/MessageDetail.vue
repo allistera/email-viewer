@@ -81,7 +81,7 @@
         <div v-if="message.htmlBody" class="html-body">
           <iframe
             :srcdoc="sanitizedHtml"
-            sandbox="allow-same-origin"
+            sandbox
             class="html-iframe"
           ></iframe>
         </div>
