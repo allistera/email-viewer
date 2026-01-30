@@ -104,22 +104,20 @@
             <div class="sender-avatar" aria-hidden="true">{{ avatarText }}</div>
 
             <div class="sender-main">
-              <div class="sender-name">
-                {{ senderName }}
+              <div class="subject-title">{{ message.subject }}</div>
+
+              <div class="sender-subline">
+                <span class="sender-name">
+                  {{ senderName }}
+                </span>
                 <span v-if="senderEmail && senderEmail !== senderName" class="sender-email">
                   {{ senderEmail }}
                 </span>
               </div>
-              <div class="sender-subject">{{ message.subject }}</div>
 
-              <div class="recipients">
-                <span class="recipients-label">To:</span>
-                <span class="recipients-value">{{ message.to }}</span>
-                <template v-if="message.cc">
-                  <span class="recipients-sep" aria-hidden="true">•</span>
-                  <span class="recipients-label">Cc:</span>
-                  <span class="recipients-value">{{ message.cc }}</span>
-                </template>
+              <div v-if="message.cc" class="cc-row">
+                <span class="cc-label">Cc:</span>
+                <span class="cc-value">{{ message.cc }}</span>
               </div>
             </div>
 
@@ -296,19 +294,40 @@ export default {
     },
     formatRelativeDate(timestamp) {
       const date = new Date(timestamp);
+      if (Number.isNaN(date.getTime())) return '';
+
       const now = new Date();
 
       const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const startOfThatDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-      const diffDays = Math.round((startOfThatDay - startOfToday) / 86400000);
+      const startOfTomorrow = new Date(startOfToday);
+      startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
 
-      if (diffDays === 0) return 'Today';
-      if (diffDays === -1) return 'Yesterday';
-      if (diffDays < 0 && diffDays >= -6) {
-        return date.toLocaleDateString(undefined, { weekday: 'short' });
+      // Week starts on Monday.
+      const dayOfWeek = startOfToday.getDay(); // 0=Sun..6=Sat
+      const daysSinceMonday = (dayOfWeek + 6) % 7;
+      const startOfWeek = new Date(startOfToday);
+      startOfWeek.setDate(startOfWeek.getDate() - daysSinceMonday);
+
+      // Today: "x hours ago"
+      if (date >= startOfToday && date < startOfTomorrow) {
+        const diffHours = Math.max(0, Math.floor((now.getTime() - date.getTime()) / 3600000));
+        return diffHours === 1 ? '1 hour ago' : `${diffHours} hours ago`;
       }
 
-      return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      // This week (excluding today): "Monday"
+      if (date >= startOfWeek && date < startOfToday) {
+        return date.toLocaleDateString(undefined, { weekday: 'long' });
+      }
+
+      // Otherwise: "12th March"
+      const day = date.getDate();
+      const month = date.toLocaleDateString(undefined, { month: 'long' });
+      return `${this.formatOrdinal(day)} ${month}`;
+    },
+    formatOrdinal(n) {
+      const s = ['th', 'st', 'nd', 'rd'];
+      const v = n % 100;
+      return `${n}${s[(v - 20) % 10] || s[v] || s[0]}`;
     },
     async startAddingTag() {
       this.selectedAddTag = '';
@@ -629,14 +648,28 @@ export default {
   flex: 1;
 }
 
-.sender-name {
-  font-size: 15px;
+.subject-title {
+  font-size: 18px;
   font-weight: 700;
   color: #1f1f1f;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sender-subline {
+  margin-top: 4px;
   display: flex;
   align-items: baseline;
   gap: 8px;
   min-width: 0;
+}
+
+.sender-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #3c4043;
 }
 
 .sender-email {
@@ -649,16 +682,7 @@ export default {
   max-width: 55%;
 }
 
-.sender-subject {
-  font-size: 13px;
-  color: #3c4043;
-  margin-top: 2px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.recipients {
+.cc-row {
   margin-top: 4px;
   font-size: 12.5px;
   color: var(--color-text-secondary);
@@ -668,20 +692,16 @@ export default {
   min-width: 0;
 }
 
-.recipients-label {
+.cc-label {
   color: #9aa0a6;
   flex: 0 0 auto;
 }
 
-.recipients-value {
+.cc-value {
   color: #5f6368;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.recipients-sep {
-  color: #c0c4c9;
 }
 
 .sender-date {

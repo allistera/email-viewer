@@ -122,18 +122,40 @@ export default {
     },
     formatTime(timestamp) {
       const date = new Date(timestamp);
+      if (Number.isNaN(date.getTime())) return '';
+
       const now = new Date();
-      const diffMs = now - date;
-      const diffMins = Math.floor(diffMs / 60000);
-      const diffHours = Math.floor(diffMs / 3600000);
-      const diffDays = Math.floor(diffMs / 86400000);
 
-      if (diffMins < 1) return 'Just now';
-      if (diffMins < 60) return `${diffMins}m ago`;
-      if (diffHours < 24) return `${diffHours}h ago`;
-      if (diffDays < 7) return `${diffDays}d ago`;
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const startOfTomorrow = new Date(startOfToday);
+      startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
 
-      return date.toLocaleDateString();
+      // Week starts on Monday.
+      const dayOfWeek = startOfToday.getDay(); // 0=Sun..6=Sat
+      const daysSinceMonday = (dayOfWeek + 6) % 7;
+      const startOfWeek = new Date(startOfToday);
+      startOfWeek.setDate(startOfWeek.getDate() - daysSinceMonday);
+
+      // Today: "x hours ago"
+      if (date >= startOfToday && date < startOfTomorrow) {
+        const diffHours = Math.max(0, Math.floor((now.getTime() - date.getTime()) / 3600000));
+        return diffHours === 1 ? '1 hour ago' : `${diffHours} hours ago`;
+      }
+
+      // This week (excluding today): "Monday"
+      if (date >= startOfWeek && date < startOfToday) {
+        return date.toLocaleDateString(undefined, { weekday: 'long' });
+      }
+
+      // Otherwise: "12th March"
+      const day = date.getDate();
+      const month = date.toLocaleDateString(undefined, { month: 'long' });
+      return `${this.formatOrdinal(day)} ${month}`;
+    },
+    formatOrdinal(n) {
+      const s = ['th', 'st', 'nd', 'rd'];
+      const v = n % 100;
+      return `${n}${s[(v - 20) % 10] || s[v] || s[0]}`;
     },
 
     onDragStart(event, message) {
