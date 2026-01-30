@@ -78,12 +78,17 @@ export default Sentry.withSentry(sentryOptions, {
      * Email Handler (Ingest)
      */
     async email(message, env, ctx) {
+        // Read raw content early and store for potential error recovery
+        // This must be done once since streams can only be consumed once
+        let rawBuffer;
+        let messageId;
+        
         try {
-            const messageId = crypto.randomUUID();
+            messageId = crypto.randomUUID();
 
             // 1. Read Raw Content into Memory
             // We read into an ArrayBuffer to avoid stream length issues with R2 after tee()
-            const rawBuffer = await new Response(message.raw).arrayBuffer();
+            rawBuffer = await new Response(message.raw).arrayBuffer();
 
             // 2. Write to R2 (Async) and Parse (Async)
             // parse expects content, saveRawEmail expects buffer/stream
@@ -158,10 +163,14 @@ export default Sentry.withSentry(sentryOptions, {
             console.error('Email Ingest Failed:', e.message || e);
             
             // Try to save minimal record on failure instead of rejecting
+            // Use the already-read rawBuffer if available, otherwise we can't recover
             try {
-                const failedMessageId = crypto.randomUUID();
-                const rawBuffer = await new Response(message.raw).arrayBuffer();
-                await R2.saveRawEmail(env.MAILSTORE, failedMessageId, rawBuffer, rawBuffer.byteLength);
+                const failedMessageId = messageId || crypto.randomUUID();
+                
+                // Only attempt to save to R2 if we have the raw buffer
+                if (rawBuffer) {
+                    await R2.saveRawEmail(env.MAILSTORE, failedMessageId, rawBuffer, rawBuffer.byteLength);
+                }
                 
                 const minimalMessage = {
                     id: failedMessageId,
@@ -172,7 +181,7 @@ export default Sentry.withSentry(sentryOptions, {
                     date_header: null,
                     snippet: `Error: ${e.message || 'Unknown error'}`,
                     has_attachments: false,
-                    raw_r2_key: `raw/${failedMessageId}.eml`,
+                    raw_r2_key: rawBuffer ? `raw/${failedMessageId}.eml` : '',
                     text_body: null,
                     html_body: null,
                     headers_json: '{}'
