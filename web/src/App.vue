@@ -32,6 +32,7 @@
           :message="currentMessage"
           :loading="loadingDetail"
           :error="detailError"
+          @archived="handleMessageArchived"
         />
       </div>
     </div>
@@ -292,6 +293,22 @@ export default {
         }
       } catch (error) {
         alert('Failed to archive message: ' + error.message);
+      }
+    },
+
+    handleMessageArchived(messageId) {
+      // Remove the archived message from the list
+      this.messages = this.messages.filter(m => m.id !== messageId);
+
+      // Clear the current message view
+      if (this.currentMessage && this.currentMessage.id === messageId) {
+        this.currentMessage = null;
+        this.selectedMessageId = null;
+      }
+
+      // Select the next message if available
+      if (this.messages.length > 0 && !this.selectedMessageId) {
+        this.handleSelectMessage(this.messages[0].id);
       }
     }
   }

@@ -12,7 +12,18 @@
 
       <div v-else class="detail-content">
         <div class="detail-header">
-          <h2>{{ message.subject }}</h2>
+          <div class="header-top">
+            <h2>{{ message.subject }}</h2>
+            <button 
+              class="archive-btn" 
+              @click="handleArchive" 
+              :disabled="archiving"
+              title="Archive this email"
+            >
+              <span v-if="archiving">Archiving...</span>
+              <span v-else>📦 Archive</span>
+            </button>
+          </div>
           <div class="tag-display">
              <div class="tag-list">
                  <div v-for="tag in currentTags" :key="tag" class="tag-chip">
@@ -95,7 +106,7 @@
 
 <script>
 import TagBadge from './TagBadge.vue';
-import { getAttachmentUrl, addMessageTag, removeMessageTag, getTags } from '../services/api.js';
+import { getAttachmentUrl, addMessageTag, removeMessageTag, getTags, archiveMessage } from '../services/api.js';
 
 export default {
   name: 'MessageDetail',
@@ -120,9 +131,11 @@ export default {
     return {
       isAddingTag: false,
       availableTags: [],
-      selectedAddTag: ''
+      selectedAddTag: '',
+      archiving: false
     };
   },
+  emits: ['archived'],
   computed: {
     sanitizedHtml() {
       if (!this.message || !this.message.htmlBody) return '';
@@ -224,6 +237,21 @@ export default {
     },
     getAttachmentUrl(attachmentId) {
       return getAttachmentUrl(this.message.id, attachmentId);
+    },
+    async handleArchive() {
+      if (!this.message || this.archiving) return;
+      
+      if (!confirm('Archive this email?')) return;
+      
+      this.archiving = true;
+      try {
+        await archiveMessage(this.message.id);
+        this.$emit('archived', this.message.id);
+      } catch (e) {
+        alert('Failed to archive: ' + e.message);
+      } finally {
+        this.archiving = false;
+      }
     }
   }
 };
@@ -352,6 +380,12 @@ export default {
   padding: 24px;
   border-bottom: 1px solid var(--color-border);
   display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.header-top {
+  display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 16px;
@@ -362,6 +396,29 @@ export default {
   font-size: 20px;
   color: var(--color-text);
   flex: 1;
+}
+
+.archive-btn {
+  padding: 8px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.archive-btn:hover:not(:disabled) {
+  background: var(--color-bg-secondary);
+  border-color: var(--color-primary);
+}
+
+.archive-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .meta {
