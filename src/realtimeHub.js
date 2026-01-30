@@ -14,27 +14,35 @@ export class RealtimeHub {
   }
 
   async fetch(request) {
-    const url = new URL(request.url);
-    const pathname = url.pathname;
+    try {
+      const url = new URL(request.url);
+      const pathname = url.pathname;
 
-    // SSE Endpoint
-    if (pathname === '/connect/sse') {
-      return this.handleSSE(request);
+      // SSE Endpoint
+      if (pathname === '/connect/sse') {
+        return this.handleSSE(request);
+      }
+
+      // WebSocket Endpoint
+      if (pathname === '/connect/ws') {
+        return this.handleWS(request);
+      }
+
+      // Broadcast API (Internal)
+      if (pathname === '/broadcast' && request.method === 'POST') {
+        const payload = await request.json();
+        this.broadcast(payload);
+        return new Response('ok');
+      }
+
+      return new Response('Not Found', { status: 404 });
+    } catch (error) {
+      console.error('RealtimeHub fetch error:', error.message, error.stack);
+      return new Response(
+        JSON.stringify({ error: 'Realtime hub error', details: error.message }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
     }
-
-    // WebSocket Endpoint
-    if (pathname === '/connect/ws') {
-      return this.handleWS(request);
-    }
-
-    // Broadcast API (Internal)
-    if (pathname === '/broadcast' && request.method === 'POST') {
-      const payload = await request.json();
-      this.broadcast(payload);
-      return new Response('ok');
-    }
-
-    return new Response('Not Found', { status: 404 });
   }
 
   handleSSE(request) {
@@ -48,11 +56,22 @@ export class RealtimeHub {
     // Store session
     this.sseSessions.add(writer);
 
-    // Remove on cancel (client disconnect)
-    request.signal.addEventListener('abort', () => {
-      this.sseSessions.delete(writer);
-      writer.close().catch(() => { });
-    });
+    // Cleanup when writer closes (client disconnect)
+    writer.closed
+      .then(() => {
+        this.sseSessions.delete(writer);
+      })
+      .catch(() => {
+        this.sseSessions.delete(writer);
+      });
+
+    // Also handle abort signal if available (belt and suspenders)
+    if (request.signal) {
+      request.signal.addEventListener('abort', () => {
+        this.sseSessions.delete(writer);
+        writer.close().catch(() => { });
+      });
+    }
 
     return new Response(readable, {
       headers: {
