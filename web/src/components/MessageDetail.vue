@@ -11,65 +11,157 @@
     </div>
 
       <div v-else class="detail-content">
-        <div class="detail-header">
-          <div class="header-top">
-            <h2>{{ message.subject }}</h2>
-            <button 
-              class="archive-btn" 
-              @click="handleArchive" 
-              :disabled="archiving"
-              title="Archive this email"
-            >
-              <span v-if="archiving">Archiving...</span>
-              <span v-else>📦 Archive</span>
-            </button>
-          </div>
-          <div class="tag-display">
-             <div class="tag-list">
-                 <div v-for="tag in currentTags" :key="tag" class="tag-chip">
-                     <TagBadge :tag="tag" />
-                     <button class="remove-tag-btn" @click="handleRemoveTag(tag)" title="Remove Tag">&times;</button>
-                 </div>
-             </div>
-            
-             <template v-if="isAddingTag">
-                <div class="tag-add-container">
-                   <select v-model="selectedAddTag" @change="confirmAddTag" class="tag-select" ref="addTagSelect">
-                      <option value="" disabled>Select Tag...</option>
-                      <option v-for="tag in availableTags" :key="tag.id" :value="tag.name" :disabled="currentTags.includes(tag.name)">
-                         {{ tag.name }}
-                      </option>
-                   </select>
-                   <button @click="cancelAddingTag" class="cancel-add-btn" title="Cancel">&times;</button>
-                </div>
-             </template>
-             <button v-else @click="startAddingTag" class="add-tag-btn" title="Add Tag">+</button>
-          </div>
+        <div class="detail-toolbar" aria-label="Message actions">
+          <button class="toolbar-btn" type="button" :disabled="true" title="Reply (not implemented)">
+            <svg viewBox="0 0 24 24" aria-hidden="true" class="toolbar-icon">
+              <path
+                d="M10 9V5L3 12l7 7v-4c7 0 10 2 13 6-1-9-6-12-13-12Z"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.75"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <span class="toolbar-label">Reply</span>
+          </button>
+
+          <button class="toolbar-btn" type="button" :disabled="true" title="Reply all (not implemented)">
+            <svg viewBox="0 0 24 24" aria-hidden="true" class="toolbar-icon">
+              <path
+                d="M7.5 10V6L1.5 12l6 6v-4"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.75"
+                stroke-linejoin="round"
+              />
+              <path
+                d="M13 9V5L6 12l7 7v-4c7 0 10 2 13 6-1-9-6-12-13-12Z"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.75"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <span class="toolbar-label">Reply all</span>
+          </button>
+
+          <button class="toolbar-btn" type="button" :disabled="true" title="Forward (not implemented)">
+            <svg viewBox="0 0 24 24" aria-hidden="true" class="toolbar-icon">
+              <path
+                d="M14 9V5l7 7-7 7v-4c-7 0-10 2-13 6 1-9 6-12 13-12Z"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.75"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <span class="toolbar-label">Forward</span>
+          </button>
+
+          <button
+            class="toolbar-btn"
+            type="button"
+            @click="handleArchive"
+            :disabled="archiving"
+            :title="archiving ? 'Deleting…' : 'Delete (moves to Archive)'"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" class="toolbar-icon">
+              <path
+                d="M6 7h12m-11 0 1 14h8l1-14M9 7V5h6v2"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.75"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <span class="toolbar-label">{{ archiving ? 'Deleting…' : 'Delete' }}</span>
+          </button>
+
+          <button
+            class="toolbar-btn"
+            type="button"
+            @click="toggleImportant"
+            :disabled="togglingImportant"
+            :class="{ active: isImportant }"
+            :title="isImportant ? 'Unmark Important' : 'Mark Important'"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" class="toolbar-icon">
+              <path
+                d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27Z"
+                :fill="isImportant ? 'currentColor' : 'none'"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <span class="toolbar-label">Important</span>
+          </button>
         </div>
 
-        <div class="meta">
-        <div class="meta-row">
-          <span class="label">From:</span>
-          <span class="value">{{ message.from }}</span>
+        <div class="detail-header">
+          <div class="sender-row">
+            <div class="sender-avatar" aria-hidden="true">{{ avatarText }}</div>
+
+            <div class="sender-main">
+              <div class="sender-name">
+                {{ senderName }}
+                <span v-if="senderEmail && senderEmail !== senderName" class="sender-email">
+                  {{ senderEmail }}
+                </span>
+              </div>
+              <div class="sender-subject">{{ message.subject }}</div>
+
+              <div class="recipients">
+                <span class="recipients-label">To:</span>
+                <span class="recipients-value">{{ message.to }}</span>
+                <template v-if="message.cc">
+                  <span class="recipients-sep" aria-hidden="true">•</span>
+                  <span class="recipients-label">Cc:</span>
+                  <span class="recipients-value">{{ message.cc }}</span>
+                </template>
+              </div>
+            </div>
+
+            <div class="sender-date" :title="formatDate(message.receivedAt)">
+              {{ relativeDate }}
+            </div>
+          </div>
+
+          <div class="tag-display">
+            <div class="tag-list">
+              <div v-for="tag in currentTags" :key="tag" class="tag-chip">
+                <TagBadge :tag="tag" />
+                <button class="remove-tag-btn" @click="handleRemoveTag(tag)" title="Remove Tag">&times;</button>
+              </div>
+            </div>
+
+            <template v-if="isAddingTag">
+              <div class="tag-add-container">
+                <select v-model="selectedAddTag" @change="confirmAddTag" class="tag-select" ref="addTagSelect">
+                  <option value="" disabled>Select Tag...</option>
+                  <option v-for="tag in availableTags" :key="tag.id" :value="tag.name" :disabled="currentTags.includes(tag.name)">
+                    {{ tag.name }}
+                  </option>
+                </select>
+                <button @click="cancelAddingTag" class="cancel-add-btn" title="Cancel">&times;</button>
+              </div>
+            </template>
+            <button v-else @click="startAddingTag" class="add-tag-btn" title="Add Tag">+</button>
+          </div>
+
+          <div
+            v-if="(message.tagConfidence !== null && message.tagConfidence !== undefined) || message.tagReason"
+            class="header-footnote"
+          >
+            <span v-if="message.tagConfidence !== null && message.tagConfidence !== undefined" class="footnote-item">
+              Confidence: {{ formatConfidence(message.tagConfidence) }}
+            </span>
+            <span v-if="message.tagReason" class="footnote-item footnote-reason">
+              {{ message.tagReason }}
+            </span>
+          </div>
         </div>
-        <div class="meta-row">
-          <span class="label">To:</span>
-          <span class="value">{{ message.to }}</span>
-        </div>
-        <div class="meta-row">
-          <span class="label">Date:</span>
-          <span class="value">{{ formatDate(message.receivedAt) }}</span>
-        </div>
-        <!-- Hide legacy single tag row if we show them in header -->
-        <div v-if="message.tagConfidence !== null && message.tagConfidence !== undefined" class="meta-row">
-          <span class="label">Tag Confidence:</span>
-          <span class="value">{{ formatConfidence(message.tagConfidence) }}</span>
-        </div>
-        <div v-if="message.tagReason" class="meta-row">
-          <span class="label">Tag Reason:</span>
-          <span class="value">{{ message.tagReason }}</span>
-        </div>
-      </div>
 
       <div v-if="message.attachments && message.attachments.length > 0" class="attachments">
         <h3>Attachments</h3>
@@ -106,7 +198,7 @@
 
 <script>
 import TagBadge from './TagBadge.vue';
-import { getAttachmentUrl, addMessageTag, removeMessageTag, getTags, archiveMessage } from '../services/api.js';
+import { getAttachmentUrl, addMessageTag, removeMessageTag, getTags, createTag, archiveMessage } from '../services/api.js';
 
 export default {
   name: 'MessageDetail',
@@ -132,7 +224,8 @@ export default {
       isAddingTag: false,
       availableTags: [],
       selectedAddTag: '',
-      archiving: false
+      archiving: false,
+      togglingImportant: false
     };
   },
   emits: ['archived'],
@@ -153,6 +246,35 @@ export default {
            return [...new Set(this.message.tags.filter(t => t))]; 
       }
       return this.message.tag ? [this.message.tag] : [];
+    },
+    senderParts() {
+      const raw = this.message?.from || '';
+      const match = raw.match(/^\s*(.*?)\s*<([^>]+)>\s*$/);
+      if (match) {
+        const name = (match[1] || '').trim();
+        const email = (match[2] || '').trim();
+        return { name: name || email, email };
+      }
+      return { name: raw.trim(), email: '' };
+    },
+    senderName() {
+      return this.senderParts.name || 'Unknown sender';
+    },
+    senderEmail() {
+      return this.senderParts.email || '';
+    },
+    avatarText() {
+      const base = this.senderName || '';
+      const first = base.trim().charAt(0).toUpperCase();
+      return first || '?';
+    },
+    relativeDate() {
+      const ts = this.message?.receivedAt;
+      if (!ts) return '';
+      return this.formatRelativeDate(ts);
+    },
+    isImportant() {
+      return this.currentTags.some(t => String(t).toLowerCase() === 'important');
     }
   },
   watch: {
@@ -171,6 +293,22 @@ export default {
       } catch (e) {
         console.error('Failed to load tags in detail view', e);
       }
+    },
+    formatRelativeDate(timestamp) {
+      const date = new Date(timestamp);
+      const now = new Date();
+
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const startOfThatDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      const diffDays = Math.round((startOfThatDay - startOfToday) / 86400000);
+
+      if (diffDays === 0) return 'Today';
+      if (diffDays === -1) return 'Yesterday';
+      if (diffDays < 0 && diffDays >= -6) {
+        return date.toLocaleDateString(undefined, { weekday: 'short' });
+      }
+
+      return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
     },
     async startAddingTag() {
       this.selectedAddTag = '';
@@ -241,16 +379,50 @@ export default {
     async handleArchive() {
       if (!this.message || this.archiving) return;
       
-      if (!confirm('Archive this email?')) return;
+      if (!confirm('Delete this email from Inbox? (It will be moved to Archive)')) return;
       
       this.archiving = true;
       try {
         await archiveMessage(this.message.id);
         this.$emit('archived', this.message.id);
       } catch (e) {
-        alert('Failed to archive: ' + e.message);
+        alert('Failed to delete: ' + e.message);
       } finally {
         this.archiving = false;
+      }
+    },
+    async toggleImportant() {
+      if (!this.message || this.togglingImportant) return;
+
+      const tagName = 'Important';
+      this.togglingImportant = true;
+      try {
+        const hasImportant = this.isImportant;
+
+        if (!hasImportant) {
+          // Ensure the tag exists; safe to attempt even if it already exists.
+          if (!this.availableTags?.some(t => String(t.name).toLowerCase() === 'important')) {
+            try {
+              await createTag(tagName);
+              await this.loadTags();
+            } catch (e) {
+              console.warn('Could not create Important tag (continuing):', e);
+            }
+          }
+
+          await addMessageTag(this.message.id, tagName);
+          if (!this.message.tags) this.message.tags = [];
+          if (!this.message.tags.includes(tagName)) this.message.tags.push(tagName);
+        } else {
+          await removeMessageTag(this.message.id, tagName);
+          if (this.message.tags) {
+            this.message.tags = this.message.tags.filter(t => String(t).toLowerCase() !== 'important');
+          }
+        }
+      } catch (e) {
+        alert('Failed to update Important: ' + e.message);
+      } finally {
+        this.togglingImportant = false;
       }
     }
   }
@@ -258,6 +430,54 @@ export default {
 </script>
 
 <style scoped>
+.detail-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg);
+}
+
+.toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: none;
+  background: transparent;
+  color: #5f6368;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  transition: background 0.15s, color 0.15s, opacity 0.15s;
+}
+
+.toolbar-btn:hover:not(:disabled) {
+  background: #f1f3f4;
+  color: #3c4043;
+}
+
+.toolbar-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.toolbar-btn.active {
+  color: #3c4043;
+}
+
+.toolbar-icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+}
+
+.toolbar-label {
+  white-space: nowrap;
+}
+
 .tag-display {
     display: flex;
     align-items: center;
@@ -377,75 +597,117 @@ export default {
 }
 
 .detail-header {
-  padding: 24px;
+  padding: 18px 24px;
   border-bottom: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
-.header-top {
+.sender-row {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
+  align-items: center;
+  gap: 14px;
 }
 
-.detail-header h2 {
-  margin: 0;
-  font-size: 20px;
-  color: var(--color-text);
+.sender-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #eef1f4;
+  color: #3c4043;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+  flex: 0 0 36px;
+}
+
+.sender-main {
+  min-width: 0;
   flex: 1;
 }
 
-.archive-btn {
-  padding: 8px 16px;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  background: var(--color-bg);
-  color: var(--color-text);
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.15s;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.archive-btn:hover:not(:disabled) {
-  background: var(--color-bg-secondary);
-  border-color: var(--color-primary);
-}
-
-.archive-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.meta {
-  padding: 16px 24px;
-  background: var(--color-bg-secondary);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.meta-row {
+.sender-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1f1f1f;
   display: flex;
-  gap: 12px;
-  margin-bottom: 8px;
-  font-size: 14px;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
 }
 
-.meta-row:last-child {
-  margin-bottom: 0;
-}
-
-.label {
-  font-weight: 600;
+.sender-email {
+  font-weight: 500;
   color: var(--color-text-secondary);
-  min-width: 120px;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 55%;
 }
 
-.value {
-  color: var(--color-text);
+.sender-subject {
+  font-size: 13px;
+  color: #3c4043;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recipients {
+  margin-top: 4px;
+  font-size: 12.5px;
+  color: var(--color-text-secondary);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.recipients-label {
+  color: #9aa0a6;
+  flex: 0 0 auto;
+}
+
+.recipients-value {
+  color: #5f6368;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recipients-sep {
+  color: #c0c4c9;
+}
+
+.sender-date {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: #5f6368;
+  white-space: nowrap;
+  margin-left: 10px;
+}
+
+.header-footnote {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.footnote-item {
+  opacity: 0.9;
+}
+
+.footnote-reason {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .attachments {
