@@ -63,11 +63,11 @@
             type="button"
             @click="handleArchive"
             :disabled="archiving"
-            :title="archiving ? 'Deleting…' : 'Delete (moves to Archive)'"
+            :title="archiving ? 'Archiving…' : 'Archive'"
           >
             <svg viewBox="0 0 24 24" aria-hidden="true" class="toolbar-icon">
               <path
-                d="M6 7h12m-11 0 1 14h8l1-14M9 7V5h6v2"
+                d="M3 6h18v3H3V6Zm2 4h14v10H5V10Zm5 3h4"
                 fill="none"
                 stroke="currentColor"
                 stroke-width="1.75"
@@ -75,7 +75,7 @@
                 stroke-linejoin="round"
               />
             </svg>
-            <span class="toolbar-label">{{ archiving ? 'Deleting…' : 'Delete' }}</span>
+            <span class="toolbar-label">{{ archiving ? 'Archiving…' : 'Archive' }}</span>
           </button>
 
           <button
@@ -362,14 +362,14 @@ export default {
     async handleArchive() {
       if (!this.message || this.archiving) return;
       
-      if (!confirm('Delete this email from Inbox? (It will be moved to Archive)')) return;
+      if (!confirm('Archive this email?')) return;
       
       this.archiving = true;
       try {
         await archiveMessage(this.message.id);
         this.$emit('archived', this.message.id);
       } catch (e) {
-        alert('Failed to delete: ' + e.message);
+        alert('Failed to archive: ' + e.message);
       } finally {
         this.archiving = false;
       }
