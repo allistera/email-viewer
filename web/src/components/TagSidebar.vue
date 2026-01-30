@@ -145,15 +145,9 @@ export default {
         console.error('Failed to load tags', e);
       }
     },
-    
-    // ... rest of methods unchanged ...
 
     handleSelectTag(name) {
       this.$emit('select', name);
-    },
-
-    userCreated(tag) {
-      return tag.name !== 'Spam';
     },
 
     async handleAddTag() {
@@ -325,21 +319,6 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
-
-.user-tags-header {
-  padding-top: 8px;
-  padding-bottom: 8px;
-  background-color: #eee;
-  border-top: 1px solid #ddd;
-  border-bottom: 1px solid #ddd;
-}
-
-.header-label {
-    font-size: 12px;
-    font-weight: 600;
-    color: #666;
-    text-transform: uppercase;
 }
 
 .tag-header h2 {

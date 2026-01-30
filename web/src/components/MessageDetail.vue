@@ -197,6 +197,7 @@
 <script>
 import TagBadge from './TagBadge.vue';
 import { getAttachmentUrl, addMessageTag, removeMessageTag, getTags, createTag, archiveMessage } from '../services/api.js';
+import { formatRelativeDate } from '../utils/dateFormat.js';
 
 export default {
   name: 'MessageDetail',
@@ -269,7 +270,7 @@ export default {
     relativeDate() {
       const ts = this.message?.receivedAt;
       if (!ts) return '';
-      return this.formatRelativeDate(ts);
+      return formatRelativeDate(ts);
     },
     isImportant() {
       return this.currentTags.some(t => String(t).toLowerCase() === 'important');
@@ -291,43 +292,6 @@ export default {
       } catch (e) {
         console.error('Failed to load tags in detail view', e);
       }
-    },
-    formatRelativeDate(timestamp) {
-      const date = new Date(timestamp);
-      if (Number.isNaN(date.getTime())) return '';
-
-      const now = new Date();
-
-      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const startOfTomorrow = new Date(startOfToday);
-      startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
-
-      // Week starts on Monday.
-      const dayOfWeek = startOfToday.getDay(); // 0=Sun..6=Sat
-      const daysSinceMonday = (dayOfWeek + 6) % 7;
-      const startOfWeek = new Date(startOfToday);
-      startOfWeek.setDate(startOfWeek.getDate() - daysSinceMonday);
-
-      // Today: "x hours ago"
-      if (date >= startOfToday && date < startOfTomorrow) {
-        const diffHours = Math.max(0, Math.floor((now.getTime() - date.getTime()) / 3600000));
-        return diffHours === 1 ? '1 hour ago' : `${diffHours} hours ago`;
-      }
-
-      // This week (excluding today): "Monday"
-      if (date >= startOfWeek && date < startOfToday) {
-        return date.toLocaleDateString(undefined, { weekday: 'long' });
-      }
-
-      // Otherwise: "12th March"
-      const day = date.getDate();
-      const month = date.toLocaleDateString(undefined, { month: 'long' });
-      return `${this.formatOrdinal(day)} ${month}`;
-    },
-    formatOrdinal(n) {
-      const s = ['th', 'st', 'nd', 'rd'];
-      const v = n % 100;
-      return `${n}${s[(v - 20) % 10] || s[v] || s[0]}`;
     },
     async startAddingTag() {
       this.selectedAddTag = '';

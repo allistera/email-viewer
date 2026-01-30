@@ -45,7 +45,7 @@ import TagSidebar from './components/TagSidebar.vue';
 import MessageList from './components/MessageList.vue';
 import MessageDetail from './components/MessageDetail.vue';
 import { hasToken, setToken, clearToken } from './services/auth.js';
-import { getMessages, getMessage, archiveMessage, createTag } from './services/api.js';
+import { getMessages, getMessage } from './services/api.js';
 import { realtimeClient } from './services/realtime.js';
 
 export default {
@@ -231,16 +231,6 @@ export default {
       await this.loadMessages(true);
     },
 
-    async handleCreateTag(tagName) {
-      this.showTagModal = false;
-      try {
-        await createTag(tagName);
-        await this.$refs.sidebar.loadTags();
-      } catch (e) {
-        alert('Failed to create tag');
-      }
-    },
-
     async handleRefresh() {
       await this.loadMessages(true);
     },
@@ -272,17 +262,6 @@ export default {
       if (this.currentMessage && this.currentMessage.id === event.messageId) {
         this.currentMessage.tag = event.tag;
         this.currentMessage.tagConfidence = event.tagConfidence;
-      }
-    },
-
-    async handleArchive() {
-      if (!this.selectedMessageId) return;
-
-      try {
-        await archiveMessage(this.selectedMessageId);
-        this.handleMessageArchived(this.selectedMessageId);
-      } catch (error) {
-        alert('Failed to archive message: ' + error.message);
       }
     },
 
