@@ -94,11 +94,11 @@ export const DB = {
     // FTS Join
     if (search) {
       query += ' JOIN messages_fts fts ON m.rowid = fts.rowid';
-      conditions.push('messages_fts MATCH ?');
+      conditions.push('fts MATCH ?');
       // Format search query for FTS5 (phrase or simple)
-      // "foo bar" -> "foo" AND "bar" maybe? Or just pass through user query?
-      // Simple prefix: "term*"
-      const ftsQuery = search.split(/\s+/).map(s => `"${s}"*`).join(' OR ');
+      // Escape double quotes in search terms to prevent FTS injection
+      const sanitizedSearch = search.replace(/"/g, '');
+      const ftsQuery = sanitizedSearch.split(/\s+/).filter(s => s.length > 0).map(s => `"${s}"*`).join(' OR ');
       params.push(ftsQuery);
     }
 
