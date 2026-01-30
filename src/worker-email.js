@@ -155,9 +155,34 @@ export default Sentry.withSentry(sentryOptions, {
 
         } catch (e) {
             Sentry.captureException(e);
-            console.error('Email Ingest Failed', e);
-            // In production, we should try to save the raw email to a 'failed' bucket path if possible
-            message.setReject('Internal Error');
+            console.error('Email Ingest Failed:', e.message || e);
+            
+            // Try to save minimal record on failure instead of rejecting
+            try {
+                const failedMessageId = crypto.randomUUID();
+                const rawBuffer = await new Response(message.raw).arrayBuffer();
+                await R2.saveRawEmail(env.MAILSTORE, failedMessageId, rawBuffer, rawBuffer.byteLength);
+                
+                const minimalMessage = {
+                    id: failedMessageId,
+                    received_at: Date.now(),
+                    from_addr: message.from || 'unknown',
+                    to_addr: message.to || 'unknown',
+                    subject: '[Parse Error] Email could not be processed',
+                    date_header: null,
+                    snippet: `Error: ${e.message || 'Unknown error'}`,
+                    has_attachments: false,
+                    raw_r2_key: `raw/${failedMessageId}.eml`,
+                    text_body: null,
+                    html_body: null,
+                    headers_json: '{}'
+                };
+                await DB.insertMessage(env.DB, minimalMessage);
+                console.log('Saved minimal record for failed email:', failedMessageId);
+            } catch (fallbackError) {
+                console.error('Failed to save minimal record:', fallbackError.message || fallbackError);
+                message.setReject('Internal Error');
+            }
         }
     }
 });
