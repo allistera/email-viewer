@@ -15,9 +15,6 @@
           <option value="spam">Spam Only</option>
           <option value="not_spam">Not Spam</option>
         </select>
-        <button @click="$emit('refresh')" class="btn-icon" title="Refresh">
-          ↻
-        </button>
       </div>
     </div>
 
@@ -198,19 +195,6 @@ export default {
 .filter-select:focus {
   outline: none;
   border-color: var(--color-primary);
-}
-
-.btn-icon {
-  padding: 6px 12px;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  background: var(--color-bg);
-  cursor: pointer;
-  font-size: 16px;
-}
-
-.btn-icon:hover {
-  background: var(--color-bg-secondary);
 }
 
 .loading,
