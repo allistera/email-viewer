@@ -23,6 +23,7 @@
           :error="listError"
           @select="handleSelectMessage"
           @filter-change="handleFilterChange"
+          @search="handleSearch"
           @refresh="handleRefresh"
           @load-more="handleLoadMore"
         />
@@ -69,6 +70,7 @@ export default {
       hasMore: false,
       tagFilter: 'all',
       selectedTag: null,
+      searchQuery: '',
       authError: ''
     };
   },
@@ -144,6 +146,10 @@ export default {
              params.archived = false;
           }
         }
+        
+        if (this.searchQuery) {
+            params.search = this.searchQuery;
+        }
 
         if (!reset && this.nextBefore) {
           params.before = this.nextBefore;
@@ -201,6 +207,15 @@ export default {
     async handleFilterChange(filter) {
       this.tagFilter = filter;
       this.selectedTag = null;
+      await this.loadMessages(true);
+    },
+
+    async handleSearch(query) {
+      this.searchQuery = query;
+      // Reset other filters? Maybe keep tag filter?
+      // Usually search is global or within context.
+      // D1 query supports combining.
+      this.nextBefore = null;
       await this.loadMessages(true);
     },
 

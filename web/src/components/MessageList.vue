@@ -1,7 +1,14 @@
 <template>
   <div class="message-list">
     <div class="list-header">
-      <h2>All Emails</h2>
+      <div class="search-container">
+          <input 
+            v-model="searchInput" 
+            placeholder="Search messages..." 
+            class="search-input"
+            @input="handleInput"
+          />
+      </div>
       <div class="filters">
         <select v-model="tagFilter" class="filter-select">
           <option value="all">All Messages</option>
@@ -96,7 +103,9 @@ export default {
   },
   data() {
     return {
-      tagFilter: 'all'
+      tagFilter: 'all',
+      searchInput: '',
+      searchTimeout: null
     };
   },
   watch: {
@@ -105,6 +114,12 @@ export default {
     }
   },
   methods: {
+    handleInput() {
+        if (this.searchTimeout) clearTimeout(this.searchTimeout);
+        this.searchTimeout = setTimeout(() => {
+            this.$emit('search', this.searchInput);
+        }, 300);
+    },
     formatTime(timestamp) {
       const date = new Date(timestamp);
       const now = new Date();
@@ -147,12 +162,32 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
+}
+
+.search-container {
+    flex: 1;
+    display: flex;
+}
+
+.search-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: var(--color-primary);
 }
 
 .list-header h2 {
   margin: 0;
   font-size: 20px;
   color: var(--color-text);
+  display: none; /* Hide title safely if still present in DOM or just remove selector */
 }
 
 .filters {

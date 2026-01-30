@@ -35,8 +35,9 @@ export const ApiRouter = {
         const excludeTag = url.searchParams.get('excludeTag') || null;
         // Parse 'archived'; 'true' -> true, else false
         const archived = url.searchParams.get('archived') === 'true';
+        const search = url.searchParams.get('q') || url.searchParams.get('search') || null;
 
-        const items = await DB.listMessages(env.DB, { limit, before, tag, excludeTag, archived });
+        const items = await DB.listMessages(env.DB, { limit, before, tag, excludeTag, archived, search });
         const nextBefore = items.length > 0 ? items[items.length - 1].received_at : null;
 
         return jsonResponse({ items, nextBefore });

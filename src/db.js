@@ -86,10 +86,21 @@ export const DB = {
    * @param {Object} filters { limit, before, tag, excludeTag, archived }
    */
 
-  async listMessages(db, { limit = 50, before = null, tag = null, excludeTag = null, archived = false } = {}) {
+  async listMessages(db, { limit = 50, before = null, tag = null, excludeTag = null, archived = false, search = null } = {}) {
     let query = 'SELECT m.* FROM messages m';
     const params = [];
     const conditions = [];
+
+    // FTS Join
+    if (search) {
+      query += ' JOIN messages_fts fts ON m.rowid = fts.rowid';
+      conditions.push('messages_fts MATCH ?');
+      // Format search query for FTS5 (phrase or simple)
+      // "foo bar" -> "foo" AND "bar" maybe? Or just pass through user query?
+      // Simple prefix: "term*"
+      const ftsQuery = search.split(/\s+/).map(s => `"${s}"*`).join(' OR ');
+      params.push(ftsQuery);
+    }
 
     if (before) {
       conditions.push('m.received_at < ?');
@@ -117,7 +128,11 @@ export const DB = {
       query += ' WHERE ' + conditions.join(' AND ');
     }
 
-    query += ' ORDER BY m.received_at DESC LIMIT ?';
+    if (search) {
+      query += ' ORDER BY rank, m.received_at DESC LIMIT ?';
+    } else {
+      query += ' ORDER BY m.received_at DESC LIMIT ?';
+    }
     params.push(limit);
 
     const { results } = await db.prepare(query).bind(...params).all();

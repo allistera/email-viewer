@@ -81,6 +81,7 @@ export async function getMessages(params = {}) {
   if (params.tag) queryParams.set('tag', params.tag);
   if (params.excludeTag) queryParams.set('excludeTag', params.excludeTag);
   if (params.archived !== undefined) queryParams.set('archived', params.archived);
+  if (params.search) queryParams.set('search', params.search);
 
   const query = queryParams.toString();
   const path = query ? `/messages?${query}` : '/messages';
