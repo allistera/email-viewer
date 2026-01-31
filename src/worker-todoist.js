@@ -100,17 +100,25 @@ export default Sentry.withSentry(sentryOptions, {
       const payload = buildTodoistTaskPayload(message, messageUrl, selectedProject?.id);
       const task = await createTodoistTask(todoistToken, payload);
 
-      await DB.updateTodoistInfo(env.DB, messageId, {
-        projectName: selectedProject?.name || null,
-        projectUrl: selectedProject?.url || null
-      });
+      let todoistUpdateWarning = null;
+      try {
+        await DB.updateTodoistInfo(env.DB, messageId, {
+          projectName: selectedProject?.name || null,
+          projectUrl: selectedProject?.url || null
+        });
+      } catch (updateError) {
+        todoistUpdateWarning = 'Task created but project metadata was not saved.';
+        console.error('Failed to update Todoist metadata:', updateError);
+        Sentry.captureException(updateError);
+      }
 
       return jsonResponse({
         ok: true,
         task,
         project: selectedProject
           ? { id: selectedProject.id, name: selectedProject.name, url: selectedProject.url || null }
-          : null
+          : null,
+        warning: todoistUpdateWarning
       });
     } catch (error) {
       if (isMissingTableError(error)) {

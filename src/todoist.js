@@ -75,7 +75,7 @@ const readTodoistError = async (response) => {
       return '';
     }
   }
-  return response.text();
+  return await response.text();
 };
 
 export const fetchTodoistProjects = async (todoistToken) => {

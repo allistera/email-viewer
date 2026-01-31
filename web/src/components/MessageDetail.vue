@@ -218,6 +218,7 @@
 </template>
 
 <script>
+import DOMPurify from 'dompurify';
 import TagBadge from './TagBadge.vue';
 import { getAttachmentUrl, addMessageTag, removeMessageTag, getTags, createTag, archiveMessage, addTodoistTask } from '../services/api.js';
 import { formatRelativeDate } from '../utils/dateFormat.js';
@@ -256,11 +257,7 @@ export default {
   computed: {
     sanitizedHtml() {
       if (!this.message || !this.message.htmlBody) return '';
-
-      return this.message.htmlBody
-        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-        .replace(/on\w+="[^"]*"/gi, '')
-        .replace(/javascript:/gi, '');
+      return DOMPurify.sanitize(this.message.htmlBody, { USE_PROFILES: { html: true } });
     },
     currentTags() {
       if (!this.message) return [];
