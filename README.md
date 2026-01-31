@@ -18,7 +18,9 @@ A self-hosted, single-user email inbox built on Cloudflare Workers. It uses **Em
 ```bash
 /
   src/
-    worker.js         # Main entry point (Routes + Email Handler)
+    worker.js         # Main API + assets worker
+    worker-email.js   # Email ingest worker
+    worker-todoist.js # Todoist task creation worker
     api.js            # REST API endpoints
     stream.js         # SSE/WebSocket proxy
     auth.js           # Auth middleware
@@ -73,8 +75,14 @@ npx wrangler secret put TODOIST_API_TOKEN
 # Create Database Schema (Remote)
 npx wrangler d1 migrations apply maildb --remote
 
-# Deploy Worker
+# Deploy API worker
 npx wrangler deploy
+
+# Deploy email ingest worker
+npx wrangler deploy -c wrangler-email.toml
+
+# Deploy Todoist worker
+npx wrangler deploy -c wrangler-todoist.toml
 ```
 
 ### 5. Configure Email Routing

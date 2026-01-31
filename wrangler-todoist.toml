@@ -1,0 +1,48 @@
+name = "mail-app-todoist"
+main = "src/worker-todoist.js"
+compatibility_date = "2024-10-22"
+compatibility_flags = ["nodejs_compat"]
+
+# D1 Database
+[[d1_databases]]
+binding = "DB"
+database_name = "maildb"
+database_id = "8f96a820-872b-42e9-bf7d-a5ae41aa4b7c"
+
+# Environment Variables
+[vars]
+OPENAI_MODEL = "gpt-4o-mini"
+
+# Development
+[env.dev]
+name = "mail-app-todoist-dev"
+
+[env.dev.vars]
+OPENAI_MODEL = "gpt-4o-mini"
+
+[[env.dev.d1_databases]]
+binding = "DB"
+database_name = "maildb-dev"
+database_id = "placeholder-dev"
+
+# Production
+[env.production]
+name = "mail-app-todoist"
+
+[env.production.vars]
+OPENAI_MODEL = "gpt-4o-mini"
+SENTRY_DSN = "https://d29d6d205377084a3fa87aa4ba4d091b@o4510748410576896.ingest.de.sentry.io/4510748412346448"
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "maildb"
+database_id = "8f96a820-872b-42e9-bf7d-a5ae41aa4b7c"
+
+# Observability
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+invocation_logs = true

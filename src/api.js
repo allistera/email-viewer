@@ -10,10 +10,6 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9
 const TAG_NAME_REGEX = /^[\w\s\-/]+$/;
 const MAX_TAG_NAME_LENGTH = 100;
 
-const TODOIST_API_URL = 'https://api.todoist.com/rest/v2/tasks';
-const TODOIST_CONTENT_MAX = 500;
-const TODOIST_DESCRIPTION_MAX = 2000;
-
 const isValidUUID = (id) => typeof id === 'string' && UUID_REGEX.test(id);
 
 const isValidTagName = (name) => 
@@ -22,69 +18,6 @@ const isValidTagName = (name) =>
   name.length <= MAX_TAG_NAME_LENGTH && 
   TAG_NAME_REGEX.test(name);
 
-const truncateText = (value, maxLength) => {
-  if (!value) return '';
-  const text = String(value);
-  if (text.length <= maxLength) return text;
-  const sliceLength = Math.max(0, maxLength - 3);
-  return `${text.slice(0, sliceLength)}...`;
-};
-
-const normalizeTodoistLine = (value, maxLength) => {
-  if (!value) return '';
-  const cleaned = String(value).replace(/\s+/g, ' ').trim();
-  return truncateText(cleaned, maxLength);
-};
-
-const normalizeTodoistDescription = (value, maxLength) => {
-  if (!value) return '';
-  const cleaned = String(value).replace(/\r\n/g, '\n').trim();
-  return truncateText(cleaned, maxLength);
-};
-
-const formatIsoDate = (timestamp) => {
-  if (!timestamp) return '';
-  try {
-    const date = new Date(timestamp);
-    if (Number.isNaN(date.getTime())) return '';
-    return date.toISOString();
-  } catch {
-    return '';
-  }
-};
-
-const buildTodoistDescription = (message) => {
-  const lines = [];
-  const from = normalizeTodoistLine(message.from_addr, 200);
-  const to = normalizeTodoistLine(message.to_addr, 200);
-  const received = formatIsoDate(message.received_at);
-  const snippet = normalizeTodoistLine(message.snippet, 500);
-
-  if (from) lines.push(`From: ${from}`);
-  if (to) lines.push(`To: ${to}`);
-  if (received) lines.push(`Received: ${received}`);
-  if (snippet) lines.push(`Snippet: ${snippet}`);
-  lines.push(`Message ID: ${message.id}`);
-
-  return normalizeTodoistDescription(lines.join('\n'), TODOIST_DESCRIPTION_MAX);
-};
-
-const buildTodoistPayload = (message, body = {}, env = {}) => {
-  const fallbackFrom = normalizeTodoistLine(message.from_addr, 200);
-  const defaultContent = message.subject || message.snippet || (fallbackFrom ? `Email from ${fallbackFrom}` : 'Email task');
-  const content = normalizeTodoistLine(body.content || defaultContent, TODOIST_CONTENT_MAX) || 'Email task';
-  const description = body.description
-    ? normalizeTodoistDescription(body.description, TODOIST_DESCRIPTION_MAX)
-    : buildTodoistDescription(message);
-
-  const payload = { content };
-  if (description) payload.description = description;
-
-  const projectId = body.projectId || env.TODOIST_PROJECT_ID;
-  if (projectId) payload.project_id = projectId;
-
-  return payload;
-};
 
 const resolveTodoistToken = (request, body = {}, env = {}) => {
   const headerToken = request.headers.get('X-Todoist-Token') || request.headers.get('Todoist-Token');
@@ -176,9 +109,6 @@ export const ApiRouter = {
 
         // Add to Todoist
         if (parts.length === 3 && parts[2] === 'todoist' && request.method === 'POST') {
-          const msg = await DB.getMessage(env.DB, id);
-          if (!msg) return new Response('Message Not Found', { status: 404 });
-
           let body = {};
           try {
             body = await readJsonBody(request);
@@ -194,40 +124,34 @@ export const ApiRouter = {
             );
           }
 
-          const payload = buildTodoistPayload(msg, body, env);
-
-          const todoistResponse = await fetch(TODOIST_API_URL, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${todoistToken}`
-            },
-            body: JSON.stringify(payload)
-          });
-
-          if (!todoistResponse.ok) {
-            const contentType = todoistResponse.headers.get('Content-Type') || '';
-            let errorDetails = '';
-            if (contentType.includes('application/json')) {
-              try {
-                const errorBody = await todoistResponse.json();
-                errorDetails = errorBody?.error || errorBody?.message || JSON.stringify(errorBody);
-              } catch (e) {
-                errorDetails = '';
-              }
-            } else {
-              errorDetails = await todoistResponse.text();
-            }
-
-            const errorMessage = errorDetails
-              ? `Todoist request failed: ${errorDetails}`
-              : 'Todoist request failed.';
-
-            return jsonResponse({ error: errorMessage }, { status: 502 });
+          if (!env.TODOIST_WORKER || typeof env.TODOIST_WORKER.fetch !== 'function') {
+            return jsonResponse(
+              { error: 'Todoist worker not configured.' },
+              { status: 500 }
+            );
           }
 
-          const task = await todoistResponse.json();
-          return jsonResponse({ ok: true, task });
+          const origin = new URL(request.url).origin;
+          const forwardHeaders = new Headers({
+            'Content-Type': 'application/json',
+            'X-Todoist-Token': todoistToken,
+            'X-App-Origin': origin
+          });
+
+          const todoistRequest = new Request(`https://todoist-worker/messages/${id}/todoist`, {
+            method: 'POST',
+            headers: forwardHeaders,
+            body: JSON.stringify(body || {})
+          });
+
+          const todoistResponse = await env.TODOIST_WORKER.fetch(todoistRequest);
+          const responseBody = await todoistResponse.text();
+          const contentType = todoistResponse.headers.get('Content-Type') || 'application/json';
+
+          return new Response(responseBody, {
+            status: todoistResponse.status,
+            headers: { 'Content-Type': contentType }
+          });
         }
 
         // Download Attachment

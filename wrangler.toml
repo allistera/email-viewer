@@ -24,6 +24,10 @@ script_name = "mail-app-worker"
 tag = "v1"
 new_classes = ["RealtimeHub"]
 
+[[services]]
+binding = "TODOIST_WORKER"
+service = "mail-app-todoist"
+
 # Vars (API worker might not need OpenAI anymore if it doesn't classify, but check if it's used elsewhere? 
 # Assuming only email worker uses it for classification. 
 # But let's keep it clean.)
@@ -43,6 +47,10 @@ routes = [
 name = "REALTIME_HUB"
 class_name = "RealtimeHub"
 script_name = "mail-app-worker"
+
+[[env.production.services]]
+binding = "TODOIST_WORKER"
+service = "mail-app-todoist"
 
 [env.production.vars]
 OPENAI_MODEL = "gpt-4o-mini"
@@ -73,6 +81,10 @@ invocation_logs = true
 # Development
 [env.dev]
 name = "mail-app-worker-dev"
+
+[[env.dev.services]]
+binding = "TODOIST_WORKER"
+service = "mail-app-todoist-dev"
 
 [[env.dev.d1_databases]]
 binding = "DB"

@@ -18,6 +18,22 @@ const buildInput = (message) => {
   return input;
 };
 
+const buildTodoistInput = (message) => {
+  const input = {
+    from: (message.from_addr || '').substring(0, 200),
+    to: (message.to_addr || '').substring(0, 200),
+    subject: (message.subject || '').substring(0, 200),
+    snippet: (message.snippet || '').substring(0, 500),
+    body: (message.text_body || '').substring(0, 3000)
+  };
+
+  if (!input.body && message.html_body) {
+    input.body = message.html_body.replace(/<[^>]*>?/gm, ' ').substring(0, 3000);
+  }
+
+  return input;
+};
+
 export const MessageClassifier = {
   /**
    * Classify email into a single best matching tag (including "spam").
@@ -96,6 +112,93 @@ export const MessageClassifier = {
     } catch (e) {
       console.error('Message classification failed:', e);
       return null;
+    }
+  }
+};
+
+export const TodoistProjectSelector = {
+  /**
+   * Select best Todoist project for a message.
+   * @param {Object} message
+   * @param {Array<Object>} projects
+   * @param {string} apiKey
+   * @param {string} model
+   */
+  async selectProject(message, projects, apiKey, model = 'gpt-4o-mini') {
+    const safeProjects = Array.isArray(projects)
+      ? projects
+        .filter(project => project?.id && project?.name)
+        .map(project => ({
+          id: String(project.id),
+          name: String(project.name).substring(0, 200),
+          parent_id: project.parent_id || null,
+          is_inbox_project: Boolean(project.is_inbox_project)
+        }))
+      : [];
+
+    if (!apiKey || safeProjects.length === 0) {
+      return { projectId: null, projectName: null, reason: 'Missing API key or projects.' };
+    }
+
+    const input = buildTodoistInput(message);
+
+    try {
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: model,
+          messages: [
+            {
+              role: 'system',
+              content: `You are a Todoist project selection assistant.
+Choose the single best project from the list for this email.
+If none match, return null for both project_id and project_name.
+Only choose from the provided list and do not invent new projects.
+Return JSON in this schema:
+{
+  "project_id": string|null,
+  "project_name": string|null,
+  "reason": "string"
+}`
+            },
+            {
+              role: 'user',
+              content: JSON.stringify({ projects: safeProjects, email: input })
+            }
+          ],
+          response_format: { type: "json_object" }
+        })
+      });
+
+      if (!response.ok) {
+        console.error('OpenAI Todoist selector error:', await response.text());
+        return { projectId: null, projectName: null, reason: 'OpenAI request failed.' };
+      }
+
+      const data = await response.json();
+
+      if (!data?.choices?.[0]?.message?.content) {
+        console.error('Invalid OpenAI response structure:', data);
+        return { projectId: null, projectName: null, reason: 'Invalid OpenAI response.' };
+      }
+
+      const content = data.choices[0].message.content;
+      const parsed = JSON.parse(content);
+      const projectId = parsed?.project_id ?? null;
+      const projectName = parsed?.project_name ?? null;
+
+      return {
+        projectId: projectId ? String(projectId) : null,
+        projectName: projectName ? String(projectName) : null,
+        reason: parsed?.reason || ''
+      };
+    } catch (e) {
+      console.error('Todoist project selection failed:', e);
+      return { projectId: null, projectName: null, reason: 'Todoist selection failed.' };
     }
   }
 };
