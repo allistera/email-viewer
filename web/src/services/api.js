@@ -2,7 +2,7 @@
  * API client
  */
 
-import { getToken } from './auth.js';
+import { getToken, getTodoistToken } from './auth.js';
 
 // API base URL - configurable via environment variable VITE_API_BASE
 // Falls back to relative /api path for same-origin deployments
@@ -113,6 +113,19 @@ export async function checkHealth() {
 export async function archiveMessage(id) {
   return request(`/messages/${id}/archive`, {
     method: 'POST'
+  });
+}
+
+export async function addTodoistTask(id, options = {}) {
+  const todoistToken = getTodoistToken();
+  const headers = { 'Content-Type': 'application/json' };
+  if (todoistToken) {
+    headers['X-Todoist-Token'] = todoistToken;
+  }
+  return request(`/messages/${id}/todoist`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(options)
   });
 }
 

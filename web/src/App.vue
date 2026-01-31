@@ -11,28 +11,35 @@
         <TagSidebar
           ref="sidebar"
           :selected-tag="selectedTag"
+          :settings-active="currentView === 'settings'"
           @select="handleTagSelect"
+          @settings="openSettings"
         />
 
-        <MessageList
-          :messages="messages"
-          :selected-id="selectedMessageId"
-          :loading="loadingMessages"
-          :loading-more="loadingMore"
-          :has-more="hasMore"
-          :error="listError"
-          @select="handleSelectMessage"
-          @filter-change="handleFilterChange"
-          @search="handleSearch"
-          @load-more="handleLoadMore"
-        />
+        <template v-if="currentView === 'settings'">
+          <SettingsView class="settings-panel" @close="closeSettings" />
+        </template>
+        <template v-else>
+          <MessageList
+            :messages="messages"
+            :selected-id="selectedMessageId"
+            :loading="loadingMessages"
+            :loading-more="loadingMore"
+            :has-more="hasMore"
+            :error="listError"
+            @select="handleSelectMessage"
+            @filter-change="handleFilterChange"
+            @search="handleSearch"
+            @load-more="handleLoadMore"
+          />
 
-        <MessageDetail
-          :message="currentMessage"
-          :loading="loadingDetail"
-          :error="detailError"
-          @archived="handleMessageArchived"
-        />
+          <MessageDetail
+            :message="currentMessage"
+            :loading="loadingDetail"
+            :error="detailError"
+            @archived="handleMessageArchived"
+          />
+        </template>
       </div>
     </div>
   </div>
@@ -43,6 +50,7 @@ import AuthModal from './components/AuthModal.vue';
 import TagSidebar from './components/TagSidebar.vue';
 import MessageList from './components/MessageList.vue';
 import MessageDetail from './components/MessageDetail.vue';
+import SettingsView from './components/SettingsView.vue';
 import { hasToken, setToken, clearToken } from './services/auth.js';
 import { getMessages, getMessage } from './services/api.js';
 import { realtimeClient } from './services/realtime.js';
@@ -53,7 +61,8 @@ export default {
     AuthModal,
     TagSidebar,
     MessageList,
-    MessageDetail
+    MessageDetail,
+    SettingsView
   },
   data() {
     return {
@@ -71,7 +80,8 @@ export default {
       tagFilter: 'all',
       selectedTag: null,
       searchQuery: '',
-      authError: ''
+      authError: '',
+      currentView: 'inbox'
     };
   },
   mounted() {
@@ -227,6 +237,7 @@ export default {
         // When selecting a sidebar folder, we reset any local list filters to default
         this.tagFilter = 'all'; 
       }
+      this.currentView = 'inbox';
       await this.loadMessages(true);
     },
 
@@ -278,6 +289,14 @@ export default {
       if (this.messages.length > 0 && !this.selectedMessageId) {
         this.handleSelectMessage(this.messages[0].id);
       }
+    },
+
+    openSettings() {
+      this.currentView = 'settings';
+    },
+
+    closeSettings() {
+      this.currentView = 'inbox';
     }
   }
 };
@@ -302,9 +321,17 @@ export default {
   min-height: 0;
 }
 
+.settings-panel {
+  grid-column: 2 / 4;
+}
+
 @media (max-width: 768px) {
   .app-container {
     grid-template-columns: 1fr;
+  }
+
+  .settings-panel {
+    grid-column: 1 / -1;
   }
 }
 </style>

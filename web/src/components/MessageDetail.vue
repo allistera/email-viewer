@@ -61,6 +61,27 @@
           <button
             class="toolbar-btn"
             type="button"
+            @click="handleTodoistAction"
+            :disabled="addingTodoist"
+            :class="{ active: todoistTaskUrl }"
+            :title="todoistTitle"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" class="toolbar-icon">
+              <path
+                d="M5 12l4 4L19 6"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.75"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <span class="toolbar-label">{{ todoistLabel }}</span>
+          </button>
+
+          <button
+            class="toolbar-btn"
+            type="button"
             @click="handleArchive"
             :disabled="archiving"
             :title="archiving ? 'Archiving…' : 'Archive'"
@@ -196,7 +217,7 @@
 
 <script>
 import TagBadge from './TagBadge.vue';
-import { getAttachmentUrl, addMessageTag, removeMessageTag, getTags, createTag, archiveMessage } from '../services/api.js';
+import { getAttachmentUrl, addMessageTag, removeMessageTag, getTags, createTag, archiveMessage, addTodoistTask } from '../services/api.js';
 import { formatRelativeDate } from '../utils/dateFormat.js';
 
 export default {
@@ -224,7 +245,9 @@ export default {
       availableTags: [],
       selectedAddTag: '',
       archiving: false,
-      togglingImportant: false
+      togglingImportant: false,
+      addingTodoist: false,
+      todoistTaskUrl: ''
     };
   },
   emits: ['archived'],
@@ -274,17 +297,58 @@ export default {
     },
     isImportant() {
       return this.currentTags.some(t => String(t).toLowerCase() === 'important');
+    },
+    todoistLabel() {
+      if (this.addingTodoist) return 'Adding...';
+      if (this.todoistTaskUrl) return 'Open Todoist';
+      return 'Add to Todoist';
+    },
+    todoistTitle() {
+      if (this.addingTodoist) return 'Adding to Todoist...';
+      if (this.todoistTaskUrl) return 'Open Todoist task';
+      return 'Add to Todoist';
     }
   },
   watch: {
     message() {
       this.cancelAddingTag();
+      this.resetTodoistState();
     }
   },
   async mounted() {
     await this.loadTags();
   },
   methods: {
+    resetTodoistState() {
+      this.addingTodoist = false;
+      this.todoistTaskUrl = '';
+    },
+    async handleTodoistAction() {
+      if (!this.message || this.addingTodoist) return;
+
+      if (this.todoistTaskUrl) {
+        window.open(this.todoistTaskUrl, '_blank', 'noopener');
+        return;
+      }
+
+      this.addingTodoist = true;
+      try {
+        const response = await addTodoistTask(this.message.id);
+        const task = response?.task || response;
+        if (task?.url) {
+          this.todoistTaskUrl = task.url;
+          if (confirm('Added to Todoist. Open the task now?')) {
+            window.open(task.url, '_blank', 'noopener');
+          }
+        } else {
+          alert('Added to Todoist.');
+        }
+      } catch (e) {
+        alert('Failed to add to Todoist: ' + e.message);
+      } finally {
+        this.addingTodoist = false;
+      }
+    },
     async loadTags() {
       try {
         const tags = await getTags();
