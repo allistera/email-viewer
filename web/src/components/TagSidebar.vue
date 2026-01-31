@@ -24,7 +24,9 @@
       >
         <div class="tag-content">
            <div class="tag-info">
-             <span class="tag-icon">🗃️</span>
+             <svg class="tag-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+               <path d="M21 8v13H3V8M1 3h22v5H1zM10 12h4"/>
+             </svg>
              <span class="tag-label">Archive</span>
            </div>
         </div>
@@ -38,7 +40,10 @@
       >
         <div class="tag-content">
            <div class="tag-info">
-             <span class="tag-icon">🚫</span>
+             <svg class="tag-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+               <circle cx="12" cy="12" r="10"/>
+               <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+             </svg>
              <span class="tag-label">Spam</span>
            </div>
         </div>
@@ -102,7 +107,10 @@
       >
         <div class="tag-content">
           <div class="tag-info">
-            <span class="tag-icon">⚙️</span>
+            <svg class="tag-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>
+            </svg>
             <span class="tag-label">Settings</span>
           </div>
         </div>
@@ -432,6 +440,18 @@ export default {
     margin-right: 8px;
 }
 
+.tag-icon-svg {
+  width: 18px;
+  height: 18px;
+  margin-right: 10px;
+  flex-shrink: 0;
+  color: #666;
+}
+
+.tag-item.active .tag-icon-svg {
+  color: var(--color-primary, #007bff);
+}
+
 .tag-item.active .tag-dot {
   background: var(--color-primary, #007bff);
 }
@@ -490,5 +510,59 @@ export default {
 
 .delete-btn:hover {
   color: #d9534f;
+}
+
+/* Mobile sidebar styles */
+@media (max-width: 768px) {
+  .tag-sidebar {
+    width: 100%;
+    border-right: none;
+    padding-bottom: 70px; /* Space for bottom nav */
+  }
+
+  .tag-header {
+    padding: 20px 16px;
+  }
+
+  .tag-header h2 {
+    font-size: 18px;
+  }
+
+  .tag-item {
+    padding: 12px 16px;
+    font-size: 15px;
+  }
+
+  .tag-icon-svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .tag-dot {
+    width: 10px;
+    height: 10px;
+    margin-right: 12px;
+  }
+
+  .add-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 22px;
+  }
+
+  .add-container input {
+    padding: 10px;
+    font-size: 15px;
+  }
+
+  /* Always show actions on mobile for touch accessibility */
+  .tag-actions {
+    display: flex;
+  }
+
+  .action-btn {
+    padding: 6px 8px;
+    font-size: 16px;
+  }
 }
 </style>

@@ -143,4 +143,35 @@ export default {
   font-size: 14px;
   margin-top: 16px;
 }
+
+/* Mobile auth modal styles */
+@media (max-width: 480px) {
+  .modal {
+    padding: 24px;
+    width: 95%;
+    max-width: none;
+    margin: 16px;
+  }
+
+  .modal h2 {
+    font-size: 20px;
+  }
+
+  .token-input {
+    padding: 14px;
+    font-size: 16px; /* Prevents iOS zoom */
+    border-radius: 8px;
+  }
+
+  .button-group {
+    justify-content: center;
+  }
+
+  .btn {
+    width: 100%;
+    padding: 14px 24px;
+    font-size: 16px;
+    border-radius: 8px;
+  }
+}
 </style>

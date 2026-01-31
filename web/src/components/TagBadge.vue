@@ -47,4 +47,12 @@ export default {
   background: #e6f0ff;
   color: var(--color-text);
 }
+
+@media (max-width: 480px) {
+  .badge {
+    padding: 3px 8px;
+    font-size: 10px;
+    border-radius: 4px;
+  }
+}
 </style>

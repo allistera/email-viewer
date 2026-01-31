@@ -1,11 +1,18 @@
 <template>
   <section class="settings-view">
     <header class="settings-header">
-      <div>
-        <h2>Settings</h2>
-        <p class="subtitle">Manage integrations for your inbox.</p>
+      <div class="header-left">
+        <button class="back-btn" type="button" @click="$emit('close')" aria-label="Back to Inbox">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="back-icon">
+            <path d="M19 12H5M12 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <div>
+          <h2>Settings</h2>
+          <p class="subtitle">Manage integrations for your inbox.</p>
+        </div>
       </div>
-      <button class="btn-secondary" type="button" @click="$emit('close')">
+      <button class="btn-secondary desktop-back-btn" type="button" @click="$emit('close')">
         Back to Inbox
       </button>
     </header>
@@ -228,5 +235,81 @@ export default {
 
 .status.error {
   color: var(--color-primary);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.back-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: none;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--color-text);
+}
+
+.back-btn:hover {
+  background: var(--color-bg-secondary);
+}
+
+.back-icon {
+  width: 24px;
+  height: 24px;
+}
+
+/* Mobile settings styles */
+@media (max-width: 768px) {
+  .settings-view {
+    padding: 16px;
+  }
+
+  .settings-header {
+    flex-direction: row;
+    justify-content: flex-start;
+  }
+
+  .back-btn {
+    display: flex;
+  }
+
+  .desktop-back-btn {
+    display: none;
+  }
+
+  .settings-header h2 {
+    font-size: 18px;
+  }
+
+  .settings-card {
+    max-width: 100%;
+  }
+
+  .input-row {
+    flex-direction: column;
+  }
+
+  .input-row input {
+    width: 100%;
+  }
+
+  .input-row button {
+    width: 100%;
+  }
+
+  .actions {
+    flex-direction: column;
+  }
+
+  .actions button {
+    width: 100%;
+  }
 }
 </style>

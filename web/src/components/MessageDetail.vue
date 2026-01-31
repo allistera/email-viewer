@@ -12,6 +12,22 @@
 
       <div v-else class="detail-content">
         <div class="detail-toolbar" aria-label="Message actions">
+          <button class="toolbar-btn back-btn" type="button" @click="$emit('back')" title="Back to list">
+            <svg viewBox="0 0 24 24" aria-hidden="true" class="toolbar-icon">
+              <path
+                d="M19 12H5M12 19l-7-7 7-7"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <span class="toolbar-label back-label">Back</span>
+          </button>
+
+          <div class="toolbar-divider"></div>
+
           <button class="toolbar-btn" type="button" :disabled="true" title="Reply (not implemented)">
             <svg viewBox="0 0 24 24" aria-hidden="true" class="toolbar-icon">
               <path
@@ -253,7 +269,7 @@ export default {
       todoistTaskUrl: ''
     };
   },
-  emits: ['archived'],
+  emits: ['archived', 'back'],
   computed: {
     sanitizedHtml() {
       if (!this.message || !this.message.htmlBody) return '';
@@ -538,6 +554,48 @@ export default {
 
 .toolbar-label {
   white-space: nowrap;
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--color-border);
+  margin: 0 4px;
+}
+
+.back-btn {
+  display: none;
+}
+
+/* Mobile toolbar styles */
+@media (max-width: 768px) {
+  .back-btn {
+    display: inline-flex;
+  }
+
+  .detail-toolbar {
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 12px;
+  }
+
+  .toolbar-label {
+    display: none;
+  }
+
+  .back-label {
+    display: inline;
+  }
+
+  .toolbar-btn {
+    padding: 8px;
+  }
+
+  .toolbar-icon {
+    width: 20px;
+    height: 20px;
+    flex: 0 0 20px;
+  }
 }
 
 .tag-display {
@@ -889,5 +947,58 @@ export default {
   padding: 24px;
   text-align: center;
   color: var(--color-text-secondary);
+}
+
+/* Mobile detail styles */
+@media (max-width: 768px) {
+  .detail-header {
+    padding: 14px 16px;
+  }
+
+  .sender-avatar {
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
+    font-size: 12px;
+  }
+
+  .subject-title {
+    font-size: 16px;
+  }
+
+  .sender-row {
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .sender-date {
+    width: 100%;
+    margin-left: 42px;
+    margin-top: -4px;
+  }
+
+  .attachments {
+    padding: 12px 16px;
+  }
+
+  .text-body {
+    padding: 16px;
+  }
+
+  .text-body pre {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  .tag-display {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .sender-email {
+    display: none;
+  }
 }
 </style>

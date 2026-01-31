@@ -307,4 +307,90 @@ export default {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Mobile message list styles */
+@media (max-width: 768px) {
+  .message-list {
+    border-right: none;
+  }
+
+  .list-header {
+    padding: 12px;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .search-container {
+    width: 100%;
+  }
+
+  .search-input {
+    padding: 10px 14px;
+    font-size: 15px;
+    border-radius: 8px;
+  }
+
+  .filters {
+    width: 100%;
+  }
+
+  .filter-select {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 14px;
+    border-radius: 8px;
+  }
+
+  .message-item {
+    padding: 14px 16px;
+  }
+
+  .message-item.active {
+    padding-left: 13px;
+  }
+
+  .from {
+    font-size: 15px;
+  }
+
+  .message-subject {
+    font-size: 15px;
+    margin-bottom: 6px;
+  }
+
+  .snippet {
+    font-size: 14px;
+  }
+
+  .load-more {
+    padding: 12px;
+  }
+
+  .btn-secondary {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 15px;
+    border-radius: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .message-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .snippet {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .badges {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
 </style>

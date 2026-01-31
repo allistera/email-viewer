@@ -9,6 +9,7 @@
   --color-text-secondary: #808080;
   --color-success: #058527;
   --color-warning: #ff9a14;
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 * {
@@ -51,4 +52,44 @@ select {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-text-secondary);
+}
+
+/* Mobile-friendly touch targets */
+@media (max-width: 768px) {
+  button, 
+  select, 
+  input,
+  .clickable {
+    min-height: 44px;
+  }
+
+  /* Improve text readability on mobile */
+  body {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  /* Better scrolling on mobile */
+  .scrollable {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Prevent horizontal overflow on mobile */
+  html, body {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+}
+
+/* Focus styles for accessibility */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Transition utilities */
+.transition-all {
+  transition: all 0.2s ease;
 }
