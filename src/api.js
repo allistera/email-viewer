@@ -86,6 +86,14 @@ const buildTodoistPayload = (message, body = {}, env = {}) => {
   return payload;
 };
 
+const resolveTodoistToken = (request, body = {}, env = {}) => {
+  const headerToken = request.headers.get('X-Todoist-Token') || request.headers.get('Todoist-Token');
+  const bodyToken = body?.todoistToken;
+  const envToken = env.TODOIST_API_TOKEN;
+  const token = (headerToken || bodyToken || envToken || '').trim();
+  return token || null;
+};
+
 const readJsonBody = async (request) => {
   const contentType = request.headers.get('Content-Type') || '';
   if (!contentType.includes('application/json')) return {};
@@ -168,10 +176,6 @@ export const ApiRouter = {
 
         // Add to Todoist
         if (parts.length === 3 && parts[2] === 'todoist' && request.method === 'POST') {
-          if (!env.TODOIST_API_TOKEN) {
-            return jsonResponse({ error: 'Todoist integration not configured.' }, { status: 501 });
-          }
-
           const msg = await DB.getMessage(env.DB, id);
           if (!msg) return new Response('Message Not Found', { status: 404 });
 
@@ -182,13 +186,21 @@ export const ApiRouter = {
             return jsonResponse({ error: error.message || 'Invalid JSON body' }, { status: 400 });
           }
 
+          const todoistToken = resolveTodoistToken(request, body, env);
+          if (!todoistToken) {
+            return jsonResponse(
+              { error: 'Todoist token missing. Add it in Settings or configure TODOIST_API_TOKEN.' },
+              { status: 400 }
+            );
+          }
+
           const payload = buildTodoistPayload(msg, body, env);
 
           const todoistResponse = await fetch(TODOIST_API_URL, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${env.TODOIST_API_TOKEN}`
+              'Authorization': `Bearer ${todoistToken}`
             },
             body: JSON.stringify(payload)
           });

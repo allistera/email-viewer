@@ -87,6 +87,7 @@ npx wrangler deploy
 ### Web Interface
 Navigate to your worker's URL (e.g., `https://mail-app-worker.user.workers.dev`).
 Enter your `API_TOKEN` to log in.
+Open **Settings** to store your Todoist API token (optional).
 
 ### API
 - **List Messages**: `GET /api/messages`

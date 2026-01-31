@@ -17,7 +17,7 @@
     <div class="system-tags">
        <div 
         class="tag-item"
-        :class="{ active: selectedTag === 'archive' }"
+        :class="{ active: selectedTag === 'archive' && !settingsActive }"
         @click="$emit('select', 'archive')"
         @dragover="onDragOver($event)"
         @drop="onDropSystem($event, 'archive')"
@@ -31,7 +31,7 @@
       </div>
        <div 
         class="tag-item"
-        :class="{ active: selectedTag === 'spam' }"
+        :class="{ active: selectedTag === 'spam' && !settingsActive }"
         @click="$emit('select', 'spam')"
         @dragover="onDragOver($event)"
         @drop="onDropSystem($event, 'spam')"
@@ -50,7 +50,7 @@
         v-for="tag in userTags" 
         :key="tag.id" 
         class="tag-item"
-        :class="{ active: selectedTag === tag.name }"
+        :class="{ active: selectedTag === tag.name && !settingsActive }"
         @click="handleSelectTag(tag.name)"
         draggable="true"
         @dragstart="onDragStart($event, tag)"
@@ -93,6 +93,21 @@
         </div>
       </li>
     </ul>
+
+    <div class="sidebar-footer">
+      <div
+        class="tag-item settings-item"
+        :class="{ active: settingsActive }"
+        @click="$emit('settings')"
+      >
+        <div class="tag-content">
+          <div class="tag-info">
+            <span class="tag-icon">⚙️</span>
+            <span class="tag-label">Settings</span>
+          </div>
+        </div>
+      </div>
+    </div>
   </aside>
 </template>
 
@@ -102,7 +117,11 @@ import { getTags, createTag, deleteTag, updateTag, updateMessageTag, archiveMess
 export default {
   name: 'TagSidebar',
   props: {
-    selectedTag: String
+    selectedTag: String,
+    settingsActive: {
+      type: Boolean,
+      default: false
+    }
   },
   data() {
     return {
@@ -364,6 +383,15 @@ export default {
   margin: 0;
   overflow-y: auto;
   flex: 1;
+}
+
+.sidebar-footer {
+  border-top: 1px solid #eee;
+  padding-bottom: 8px;
+}
+
+.settings-item {
+  margin-top: 4px;
 }
 
 .system-tags {
