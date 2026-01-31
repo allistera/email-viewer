@@ -20,7 +20,7 @@
     </div>
 
     <div class="system-tags">
-       <div 
+       <div
         class="tag-item"
         :class="{ active: selectedTag === 'archive' && !settingsActive }"
         @click="$emit('select', 'archive')"
@@ -29,8 +29,8 @@
       >
         <div class="tag-content">
            <div class="tag-info">
-             <span class="tag-icon">🗃️</span>
-             <span class="tag-label">Archive</span>
+             <span class="tag-icon">✓</span>
+             <span class="tag-label">Done</span>
            </div>
         </div>
       </div>
@@ -307,12 +307,12 @@ export default {
         if (!messageId) return;
 
         if (type === 'archive') {
-            if (confirm('Archive this message?')) {
+            if (confirm('Mark this message as done?')) {
                 try {
                     await archiveMessage(messageId);
-                    alert('Message archived.');
+                    alert('Message marked as done.');
                 } catch (e) {
-                    alert('Failed to archive: ' + e.message);
+                    alert('Failed to mark as done: ' + e.message);
                 }
             }
         } else if (type === 'spam') {
