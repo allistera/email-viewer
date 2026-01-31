@@ -80,6 +80,13 @@ jobs:
           npm ci
           npm run build
 
+      - name: Deploy Todoist Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy --env production --config wrangler-todoist.toml
+
       - name: Deploy API Worker
         uses: cloudflare/wrangler-action@v3
         with:
