@@ -81,11 +81,13 @@ export default {
       selectedTag: null,
       searchQuery: '',
       authError: '',
-      currentView: 'inbox'
+      currentView: 'inbox',
+      pendingDeepLinkId: null
     };
   },
   mounted() {
     if (!this.showAuthModal) {
+      this.pendingDeepLinkId = this.getDeepLinkMessageId();
       this.init();
     }
   },
@@ -103,6 +105,7 @@ export default {
       setToken(token);
 
       try {
+        this.pendingDeepLinkId = this.getDeepLinkMessageId();
         await this.loadMessages();
         
         // If loadMessages failed with 401, it clears the token.
@@ -178,7 +181,11 @@ export default {
         this.nextBefore = response.nextBefore;
         this.hasMore = (response.items || []).length === params.limit && response.nextBefore !== null;
 
-        if (reset && this.messages.length > 0 && !this.selectedMessageId) {
+        if (reset && this.pendingDeepLinkId) {
+          const deepLinkId = this.pendingDeepLinkId;
+          this.pendingDeepLinkId = null;
+          await this.handleSelectMessage(deepLinkId);
+        } else if (reset && this.messages.length > 0 && !this.selectedMessageId) {
           this.handleSelectMessage(this.messages[0].id);
         }
       } catch (error) {
@@ -191,6 +198,21 @@ export default {
       } finally {
         this.loadingMessages = false;
         this.loadingMore = false;
+      }
+    },
+    getDeepLinkMessageId() {
+      try {
+        const url = new URL(window.location.href);
+        const searchMessageId = url.searchParams.get('message');
+        if (searchMessageId) return searchMessageId;
+
+        const hash = url.hash ? url.hash.replace(/^#/, '') : '';
+        if (!hash) return null;
+
+        const hashParams = new URLSearchParams(hash);
+        return hashParams.get('message');
+      } catch (e) {
+        return null;
       }
     },
 
