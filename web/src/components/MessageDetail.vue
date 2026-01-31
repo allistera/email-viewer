@@ -63,10 +63,12 @@
             type="button"
             @click="handleTodoistAction"
             :disabled="addingTodoist"
-            :class="{ active: todoistTaskUrl }"
+            :class="{ active: todoistTaskUrl, loading: addingTodoist }"
             :title="todoistTitle"
+            :aria-busy="addingTodoist"
           >
-            <svg viewBox="0 0 24 24" aria-hidden="true" class="toolbar-icon">
+            <span v-if="addingTodoist" class="todoist-spinner" aria-hidden="true"></span>
+            <svg v-else viewBox="0 0 24 24" aria-hidden="true" class="toolbar-icon">
               <path
                 d="M5 12l4 4L19 6"
                 fill="none"
@@ -216,6 +218,7 @@
 </template>
 
 <script>
+import DOMPurify from 'dompurify';
 import TagBadge from './TagBadge.vue';
 import { getAttachmentUrl, addMessageTag, removeMessageTag, getTags, createTag, archiveMessage, addTodoistTask } from '../services/api.js';
 import { formatRelativeDate } from '../utils/dateFormat.js';
@@ -254,11 +257,7 @@ export default {
   computed: {
     sanitizedHtml() {
       if (!this.message || !this.message.htmlBody) return '';
-
-      return this.message.htmlBody
-        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-        .replace(/on\w+="[^"]*"/gi, '')
-        .replace(/javascript:/gi, '');
+      return DOMPurify.sanitize(this.message.htmlBody, { USE_PROFILES: { html: true } });
     },
     currentTags() {
       if (!this.message) return [];
@@ -519,6 +518,22 @@ export default {
   width: 16px;
   height: 16px;
   flex: 0 0 16px;
+}
+
+.todoist-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: todoist-spin 0.8s linear infinite;
+  flex: 0 0 16px;
+}
+
+@keyframes todoist-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .toolbar-label {

@@ -18,7 +18,9 @@ A self-hosted, single-user email inbox built on Cloudflare Workers. It uses **Em
 ```bash
 /
   src/
-    worker.js         # Main entry point (Routes + Email Handler)
+    worker.js         # Main API + assets worker
+    worker-email.js   # Email ingest worker
+    worker-todoist.js # Todoist task creation worker
     api.js            # REST API endpoints
     stream.js         # SSE/WebSocket proxy
     auth.js           # Auth middleware
@@ -58,8 +60,11 @@ npx wrangler r2 bucket create mailstore
 # Set your API token (choose any secure password/token)
 npx wrangler secret put API_TOKEN
 
-# Set your OpenAI Key
-npx wrangler secret put OPENAI_API_KEY
+# Set your OpenAI Key (email tagging worker)
+npx wrangler secret put OPENAI_API_KEY -c wrangler-email.toml
+
+# Set your OpenAI Key (Todoist project selection worker)
+npx wrangler secret put OPENAI_API_KEY -c wrangler-todoist.toml
 
 # Optional: enable Todoist integration
 npx wrangler secret put TODOIST_API_TOKEN
@@ -73,8 +78,14 @@ npx wrangler secret put TODOIST_API_TOKEN
 # Create Database Schema (Remote)
 npx wrangler d1 migrations apply maildb --remote
 
-# Deploy Worker
+# Deploy API worker
 npx wrangler deploy
+
+# Deploy email ingest worker
+npx wrangler deploy -c wrangler-email.toml
+
+# Deploy Todoist worker
+npx wrangler deploy -c wrangler-todoist.toml
 ```
 
 ### 5. Configure Email Routing

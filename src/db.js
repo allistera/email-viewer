@@ -185,6 +185,24 @@ export const DB = {
   },
 
   /**
+   * Update Todoist info for a message
+   * @param {D1Database} db
+   * @param {string} id
+   * @param {Object} info
+   */
+  async updateTodoistInfo(db, id, { projectName = null, projectUrl = null } = {}) {
+    await db.prepare(`
+      UPDATE messages
+      SET todoist_project_name = ?, todoist_project_url = ?
+      WHERE id = ?
+    `).bind(
+      projectName,
+      projectUrl,
+      id
+    ).run();
+  },
+
+  /**
    * Get full message detail
    * @param {D1Database} db 
    * @param {string} id 

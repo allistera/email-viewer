@@ -165,6 +165,8 @@ function normalizeMessage(message) {
     tag: message.tag,
     tagConfidence: message.tag_confidence ?? message.tagConfidence,
     tagReason: message.tag_reason ?? message.tagReason,
+    todoistProjectName: message.todoist_project_name ?? message.todoistProjectName,
+    todoistProjectUrl: message.todoist_project_url ?? message.todoistProjectUrl,
     textBody: message.text_body ?? message.textBody,
     htmlBody: message.html_body ?? message.htmlBody,
     attachments: (message.attachments || []).map(normalizeAttachment)
