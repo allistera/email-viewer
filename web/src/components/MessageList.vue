@@ -1,10 +1,15 @@
 <template>
   <div class="message-list">
     <div class="list-header">
+      <button class="menu-btn" @click="$emit('open-sidebar')" title="Open menu">
+        <svg viewBox="0 0 24 24" class="menu-icon">
+          <path d="M3 6h18M3 12h18M3 18h18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </button>
       <div class="search-container">
-          <input 
-            v-model="searchInput" 
-            placeholder="Search messages..." 
+          <input
+            v-model="searchInput"
+            placeholder="Search messages..."
             class="search-input"
             @input="handleInput"
           />
@@ -99,6 +104,7 @@ export default {
       default: null
     }
   },
+  emits: ['select', 'filter-change', 'search', 'load-more', 'open-sidebar'],
   data() {
     return {
       tagFilter: 'all',
@@ -306,5 +312,68 @@ export default {
 .btn-secondary:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Hamburger menu button - hidden on desktop */
+.menu-btn {
+  display: none;
+  background: none;
+  border: none;
+  padding: 8px;
+  cursor: pointer;
+  border-radius: 4px;
+  color: var(--color-text);
+}
+
+.menu-btn:hover {
+  background: var(--color-bg-secondary);
+}
+
+.menu-icon {
+  width: 20px;
+  height: 20px;
+}
+
+@media (max-width: 768px) {
+  .menu-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .list-header {
+    padding: 12px;
+    gap: 8px;
+  }
+
+  .search-input {
+    padding: 10px 12px;
+  }
+
+  .filter-select {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  .message-item {
+    padding: 14px;
+  }
+
+  .from {
+    font-size: 13px;
+  }
+
+  .time {
+    font-size: 11px;
+  }
+
+  .message-subject {
+    font-size: 13px;
+  }
+
+  .snippet {
+    font-size: 12px;
+  }
 }
 </style>
