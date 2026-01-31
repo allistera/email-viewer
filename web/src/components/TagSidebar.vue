@@ -1,6 +1,11 @@
 <template>
   <aside class="tag-sidebar">
     <div class="tag-header">
+      <button class="close-sidebar-btn" @click="$emit('close')" title="Close menu" aria-label="Close menu">
+        <svg viewBox="0 0 24 24" class="close-icon" aria-hidden="true">
+          <path d="M18 6L6 18M6 6l12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </button>
       <h2>Tags</h2>
       <button class="add-btn" @click="showAdd = !showAdd" aria-label="Add Tag">+</button>
     </div>
@@ -123,6 +128,7 @@ export default {
       default: false
     }
   },
+  emits: ['select', 'settings', 'close'],
   data() {
     return {
       tags: [],
@@ -490,5 +496,41 @@ export default {
 
 .delete-btn:hover {
   color: #d9534f;
+}
+
+/* Close button - hidden on desktop */
+.close-sidebar-btn {
+  display: none;
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  border-radius: 4px;
+  color: var(--color-text-secondary);
+}
+
+.close-sidebar-btn:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.close-icon {
+  width: 20px;
+  height: 20px;
+}
+
+@media (max-width: 768px) {
+  .close-sidebar-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .tag-header {
+    padding: 12px 16px;
+  }
+
+  .tag-header h2 {
+    flex: 1;
+  }
 }
 </style>

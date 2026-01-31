@@ -7,13 +7,15 @@
     />
 
     <div v-if="!showAuthModal" class="app-layout">
-      <div class="app-container">
+      <div class="app-container" :class="mobileViewClass">
         <TagSidebar
           ref="sidebar"
           :selected-tag="selectedTag"
           :settings-active="currentView === 'settings'"
+          class="sidebar-panel"
           @select="handleTagSelect"
           @settings="openSettings"
+          @close="closeMobileSidebar"
         />
 
         <template v-if="currentView === 'settings'">
@@ -27,17 +29,21 @@
             :loading-more="loadingMore"
             :has-more="hasMore"
             :error="listError"
+            class="list-panel"
             @select="handleSelectMessage"
             @filter-change="handleFilterChange"
             @search="handleSearch"
             @load-more="handleLoadMore"
+            @open-sidebar="openMobileSidebar"
           />
 
           <MessageDetail
             :message="currentMessage"
             :loading="loadingDetail"
             :error="detailError"
+            class="detail-panel"
             @archived="handleMessageArchived"
+            @back="handleMobileBack"
           />
         </template>
       </div>
@@ -82,17 +88,33 @@ export default {
       searchQuery: '',
       authError: '',
       currentView: 'inbox',
-      pendingDeepLinkId: null
+      pendingDeepLinkId: null,
+      mobileView: 'list', // 'sidebar', 'list', or 'detail'
+      isMobile: false,
+      resizeTimeout: null
     };
+  },
+  computed: {
+    mobileViewClass() {
+      if (!this.isMobile) return '';
+      return `mobile-view-${this.mobileView}`;
+    }
   },
   mounted() {
     if (!this.showAuthModal) {
       this.pendingDeepLinkId = this.getDeepLinkMessageId();
       this.init();
     }
+    // Initial check without debounce
+    this.isMobile = window.innerWidth <= 768;
+    window.addEventListener('resize', this.checkMobile);
   },
   beforeUnmount() {
     realtimeClient.disconnect();
+    window.removeEventListener('resize', this.checkMobile);
+    if (this.resizeTimeout) {
+      clearTimeout(this.resizeTimeout);
+    }
   },
   methods: {
     async init() {
@@ -222,6 +244,11 @@ export default {
       this.detailError = null;
       this.currentMessage = null;
 
+      // Switch to detail view on mobile
+      if (this.isMobile) {
+        this.mobileView = 'detail';
+      }
+
       try {
         this.currentMessage = await getMessage(messageId);
       } catch (error) {
@@ -257,9 +284,15 @@ export default {
       } else {
         this.selectedTag = tag;
         // When selecting a sidebar folder, we reset any local list filters to default
-        this.tagFilter = 'all'; 
+        this.tagFilter = 'all';
       }
       this.currentView = 'inbox';
+
+      // Switch to list view on mobile after selecting a tag
+      if (this.isMobile) {
+        this.mobileView = 'list';
+      }
+
       await this.loadMessages(true);
     },
 
@@ -305,20 +338,66 @@ export default {
       if (this.currentMessage && this.currentMessage.id === messageId) {
         this.currentMessage = null;
         this.selectedMessageId = null;
+
+        // On mobile, go back to list view after archiving
+        if (this.isMobile) {
+          this.mobileView = 'list';
+        }
       }
 
-      // Select the next message if available
-      if (this.messages.length > 0 && !this.selectedMessageId) {
+      // Select the next message if available (only on desktop)
+      if (!this.isMobile && this.messages.length > 0 && !this.selectedMessageId) {
         this.handleSelectMessage(this.messages[0].id);
       }
     },
 
     openSettings() {
       this.currentView = 'settings';
+      // On mobile, switch to list view to show settings (which takes list+detail space)
+      if (this.isMobile) {
+        this.mobileView = 'list';
+      }
     },
 
     closeSettings() {
       this.currentView = 'inbox';
+    },
+
+    checkMobile() {
+      if (this.resizeTimeout) {
+        clearTimeout(this.resizeTimeout);
+      }
+      this.resizeTimeout = setTimeout(() => {
+        const wasMobile = this.isMobile;
+        this.isMobile = window.innerWidth <= 768;
+
+        // Handle viewport transitions
+        if (wasMobile && !this.isMobile) {
+          // Transitioning from mobile to desktop - reset to default view
+          this.mobileView = 'list';
+        } else if (!wasMobile && this.isMobile) {
+          // Transitioning from desktop to mobile - show list by default
+          this.mobileView = 'list';
+        }
+      }, 150);
+    },
+
+    openMobileSidebar() {
+      if (this.isMobile) {
+        this.mobileView = 'sidebar';
+      }
+    },
+
+    handleMobileBack() {
+      if (this.isMobile) {
+        this.mobileView = 'list';
+      }
+    },
+
+    closeMobileSidebar() {
+      if (this.isMobile) {
+        this.mobileView = 'list';
+      }
     }
   }
 };
@@ -350,10 +429,32 @@ export default {
 @media (max-width: 768px) {
   .app-container {
     grid-template-columns: 1fr;
+    position: relative;
   }
 
   .settings-panel {
     grid-column: 1 / -1;
+    display: flex;
+  }
+
+  /* Hide all panels by default on mobile */
+  .sidebar-panel,
+  .list-panel,
+  .detail-panel {
+    display: none;
+  }
+
+  /* Show only the active panel based on mobile view */
+  .app-container.mobile-view-sidebar .sidebar-panel {
+    display: flex;
+  }
+
+  .app-container.mobile-view-list .list-panel {
+    display: flex;
+  }
+
+  .app-container.mobile-view-detail .detail-panel {
+    display: flex;
   }
 }
 </style>

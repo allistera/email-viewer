@@ -12,6 +12,20 @@
 
       <div v-else class="detail-content">
         <div class="detail-toolbar" aria-label="Message actions">
+          <button class="toolbar-btn back-btn" type="button" @click="$emit('back')" title="Back to list">
+            <svg viewBox="0 0 24 24" aria-hidden="true" class="toolbar-icon">
+              <path
+                d="M15 18l-6-6 6-6"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <span class="toolbar-label">Back</span>
+          </button>
+
           <button class="toolbar-btn" type="button" :disabled="true" title="Reply (not implemented)">
             <svg viewBox="0 0 24 24" aria-hidden="true" class="toolbar-icon">
               <path
@@ -253,7 +267,7 @@ export default {
       todoistTaskUrl: ''
     };
   },
-  emits: ['archived'],
+  emits: ['archived', 'back'],
   computed: {
     sanitizedHtml() {
       if (!this.message || !this.message.htmlBody) return '';
@@ -889,5 +903,91 @@ export default {
   padding: 24px;
   text-align: center;
   color: var(--color-text-secondary);
+}
+
+/* Hide back button on desktop */
+.back-btn {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  /* Show back button on mobile */
+  .back-btn {
+    display: inline-flex;
+  }
+
+  /* Make toolbar scrollable on mobile */
+  .detail-toolbar {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 10px 12px;
+    gap: 6px;
+  }
+
+  /* Hide labels on smaller screens, show only icons */
+  .toolbar-btn .toolbar-label {
+    display: none;
+  }
+
+  .toolbar-btn {
+    padding: 8px;
+    min-width: 40px;
+    justify-content: center;
+  }
+
+  .toolbar-icon {
+    width: 20px;
+    height: 20px;
+    flex: 0 0 20px;
+  }
+
+  /* Back button should show label */
+  .back-btn .toolbar-label {
+    display: inline;
+  }
+
+  .back-btn {
+    min-width: auto;
+    padding: 6px 10px;
+  }
+
+  /* Adjust header for mobile */
+  .detail-header {
+    padding: 14px 16px;
+  }
+
+  .sender-row {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .sender-avatar {
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
+    font-size: 12px;
+  }
+
+  .subject-title {
+    font-size: 16px;
+  }
+
+  .sender-date {
+    font-size: 11px;
+    margin-left: auto;
+  }
+
+  .sender-email {
+    max-width: 100%;
+  }
+
+  /* Attachments mobile */
+  .attachments {
+    padding: 12px 16px;
+  }
+
+  .body-content {
+    min-height: 300px;
+  }
 }
 </style>
