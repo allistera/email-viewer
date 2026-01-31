@@ -1,8 +1,8 @@
 <template>
   <div class="message-list">
     <div class="list-header">
-      <button class="menu-btn" @click="$emit('open-sidebar')" title="Open menu">
-        <svg viewBox="0 0 24 24" class="menu-icon">
+      <button class="menu-btn" @click="$emit('open-sidebar')" title="Open menu" aria-label="Open menu">
+        <svg viewBox="0 0 24 24" class="menu-icon" aria-hidden="true">
           <path d="M3 6h18M3 12h18M3 18h18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
         </svg>
       </button>

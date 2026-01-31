@@ -90,7 +90,8 @@ export default {
       currentView: 'inbox',
       pendingDeepLinkId: null,
       mobileView: 'list', // 'sidebar', 'list', or 'detail'
-      isMobile: false
+      isMobile: false,
+      resizeTimeout: null
     };
   },
   computed: {
@@ -104,12 +105,16 @@ export default {
       this.pendingDeepLinkId = this.getDeepLinkMessageId();
       this.init();
     }
-    this.checkMobile();
+    // Initial check without debounce
+    this.isMobile = window.innerWidth <= 768;
     window.addEventListener('resize', this.checkMobile);
   },
   beforeUnmount() {
     realtimeClient.disconnect();
     window.removeEventListener('resize', this.checkMobile);
+    if (this.resizeTimeout) {
+      clearTimeout(this.resizeTimeout);
+    }
   },
   methods: {
     async init() {
@@ -359,7 +364,22 @@ export default {
     },
 
     checkMobile() {
-      this.isMobile = window.innerWidth <= 768;
+      if (this.resizeTimeout) {
+        clearTimeout(this.resizeTimeout);
+      }
+      this.resizeTimeout = setTimeout(() => {
+        const wasMobile = this.isMobile;
+        this.isMobile = window.innerWidth <= 768;
+
+        // Handle viewport transitions
+        if (wasMobile && !this.isMobile) {
+          // Transitioning from mobile to desktop - reset to default view
+          this.mobileView = 'list';
+        } else if (!wasMobile && this.isMobile) {
+          // Transitioning from desktop to mobile - show list by default
+          this.mobileView = 'list';
+        }
+      }, 150);
     },
 
     openMobileSidebar() {
