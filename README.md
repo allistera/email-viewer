@@ -11,6 +11,7 @@ A self-hosted, single-user email inbox built on Cloudflare Workers. It uses **Em
 - **Tagging**: Uses OpenAI (`gpt-4o-mini`) to classify emails asynchronously, including a `spam` tag (background task via `ctx.waitUntil`).
 - **Realtime**: Pushes new emails and tag updates to the UI via SSE/WebSockets.
 - **UI**: A clean, "Todoist-inspired" single-page application built with Vue.js (no build step for the JS logic, just plain ES modules).
+- **Todoist**: Add emails to Todoist from the message action bar (optional).
 
 ## Project Structure
 
@@ -59,6 +60,12 @@ npx wrangler secret put API_TOKEN
 
 # Set your OpenAI Key
 npx wrangler secret put OPENAI_API_KEY
+
+# Optional: enable Todoist integration
+npx wrangler secret put TODOIST_API_TOKEN
+
+# Optional: set a default Todoist project ID
+# Add TODOIST_PROJECT_ID to wrangler.toml [vars] or as a secret.
 ```
 
 ### 4. Deploy
@@ -85,6 +92,7 @@ Enter your `API_TOKEN` to log in.
 - **List Messages**: `GET /api/messages`
 - **Get Detail**: `GET /api/messages/:id`
 - **Download Attachment**: `GET /api/messages/:id/attachments/:attId`
+- **Add to Todoist**: `POST /api/messages/:id/todoist`
 
 ## Development
 

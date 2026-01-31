@@ -116,6 +116,14 @@ export async function archiveMessage(id) {
   });
 }
 
+export async function addTodoistTask(id, options = {}) {
+  return request(`/messages/${id}/todoist`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(options)
+  });
+}
+
 export async function updateMessageTag(id, tag) {
   return request(`/messages/${id}`, {
     method: 'PATCH',

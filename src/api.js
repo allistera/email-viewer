@@ -10,6 +10,10 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9
 const TAG_NAME_REGEX = /^[\w\s\-/]+$/;
 const MAX_TAG_NAME_LENGTH = 100;
 
+const TODOIST_API_URL = 'https://api.todoist.com/rest/v2/tasks';
+const TODOIST_CONTENT_MAX = 500;
+const TODOIST_DESCRIPTION_MAX = 2000;
+
 const isValidUUID = (id) => typeof id === 'string' && UUID_REGEX.test(id);
 
 const isValidTagName = (name) => 
@@ -17,6 +21,84 @@ const isValidTagName = (name) =>
   name.length > 0 && 
   name.length <= MAX_TAG_NAME_LENGTH && 
   TAG_NAME_REGEX.test(name);
+
+const truncateText = (value, maxLength) => {
+  if (!value) return '';
+  const text = String(value);
+  if (text.length <= maxLength) return text;
+  const sliceLength = Math.max(0, maxLength - 3);
+  return `${text.slice(0, sliceLength)}...`;
+};
+
+const normalizeTodoistLine = (value, maxLength) => {
+  if (!value) return '';
+  const cleaned = String(value).replace(/\s+/g, ' ').trim();
+  return truncateText(cleaned, maxLength);
+};
+
+const normalizeTodoistDescription = (value, maxLength) => {
+  if (!value) return '';
+  const cleaned = String(value).replace(/\r\n/g, '\n').trim();
+  return truncateText(cleaned, maxLength);
+};
+
+const formatIsoDate = (timestamp) => {
+  if (!timestamp) return '';
+  try {
+    const date = new Date(timestamp);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toISOString();
+  } catch {
+    return '';
+  }
+};
+
+const buildTodoistDescription = (message) => {
+  const lines = [];
+  const from = normalizeTodoistLine(message.from_addr, 200);
+  const to = normalizeTodoistLine(message.to_addr, 200);
+  const received = formatIsoDate(message.received_at);
+  const snippet = normalizeTodoistLine(message.snippet, 500);
+
+  if (from) lines.push(`From: ${from}`);
+  if (to) lines.push(`To: ${to}`);
+  if (received) lines.push(`Received: ${received}`);
+  if (snippet) lines.push(`Snippet: ${snippet}`);
+  lines.push(`Message ID: ${message.id}`);
+
+  return normalizeTodoistDescription(lines.join('\n'), TODOIST_DESCRIPTION_MAX);
+};
+
+const buildTodoistPayload = (message, body = {}, env = {}) => {
+  const fallbackFrom = normalizeTodoistLine(message.from_addr, 200);
+  const defaultContent = message.subject || message.snippet || (fallbackFrom ? `Email from ${fallbackFrom}` : 'Email task');
+  const content = normalizeTodoistLine(body.content || defaultContent, TODOIST_CONTENT_MAX) || 'Email task';
+  const description = body.description
+    ? normalizeTodoistDescription(body.description, TODOIST_DESCRIPTION_MAX)
+    : buildTodoistDescription(message);
+
+  const payload = { content };
+  if (description) payload.description = description;
+
+  const projectId = body.projectId || env.TODOIST_PROJECT_ID;
+  if (projectId) payload.project_id = projectId;
+
+  return payload;
+};
+
+const readJsonBody = async (request) => {
+  const contentType = request.headers.get('Content-Type') || '';
+  if (!contentType.includes('application/json')) return {};
+  const text = await request.text();
+  if (!text) return {};
+  try {
+    const data = JSON.parse(text);
+    if (data && typeof data === 'object') return data;
+    return {};
+  } catch (error) {
+    throw new Error('Invalid JSON body');
+  }
+};
 
 const jsonResponse = (payload, init = {}) =>
   new Response(JSON.stringify(payload), {
@@ -82,6 +164,58 @@ export const ApiRouter = {
         if (parts.length === 3 && parts[2] === 'archive' && request.method === 'POST') {
           await DB.archiveMessage(env.DB, id);
           return jsonResponse({ ok: true });
+        }
+
+        // Add to Todoist
+        if (parts.length === 3 && parts[2] === 'todoist' && request.method === 'POST') {
+          if (!env.TODOIST_API_TOKEN) {
+            return jsonResponse({ error: 'Todoist integration not configured.' }, { status: 501 });
+          }
+
+          const msg = await DB.getMessage(env.DB, id);
+          if (!msg) return new Response('Message Not Found', { status: 404 });
+
+          let body = {};
+          try {
+            body = await readJsonBody(request);
+          } catch (error) {
+            return jsonResponse({ error: error.message || 'Invalid JSON body' }, { status: 400 });
+          }
+
+          const payload = buildTodoistPayload(msg, body, env);
+
+          const todoistResponse = await fetch(TODOIST_API_URL, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${env.TODOIST_API_TOKEN}`
+            },
+            body: JSON.stringify(payload)
+          });
+
+          if (!todoistResponse.ok) {
+            const contentType = todoistResponse.headers.get('Content-Type') || '';
+            let errorDetails = '';
+            if (contentType.includes('application/json')) {
+              try {
+                const errorBody = await todoistResponse.json();
+                errorDetails = errorBody?.error || errorBody?.message || JSON.stringify(errorBody);
+              } catch (e) {
+                errorDetails = '';
+              }
+            } else {
+              errorDetails = await todoistResponse.text();
+            }
+
+            const errorMessage = errorDetails
+              ? `Todoist request failed: ${errorDetails}`
+              : 'Todoist request failed.';
+
+            return jsonResponse({ error: errorMessage }, { status: 502 });
+          }
+
+          const task = await todoistResponse.json();
+          return jsonResponse({ ok: true, task });
         }
 
         // Download Attachment
