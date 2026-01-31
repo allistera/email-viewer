@@ -60,8 +60,11 @@ npx wrangler r2 bucket create mailstore
 # Set your API token (choose any secure password/token)
 npx wrangler secret put API_TOKEN
 
-# Set your OpenAI Key
-npx wrangler secret put OPENAI_API_KEY
+# Set your OpenAI Key (email tagging worker)
+npx wrangler secret put OPENAI_API_KEY -c wrangler-email.toml
+
+# Set your OpenAI Key (Todoist project selection worker)
+npx wrangler secret put OPENAI_API_KEY -c wrangler-todoist.toml
 
 # Optional: enable Todoist integration
 npx wrangler secret put TODOIST_API_TOKEN

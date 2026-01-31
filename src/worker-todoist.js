@@ -35,6 +35,11 @@ const resolveMessageUrl = (origin, messageId) => {
   }
 };
 
+const buildTodoistProjectUrl = (projectId) => {
+  if (!projectId) return null;
+  return `https://app.todoist.com/app/project/${projectId}`;
+};
+
 const selectProject = (projects, selection) => {
   if (!selection) return null;
   if (selection.projectId) {
@@ -101,10 +106,11 @@ export default Sentry.withSentry(sentryOptions, {
       const task = await createTodoistTask(todoistToken, payload);
 
       let todoistUpdateWarning = null;
+      const projectUrl = selectedProject ? buildTodoistProjectUrl(selectedProject.id) : null;
       try {
         await DB.updateTodoistInfo(env.DB, messageId, {
           projectName: selectedProject?.name || null,
-          projectUrl: selectedProject?.url || null
+          projectUrl
         });
       } catch (updateError) {
         todoistUpdateWarning = 'Task created but project metadata was not saved.';
@@ -116,7 +122,7 @@ export default Sentry.withSentry(sentryOptions, {
         ok: true,
         task,
         project: selectedProject
-          ? { id: selectedProject.id, name: selectedProject.name, url: selectedProject.url || null }
+          ? { id: selectedProject.id, name: selectedProject.name, url: projectUrl }
           : null,
         warning: todoistUpdateWarning
       });
@@ -124,9 +130,9 @@ export default Sentry.withSentry(sentryOptions, {
       if (isMissingTableError(error)) {
         return databaseNotInitializedResponse();
       }
-      const message = error?.message || 'Todoist request failed.';
-      const status = message.includes('Todoist request failed') ? 502 : 500;
-      return jsonResponse({ error: message }, { status });
+      const errorMessage = error?.message || 'Todoist request failed.';
+      const status = errorMessage.includes('Todoist request failed') ? 502 : 500;
+      return jsonResponse({ error: errorMessage }, { status });
     }
   }
 });
