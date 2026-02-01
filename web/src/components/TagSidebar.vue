@@ -307,13 +307,10 @@ export default {
         if (!messageId) return;
 
         if (type === 'archive') {
-            if (confirm('Mark this message as done?')) {
-                try {
-                    await archiveMessage(messageId);
-                    alert('Message marked as done.');
-                } catch (e) {
-                    alert('Failed to mark as done: ' + e.message);
-                }
+            try {
+                await archiveMessage(messageId);
+            } catch (e) {
+                alert('Failed to mark as done: ' + e.message);
             }
         } else if (type === 'spam') {
             if (confirm('Mark this message as Spam?')) {

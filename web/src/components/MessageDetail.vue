@@ -449,8 +449,6 @@ export default {
     async handleArchive() {
       if (!this.message || this.archiving) return;
 
-      if (!confirm('Mark this email as done?')) return;
-
       this.archiving = true;
       try {
         await archiveMessage(this.message.id);
