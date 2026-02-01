@@ -222,6 +222,13 @@ import TagBadge from './TagBadge.vue';
 import { getAttachmentUrl, addMessageTag, removeMessageTag, getTags, archiveMessage, addTodoistTask } from '../services/api.js';
 import { formatRelativeDate } from '../utils/dateFormat.js';
 
+const EMAIL_HTML_SANITIZE_CONFIG = {
+  USE_PROFILES: { html: true },
+  FORBID_TAGS: ['script', 'noscript', 'iframe', 'frame', 'object', 'embed']
+};
+
+const sanitizeEmailHtml = (html) => DOMPurify.sanitize(html, EMAIL_HTML_SANITIZE_CONFIG);
+
 export default {
   name: 'MessageDetail',
   components: {
@@ -255,7 +262,7 @@ export default {
   computed: {
     sanitizedHtml() {
       if (!this.message || !this.message.htmlBody) return '';
-      return DOMPurify.sanitize(this.message.htmlBody, { USE_PROFILES: { html: true } });
+      return sanitizeEmailHtml(this.message.htmlBody);
     },
     currentTags() {
       if (!this.message) return [];
