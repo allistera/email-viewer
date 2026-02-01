@@ -31,7 +31,6 @@
             :error="listError"
             class="list-panel"
             @select="handleSelectMessage"
-            @filter-change="handleFilterChange"
             @search="handleSearch"
             @load-more="handleLoadMore"
             @open-sidebar="openMobileSidebar"
@@ -83,7 +82,6 @@ export default {
       detailError: null,
       nextBefore: null,
       hasMore: false,
-      tagFilter: 'all',
       selectedTag: null,
       searchQuery: '',
       authError: '',
@@ -170,16 +168,7 @@ export default {
           params.archived = false; 
         } else {
           // Inbox view (no specific tag selected)
-          // Default filter logic (e.g. all non-spam, non-archived)
-          if (this.tagFilter === 'spam') {
-             params.tag = 'Spam';
-          } else if (this.tagFilter === 'not_spam') { // "All Messages" in UI dropdown maps here?
-             params.excludeTag = 'Spam';
-             params.archived = false;
-          } else {
-             // 'all' filter from dropdown
-             params.archived = false;
-          }
+          params.archived = false;
         }
         
         if (this.searchQuery) {
@@ -263,12 +252,6 @@ export default {
       }
     },
 
-    async handleFilterChange(filter) {
-      this.tagFilter = filter;
-      this.selectedTag = null;
-      await this.loadMessages(true);
-    },
-
     async handleSearch(query) {
       this.searchQuery = query;
       // Reset other filters? Maybe keep tag filter?
@@ -283,8 +266,6 @@ export default {
         this.selectedTag = null; // Toggle off -> Go to Inbox
       } else {
         this.selectedTag = tag;
-        // When selecting a sidebar folder, we reset any local list filters to default
-        this.tagFilter = 'all';
       }
       this.currentView = 'inbox';
 

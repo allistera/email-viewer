@@ -7,19 +7,12 @@
         </svg>
       </button>
       <div class="search-container">
-          <input
-            v-model="searchInput"
-            placeholder="Search messages..."
-            class="search-input"
-            @input="handleInput"
-          />
-      </div>
-      <div class="filters">
-        <select v-model="tagFilter" class="filter-select">
-          <option value="all">All Messages</option>
-          <option value="spam">Spam Only</option>
-          <option value="not_spam">Not Spam</option>
-        </select>
+        <input
+          v-model="searchInput"
+          placeholder="Search messages..."
+          class="search-input"
+          @input="handleInput"
+        />
       </div>
     </div>
 
@@ -104,25 +97,19 @@ export default {
       default: null
     }
   },
-  emits: ['select', 'filter-change', 'search', 'load-more', 'open-sidebar'],
+  emits: ['select', 'search', 'load-more', 'open-sidebar'],
   data() {
     return {
-      tagFilter: 'all',
       searchInput: '',
       searchTimeout: null
     };
   },
-  watch: {
-    tagFilter(newValue) {
-      this.$emit('filter-change', newValue);
-    }
-  },
   methods: {
     handleInput() {
-        if (this.searchTimeout) clearTimeout(this.searchTimeout);
-        this.searchTimeout = setTimeout(() => {
-            this.$emit('search', this.searchInput);
-        }, 300);
+      if (this.searchTimeout) clearTimeout(this.searchTimeout);
+      this.searchTimeout = setTimeout(() => {
+        this.$emit('search', this.searchInput);
+      }, 300);
     },
     formatTime(timestamp) {
       return formatRelativeDate(timestamp);
@@ -158,21 +145,21 @@ export default {
 }
 
 .search-container {
-    flex: 1;
-    display: flex;
+  flex: 1;
+  display: flex;
 }
 
 .search-input {
-    width: 100%;
-    padding: 8px 12px;
-    border: 1px solid var(--color-border);
-    border-radius: 4px;
-    font-size: 14px;
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  font-size: 14px;
 }
 
 .search-input:focus {
-    outline: none;
-    border-color: var(--color-primary);
+  outline: none;
+  border-color: var(--color-primary);
 }
 
 .list-header h2 {
@@ -180,27 +167,6 @@ export default {
   font-size: 20px;
   color: var(--color-text);
   display: none; /* Hide title safely if still present in DOM or just remove selector */
-}
-
-.filters {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.filter-select {
-  padding: 6px 12px;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  font-size: 13px;
-  background: var(--color-bg);
-  color: var(--color-text);
-  cursor: pointer;
-}
-
-.filter-select:focus {
-  outline: none;
-  border-color: var(--color-primary);
 }
 
 .loading,
@@ -349,11 +315,6 @@ export default {
 
   .search-input {
     padding: 10px 12px;
-  }
-
-  .filter-select {
-    padding: 8px 10px;
-    font-size: 12px;
   }
 
   .message-item {
