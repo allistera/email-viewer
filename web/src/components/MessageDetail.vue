@@ -119,25 +119,6 @@
             <span class="toolbar-label">{{ archiving ? 'Marking done…' : 'Done' }}</span>
           </button>
 
-          <button
-            class="toolbar-btn"
-            type="button"
-            @click="toggleImportant"
-            :disabled="togglingImportant"
-            :class="{ active: isImportant }"
-            :title="isImportant ? 'Unmark Important' : 'Mark Important'"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true" class="toolbar-icon">
-              <path
-                d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27Z"
-                :fill="isImportant ? 'currentColor' : 'none'"
-                stroke="currentColor"
-                stroke-width="1.5"
-                stroke-linejoin="round"
-              />
-            </svg>
-            <span class="toolbar-label">Important</span>
-          </button>
         </div>
 
         <div class="detail-header">
@@ -238,7 +219,7 @@
 <script>
 import DOMPurify from 'dompurify';
 import TagBadge from './TagBadge.vue';
-import { getAttachmentUrl, addMessageTag, removeMessageTag, getTags, createTag, archiveMessage, addTodoistTask } from '../services/api.js';
+import { getAttachmentUrl, addMessageTag, removeMessageTag, getTags, archiveMessage, addTodoistTask } from '../services/api.js';
 import { formatRelativeDate } from '../utils/dateFormat.js';
 
 export default {
@@ -266,7 +247,6 @@ export default {
       availableTags: [],
       selectedAddTag: '',
       archiving: false,
-      togglingImportant: false,
       addingTodoist: false,
       todoistTaskUrl: ''
     };
@@ -311,9 +291,6 @@ export default {
       const ts = this.message?.receivedAt;
       if (!ts) return '';
       return formatRelativeDate(ts);
-    },
-    isImportant() {
-      return this.currentTags.some(t => String(t).toLowerCase() === 'important');
     },
     todoistLabel() {
       if (this.addingTodoist) return 'Adding...';
@@ -453,40 +430,6 @@ export default {
         this.archiving = false;
       }
     },
-    async toggleImportant() {
-      if (!this.message || this.togglingImportant) return;
-
-      const tagName = 'Important';
-      this.togglingImportant = true;
-      try {
-        const hasImportant = this.isImportant;
-
-        if (!hasImportant) {
-          // Ensure the tag exists; safe to attempt even if it already exists.
-          if (!this.availableTags?.some(t => String(t.name).toLowerCase() === 'important')) {
-            try {
-              await createTag(tagName);
-              await this.loadTags();
-            } catch (e) {
-              console.warn('Could not create Important tag (continuing):', e);
-            }
-          }
-
-          await addMessageTag(this.message.id, tagName);
-          if (!this.message.tags) this.message.tags = [];
-          if (!this.message.tags.includes(tagName)) this.message.tags.push(tagName);
-        } else {
-          await removeMessageTag(this.message.id, tagName);
-          if (this.message.tags) {
-            this.message.tags = this.message.tags.filter(t => String(t).toLowerCase() !== 'important');
-          }
-        }
-      } catch (e) {
-        alert('Failed to update Important: ' + e.message);
-      } finally {
-        this.togglingImportant = false;
-      }
-    }
   }
 };
 </script>
