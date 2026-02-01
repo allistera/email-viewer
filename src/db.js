@@ -93,8 +93,8 @@ export const DB = {
 
     // FTS Join
     if (search) {
-      query += ' JOIN messages_fts fts ON m.rowid = fts.rowid';
-      conditions.push('fts MATCH ?');
+      query += ' JOIN messages_fts ON m.rowid = messages_fts.rowid';
+      conditions.push('messages_fts MATCH ?');
       // Format search query for FTS5 (phrase or simple)
       // Escape double quotes in search terms to prevent FTS injection
       const sanitizedSearch = search.replace(/"/g, '');
