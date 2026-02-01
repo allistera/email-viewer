@@ -83,14 +83,8 @@
           >
             <span v-if="addingTodoist" class="todoist-spinner" aria-hidden="true"></span>
             <svg v-else viewBox="0 0 24 24" aria-hidden="true" class="toolbar-icon">
-              <path
-                d="M5 12l4 4L19 6"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.75"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
+              <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.75"/>
+              <path d="M12 8v8M8 12h8" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
             </svg>
             <span class="toolbar-label">{{ todoistLabel }}</span>
           </button>
