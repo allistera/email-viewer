@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('Archive Message', () => {
+test.describe('Done Message', () => {
     test.beforeEach(async ({ page }) => {
         // Mock all API endpoints before navigation
         await page.route('**/api/messages/**', async route => {
@@ -63,14 +63,14 @@ test.describe('Archive Message', () => {
         await expect(page.locator('.modal')).toBeHidden({ timeout: 5000 });
     });
 
-    test('should display Archive button in toolbar', async ({ page }) => {
+    test('should display Done button in toolbar', async ({ page }) => {
         // Wait for message detail to load
-        await expect(page.locator('.toolbar-btn', { hasText: 'Archive' })).toBeVisible({ timeout: 10000 });
+        await expect(page.locator('.toolbar-btn', { hasText: 'Done' })).toBeVisible({ timeout: 10000 });
     });
 
-    test('should not archive when cancelling confirmation', async ({ page }) => {
+    test('should mark message as done when clicking Done button', async ({ page }) => {
         // Wait for toolbar
-        await expect(page.locator('.toolbar-btn', { hasText: 'Archive' })).toBeVisible({ timeout: 10000 });
+        await expect(page.locator('.toolbar-btn', { hasText: 'Done' })).toBeVisible({ timeout: 10000 });
 
         // Track if archive was called
         let archiveCalled = false;
@@ -83,16 +83,13 @@ test.describe('Archive Message', () => {
             });
         });
 
-        // Dismiss confirmation dialog
-        page.on('dialog', dialog => dialog.dismiss());
+        // Click Done button
+        await page.locator('.toolbar-btn', { hasText: 'Done' }).click();
 
-        // Click Archive button
-        await page.locator('.toolbar-btn', { hasText: 'Archive' }).click();
-
-        // Small wait to ensure no request was made
+        // Wait for the request to be made
         await page.waitForTimeout(500);
 
-        // Verify archive API was NOT called
-        expect(archiveCalled).toBe(false);
+        // Verify archive API was called
+        expect(archiveCalled).toBe(true);
     });
 });

@@ -20,7 +20,7 @@
     </div>
 
     <div class="system-tags">
-       <div 
+       <div
         class="tag-item"
         :class="{ active: selectedTag === 'archive' && !settingsActive }"
         @click="$emit('select', 'archive')"
@@ -29,8 +29,11 @@
       >
         <div class="tag-content">
            <div class="tag-info">
-             <span class="tag-icon">🗃️</span>
-             <span class="tag-label">Archive</span>
+             <svg class="tag-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+               <rect x="3" y="3" width="18" height="18" rx="3" fill="none" stroke="currentColor" stroke-width="1.75"/>
+               <path d="M7 12l3 3 7-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+             </svg>
+             <span class="tag-label">Done</span>
            </div>
         </div>
       </div>
@@ -307,13 +310,10 @@ export default {
         if (!messageId) return;
 
         if (type === 'archive') {
-            if (confirm('Archive this message?')) {
-                try {
-                    await archiveMessage(messageId);
-                    alert('Message archived.');
-                } catch (e) {
-                    alert('Failed to archive: ' + e.message);
-                }
+            try {
+                await archiveMessage(messageId);
+            } catch (e) {
+                alert('Failed to mark as done: ' + e.message);
             }
         } else if (type === 'spam') {
             if (confirm('Mark this message as Spam?')) {

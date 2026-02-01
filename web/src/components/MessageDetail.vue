@@ -83,36 +83,40 @@
           >
             <span v-if="addingTodoist" class="todoist-spinner" aria-hidden="true"></span>
             <svg v-else viewBox="0 0 24 24" aria-hidden="true" class="toolbar-icon">
-              <path
-                d="M5 12l4 4L19 6"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.75"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
+              <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.75"/>
+              <path d="M12 8v8M8 12h8" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
             </svg>
             <span class="toolbar-label">{{ todoistLabel }}</span>
           </button>
 
           <button
-            class="toolbar-btn"
+            class="toolbar-btn done-btn"
             type="button"
             @click="handleArchive"
             :disabled="archiving"
-            :title="archiving ? 'Archiving…' : 'Archive'"
+            :title="archiving ? 'Marking done…' : 'Done'"
           >
             <svg viewBox="0 0 24 24" aria-hidden="true" class="toolbar-icon">
-              <path
-                d="M3 6h18v3H3V6Zm2 4h14v10H5V10Zm5 3h4"
+              <rect
+                x="3"
+                y="3"
+                width="18"
+                height="18"
+                rx="3"
                 fill="none"
                 stroke="currentColor"
                 stroke-width="1.75"
+              />
+              <path
+                d="M7 12l3 3 7-7"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
                 stroke-linecap="round"
                 stroke-linejoin="round"
               />
             </svg>
-            <span class="toolbar-label">{{ archiving ? 'Archiving…' : 'Archive' }}</span>
+            <span class="toolbar-label">{{ archiving ? 'Marking done…' : 'Done' }}</span>
           </button>
 
           <button
@@ -438,15 +442,13 @@ export default {
     },
     async handleArchive() {
       if (!this.message || this.archiving) return;
-      
-      if (!confirm('Archive this email?')) return;
-      
+
       this.archiving = true;
       try {
         await archiveMessage(this.message.id);
         this.$emit('archived', this.message.id);
       } catch (e) {
-        alert('Failed to archive: ' + e.message);
+        alert('Failed to mark as done: ' + e.message);
       } finally {
         this.archiving = false;
       }
@@ -526,6 +528,15 @@ export default {
 
 .toolbar-btn.active {
   color: #3c4043;
+}
+
+.toolbar-btn.done-btn {
+  color: #1a73e8;
+}
+
+.toolbar-btn.done-btn:hover:not(:disabled) {
+  background: #e8f0fe;
+  color: #1557b0;
 }
 
 .toolbar-icon {
