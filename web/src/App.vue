@@ -106,10 +106,12 @@ export default {
     // Initial check without debounce
     this.isMobile = window.innerWidth <= 768;
     window.addEventListener('resize', this.checkMobile);
+    window.addEventListener('keydown', this.handleKeydown);
   },
   beforeUnmount() {
     realtimeClient.disconnect();
     window.removeEventListener('resize', this.checkMobile);
+    window.removeEventListener('keydown', this.handleKeydown);
     if (this.resizeTimeout) {
       clearTimeout(this.resizeTimeout);
     }
@@ -379,6 +381,41 @@ export default {
       if (this.isMobile) {
         this.mobileView = 'list';
       }
+    },
+
+    handleKeydown(event) {
+      // Skip if user is typing in an input field
+      if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA' || event.target.tagName === 'SELECT') {
+        return;
+      }
+
+      // Skip if modal is open or no messages
+      if (this.showAuthModal || this.messages.length === 0) {
+        return;
+      }
+
+      // Only handle arrow keys
+      if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') {
+        return;
+      }
+
+      event.preventDefault();
+
+      const currentIndex = this.messages.findIndex(m => m.id === this.selectedMessageId);
+
+      if (event.key === 'ArrowDown') {
+        // Move to next message
+        const nextIndex = currentIndex < this.messages.length - 1 ? currentIndex + 1 : currentIndex;
+        if (nextIndex !== currentIndex) {
+          this.handleSelectMessage(this.messages[nextIndex].id);
+        }
+      } else if (event.key === 'ArrowUp') {
+        // Move to previous message
+        const prevIndex = currentIndex > 0 ? currentIndex - 1 : 0;
+        if (prevIndex !== currentIndex || currentIndex === -1) {
+          this.handleSelectMessage(this.messages[prevIndex].id);
+        }
+      }
     }
   }
 };
@@ -401,6 +438,14 @@ export default {
   grid-template-columns: 220px 360px 1fr;
   flex: 1;
   min-height: 0;
+}
+
+/* Ensure grid items are constrained to enable inner scrolling */
+.sidebar-panel,
+.list-panel,
+.detail-panel {
+  min-height: 0;
+  overflow: hidden;
 }
 
 .settings-panel {

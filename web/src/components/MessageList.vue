@@ -104,6 +104,19 @@ export default {
       searchTimeout: null
     };
   },
+  watch: {
+    selectedId(newId) {
+      // Scroll selected message into view when it changes
+      if (newId) {
+        this.$nextTick(() => {
+          const selectedEl = this.$el.querySelector('.message-item.active');
+          if (selectedEl) {
+            selectedEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+          }
+        });
+      }
+    }
+  },
   methods: {
     handleInput() {
       if (this.searchTimeout) clearTimeout(this.searchTimeout);
