@@ -19,40 +19,6 @@
       >
     </div>
 
-    <div class="system-tags">
-       <div
-        class="tag-item"
-        :class="{ active: selectedTag === 'archive' && !settingsActive }"
-        @click="$emit('select', 'archive')"
-        @dragover="onDragOver($event)"
-        @drop="onDropSystem($event, 'archive')"
-      >
-        <div class="tag-content">
-           <div class="tag-info">
-             <svg class="tag-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-               <rect x="3" y="3" width="18" height="18" rx="3" fill="none" stroke="currentColor" stroke-width="1.75"/>
-               <path d="M7 12l3 3 7-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-             </svg>
-             <span class="tag-label">Done</span>
-           </div>
-        </div>
-      </div>
-       <div 
-        class="tag-item"
-        :class="{ active: selectedTag === 'spam' && !settingsActive }"
-        @click="$emit('select', 'spam')"
-        @dragover="onDragOver($event)"
-        @drop="onDropSystem($event, 'spam')"
-      >
-        <div class="tag-content">
-           <div class="tag-info">
-             <span class="tag-icon">🚫</span>
-             <span class="tag-label">Spam</span>
-           </div>
-        </div>
-      </div>
-    </div>
-
     <ul class="tag-list">
       <li 
         v-for="tag in userTags" 
@@ -103,6 +69,39 @@
     </ul>
 
     <div class="sidebar-footer">
+      <div class="system-tags">
+        <div
+          class="tag-item"
+          :class="{ active: selectedTag === 'archive' && !settingsActive }"
+          @click="$emit('select', 'archive')"
+          @dragover="onDragOver($event)"
+          @drop="onDropSystem($event, 'archive')"
+        >
+          <div class="tag-content">
+            <div class="tag-info">
+              <svg class="tag-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                <rect x="3" y="3" width="18" height="18" rx="3" fill="none" stroke="currentColor" stroke-width="1.75"/>
+                <path d="M7 12l3 3 7-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span class="tag-label">Done</span>
+            </div>
+          </div>
+        </div>
+        <div 
+          class="tag-item"
+          :class="{ active: selectedTag === 'spam' && !settingsActive }"
+          @click="$emit('select', 'spam')"
+          @dragover="onDragOver($event)"
+          @drop="onDropSystem($event, 'spam')"
+        >
+          <div class="tag-content">
+            <div class="tag-info">
+              <span class="tag-icon">🚫</span>
+              <span class="tag-label">Spam</span>
+            </div>
+          </div>
+        </div>
+      </div>
       <div
         class="tag-item settings-item"
         :class="{ active: settingsActive }"
@@ -392,7 +391,6 @@ export default {
 }
 
 .sidebar-footer {
-  border-top: 1px solid #eee;
   padding-bottom: 8px;
 }
 
@@ -401,7 +399,8 @@ export default {
 }
 
 .system-tags {
-    border-bottom: 1px solid #eee;
+    border-top: 1px solid #eee;
+    padding-top: 4px;
 }
 
 .tag-item {
