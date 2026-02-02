@@ -289,6 +289,68 @@ export const ApiRouter = {
         return jsonResponse({ ok: true });
       }
 
+      // POST /api/send
+      if (path === 'send' && request.method === 'POST') {
+        let body;
+        try {
+          body = await readJsonBody(request);
+        } catch (error) {
+          return jsonResponse({ error: error.message || 'Invalid JSON body' }, { status: 400 });
+        }
+
+        const { to, subject, body: emailBody } = body;
+
+        if (!to) {
+          return jsonResponse({ error: 'Recipient (to) is required' }, { status: 400 });
+        }
+
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(to)) {
+          return jsonResponse({ error: 'Invalid email address format' }, { status: 400 });
+        }
+
+        // Check if email sending is configured
+        if (!env.RESEND_API_KEY && !env.SENDGRID_API_KEY && !env.MAILGUN_API_KEY) {
+          return jsonResponse({ 
+            error: 'Email sending is not configured. Please set up an email provider (RESEND_API_KEY, SENDGRID_API_KEY, or MAILGUN_API_KEY) in your environment.' 
+          }, { status: 501 });
+        }
+
+        try {
+          // Use Resend if configured (recommended for Cloudflare Workers)
+          if (env.RESEND_API_KEY) {
+            const response = await fetch('https://api.resend.com/emails', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${env.RESEND_API_KEY}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                from: env.SEND_FROM_EMAIL || 'noreply@example.com',
+                to: [to],
+                subject: subject || '(No Subject)',
+                text: emailBody || ''
+              })
+            });
+
+            if (!response.ok) {
+              const errorData = await response.json().catch(() => ({}));
+              throw new Error(errorData.message || 'Failed to send email');
+            }
+
+            const result = await response.json();
+            return jsonResponse({ ok: true, messageId: result.id });
+          }
+
+          // Fallback error if no provider matched
+          return jsonResponse({ error: 'No email provider configured correctly' }, { status: 501 });
+        } catch (error) {
+          console.error('Email send error:', error);
+          return jsonResponse({ error: error.message || 'Failed to send email' }, { status: 500 });
+        }
+      }
+
       return new Response('Not Found', { status: 404 });
     } catch (error) {
       if (isMissingTableError(error)) {

@@ -396,8 +396,7 @@ export default {
     },
 
     handleEmailSent() {
-      // Could show a success notification here
-      console.log('Email sent successfully');
+      alert('Email sent successfully');
     },
 
     checkMobile() {

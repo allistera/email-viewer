@@ -9,7 +9,7 @@
       <h1>Inboxer</h1>
     </div>
 
-    <button class="compose-btn" @click="$emit('compose')">
+    <button type="button" class="compose-btn" @click="$emit('compose')">
       <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
         <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
       </svg>

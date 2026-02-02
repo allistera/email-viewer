@@ -110,12 +110,20 @@ export default {
             this.$refs.toInput?.focus();
           });
         } else {
+          // Focus To field for new messages since it's required
           this.$nextTick(() => {
-            this.$refs.subjectInput?.focus();
+            this.$refs.toInput?.focus();
           });
         }
+        // Add escape key listener
+        document.addEventListener('keydown', this.handleEscapeKey);
+      } else {
+        document.removeEventListener('keydown', this.handleEscapeKey);
       }
     }
+  },
+  beforeUnmount() {
+    document.removeEventListener('keydown', this.handleEscapeKey);
   },
   methods: {
     resetForm() {
@@ -128,16 +136,21 @@ export default {
     prefillReply() {
       if (!this.replyTo) return;
       
-      // Extract email from "Name <email>" format
-      const fromMatch = this.replyTo.from?.match(/<([^>]+)>/) || [null, this.replyTo.from];
-      this.to = fromMatch[1] || this.replyTo.from || '';
+      // Extract email from "Name <email>" format with robust handling
+      const rawFrom = (this.replyTo.from || '').trim();
+      if (rawFrom) {
+        const fromMatch = rawFrom.match(/<([^>]+)>/);
+        this.to = (fromMatch && fromMatch[1] ? fromMatch[1] : rawFrom).trim();
+      } else {
+        this.to = '';
+      }
       
       // Add Re: prefix if not already present
       const subj = this.replyTo.subject || '';
       this.subject = subj.startsWith('Re:') ? subj : `Re: ${subj}`;
       
       // Quote the original message
-      const date = new Date(this.replyTo.receivedAt).toLocaleString();
+      const date = this.formatDate(this.replyTo.receivedAt);
       const originalBody = this.replyTo.textBody || '';
       this.body = `\n\n---\nOn ${date}, ${this.replyTo.from} wrote:\n\n${originalBody}`;
     },
@@ -152,13 +165,24 @@ export default {
       this.subject = subj.startsWith('Fwd:') ? subj : `Fwd: ${subj}`;
       
       // Include forwarded message
-      const date = new Date(this.forwardFrom.receivedAt).toLocaleString();
+      const date = this.formatDate(this.forwardFrom.receivedAt);
       const originalBody = this.forwardFrom.textBody || '';
       this.body = `\n\n---------- Forwarded message ----------\nFrom: ${this.forwardFrom.from}\nDate: ${date}\nSubject: ${this.forwardFrom.subject || '(No Subject)'}\n\n${originalBody}`;
     },
     handleClose() {
       if (this.sending) return;
       this.$emit('close');
+    },
+    handleEscapeKey(event) {
+      if (event.key === 'Escape' && !this.sending) {
+        this.handleClose();
+      }
+    },
+    formatDate(timestamp) {
+      return new Date(timestamp).toLocaleString('en-US', { 
+        dateStyle: 'medium', 
+        timeStyle: 'short' 
+      });
     },
     async handleSend() {
       if (!this.to || this.sending) return;
