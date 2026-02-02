@@ -9,7 +9,7 @@
       <div class="search-container">
         <input
           v-model="searchInput"
-          placeholder="Search messages..."
+          :placeholder="searchPlaceholder"
           class="search-input"
           @input="handleInput"
         />
@@ -80,6 +80,10 @@ export default {
       type: String,
       default: null
     },
+    selectedTag: {
+      type: String,
+      default: null
+    },
     loading: {
       type: Boolean,
       default: false
@@ -104,6 +108,18 @@ export default {
       searchTimeout: null
     };
   },
+  computed: {
+    searchPlaceholder() {
+      if (this.selectedTag === 'archive') {
+        return 'Search in Archive...';
+      } else if (this.selectedTag === 'spam') {
+        return 'Search in Spam...';
+      } else if (this.selectedTag) {
+        return `Search in ${this.selectedTag}...`;
+      }
+      return 'Search all messages...';
+    }
+  },
   watch: {
     selectedId(newId) {
       // Scroll selected message into view when it changes
@@ -115,6 +131,10 @@ export default {
           }
         });
       }
+    },
+    selectedTag() {
+      // Clear search when switching tags for a fresh search context
+      this.searchInput = '';
     }
   },
   methods: {

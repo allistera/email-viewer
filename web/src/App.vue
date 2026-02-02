@@ -25,6 +25,7 @@
           <MessageList
             :messages="messages"
             :selected-id="selectedMessageId"
+            :selected-tag="selectedTag"
             :loading="loadingMessages"
             :loading-more="loadingMore"
             :has-more="hasMore"
@@ -270,6 +271,8 @@ export default {
         this.selectedTag = tag;
       }
       this.currentView = 'inbox';
+      // Clear search when switching tags for fresh context
+      this.searchQuery = '';
 
       // Switch to list view on mobile after selecting a tag
       if (this.isMobile) {
