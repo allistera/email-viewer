@@ -77,7 +77,7 @@
             type="button"
             @click="handleTodoistAction"
             :disabled="addingTodoist"
-            :class="{ active: todoistTaskUrl, loading: addingTodoist }"
+            :class="{ active: hasTodoistProject, loading: addingTodoist }"
             :title="todoistTitle"
             :aria-busy="addingTodoist"
           >
@@ -299,14 +299,30 @@ export default {
       if (!ts) return '';
       return formatRelativeDate(ts);
     },
+    todoistProjectName() {
+      return (this.message?.todoistProjectName || '').trim();
+    },
+    todoistProjectUrl() {
+      return (this.message?.todoistProjectUrl || '').trim();
+    },
+    todoistOpenUrl() {
+      return this.todoistTaskUrl || this.todoistProjectUrl;
+    },
+    hasTodoistProject() {
+      return Boolean(this.todoistProjectName);
+    },
     todoistLabel() {
       if (this.addingTodoist) return 'Adding...';
-      if (this.todoistTaskUrl) return 'Open Todoist';
+      if (this.todoistProjectName) return this.todoistProjectName;
       return 'Add to Todoist';
     },
     todoistTitle() {
       if (this.addingTodoist) return 'Adding to Todoist...';
-      if (this.todoistTaskUrl) return 'Open Todoist task';
+      if (this.todoistProjectName) {
+        return this.todoistOpenUrl
+          ? `Open ${this.todoistProjectName} in Todoist`
+          : `Added to ${this.todoistProjectName}`;
+      }
       return 'Add to Todoist';
     }
   },
@@ -327,8 +343,8 @@ export default {
     async handleTodoistAction() {
       if (!this.message || this.addingTodoist) return;
 
-      if (this.todoistTaskUrl) {
-        window.open(this.todoistTaskUrl, '_blank', 'noopener');
+      if (this.todoistOpenUrl) {
+        window.open(this.todoistOpenUrl, '_blank', 'noopener');
         return;
       }
 
@@ -336,13 +352,18 @@ export default {
       try {
         const response = await addTodoistTask(this.message.id);
         const task = response?.task || response;
+        const project = response?.project;
         if (task?.url) {
           this.todoistTaskUrl = task.url;
-          if (confirm('Added to Todoist. Open the task now?')) {
-            window.open(task.url, '_blank', 'noopener');
-          }
-        } else {
-          alert('Added to Todoist.');
+        }
+        if (project?.name) {
+          this.message.todoistProjectName = project.name;
+        }
+        if (project?.url) {
+          this.message.todoistProjectUrl = project.url;
+        }
+        if (response?.warning) {
+          console.warn(response.warning);
         }
       } catch (e) {
         alert('Failed to add to Todoist: ' + e.message);
