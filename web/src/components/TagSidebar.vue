@@ -9,6 +9,13 @@
       <h1>Inboxer</h1>
     </div>
 
+    <button class="compose-btn" @click="$emit('compose')">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+        <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <span>Compose</span>
+    </button>
+
     <div class="tag-header">
       <h2>Tags</h2>
       <button class="add-btn" @click="showAdd = !showAdd" aria-label="Add Tag">+</button>
@@ -134,7 +141,7 @@ export default {
       default: false
     }
   },
-  emits: ['select', 'settings', 'close'],
+  emits: ['select', 'settings', 'close', 'compose'],
   data() {
     return {
       tags: [],
@@ -356,6 +363,31 @@ export default {
   font-weight: 700;
   color: var(--color-primary, #db4c3f);
   flex: 1;
+}
+
+.compose-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 12px 16px;
+  padding: 10px 16px;
+  background: var(--color-primary, #db4c3f);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.compose-btn:hover {
+  background: var(--color-primary-dark, #c53727);
+}
+
+.compose-btn svg {
+  flex-shrink: 0;
 }
 
 .tag-header {

@@ -26,7 +26,7 @@
             <span class="toolbar-label">Back</span>
           </button>
 
-          <button class="toolbar-btn" type="button" :disabled="true" title="Reply (not implemented)">
+          <button class="toolbar-btn" type="button" @click="$emit('reply', message)" title="Reply">
             <svg viewBox="0 0 24 24" aria-hidden="true" class="toolbar-icon">
               <path
                 d="M10 9V5L3 12l7 7v-4c7 0 10 2 13 6-1-9-6-12-13-12Z"
@@ -59,7 +59,7 @@
             <span class="toolbar-label">Reply all</span>
           </button>
 
-          <button class="toolbar-btn" type="button" :disabled="true" title="Forward (not implemented)">
+          <button class="toolbar-btn" type="button" @click="$emit('forward', message)" title="Forward">
             <svg viewBox="0 0 24 24" aria-hidden="true" class="toolbar-icon">
               <path
                 d="M14 9V5l7 7-7 7v-4c-7 0-10 2-13 6 1-9 6-12 13-12Z"
@@ -259,7 +259,7 @@ export default {
       todoistTaskUrl: ''
     };
   },
-  emits: ['archived', 'back'],
+  emits: ['archived', 'back', 'reply', 'forward'],
   computed: {
     sanitizedHtml() {
       if (!this.message || !this.message.htmlBody) return '';
