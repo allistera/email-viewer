@@ -33,9 +33,19 @@ export function formatRelativeDate(timestamp) {
   const startOfWeek = new Date(startOfToday);
   startOfWeek.setDate(startOfWeek.getDate() - daysSinceMonday);
 
-  // Today: "x hours ago"
+  // Today: relative time
   if (date >= startOfToday && date < startOfTomorrow) {
-    const diffHours = Math.max(0, Math.floor((now.getTime() - date.getTime()) / 3600000));
+    const diffMs = now.getTime() - date.getTime();
+    const diffSeconds = Math.max(0, Math.floor(diffMs / 1000));
+    const diffMinutes = Math.floor(diffSeconds / 60);
+    const diffHours = Math.floor(diffMinutes / 60);
+
+    if (diffSeconds < 60) {
+      return diffSeconds <= 1 ? 'Just now' : `${diffSeconds} seconds ago`;
+    }
+    if (diffMinutes < 60) {
+      return diffMinutes === 1 ? '1 minute ago' : `${diffMinutes} minutes ago`;
+    }
     return diffHours === 1 ? '1 hour ago' : `${diffHours} hours ago`;
   }
 
