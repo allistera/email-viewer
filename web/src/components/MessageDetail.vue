@@ -90,6 +90,7 @@
           </button>
 
           <button
+            v-if="!isArchived"
             class="toolbar-btn done-btn"
             type="button"
             @click="handleArchive"
@@ -324,6 +325,9 @@ export default {
           : `Added to ${this.todoistProjectName}`;
       }
       return 'Add to Todoist';
+    },
+    isArchived() {
+      return this.message?.is_archived === 1 || this.message?.isArchived === true;
     }
   },
   watch: {
