@@ -6,6 +6,14 @@
       @submit="handleAuthSubmit"
     />
 
+    <ComposeModal
+      :show="showComposeModal"
+      :reply-to="replyToMessage"
+      :forward-from="forwardMessage"
+      @close="handleComposeClose"
+      @sent="handleEmailSent"
+    />
+
     <div v-if="!showAuthModal" class="app-layout">
       <div class="app-container" :class="mobileViewClass">
         <TagSidebar
@@ -16,6 +24,7 @@
           @select="handleTagSelect"
           @settings="openSettings"
           @close="closeMobileSidebar"
+          @compose="openCompose"
         />
 
         <template v-if="currentView === 'settings'">
@@ -44,6 +53,8 @@
             class="detail-panel"
             @archived="handleMessageArchived"
             @back="handleMobileBack"
+            @reply="handleReply"
+            @forward="handleForward"
           />
         </template>
       </div>
@@ -57,6 +68,7 @@ import TagSidebar from './components/TagSidebar.vue';
 import MessageList from './components/MessageList.vue';
 import MessageDetail from './components/MessageDetail.vue';
 import SettingsView from './components/SettingsView.vue';
+import ComposeModal from './components/ComposeModal.vue';
 import { hasToken, setToken, clearToken } from './services/auth.js';
 import { getMessages, getMessage } from './services/api.js';
 import { realtimeClient } from './services/realtime.js';
@@ -68,7 +80,8 @@ export default {
     TagSidebar,
     MessageList,
     MessageDetail,
-    SettingsView
+    SettingsView,
+    ComposeModal
   },
   data() {
     return {
@@ -90,7 +103,10 @@ export default {
       pendingDeepLinkId: null,
       mobileView: 'list', // 'sidebar', 'list', or 'detail'
       isMobile: false,
-      resizeTimeout: null
+      resizeTimeout: null,
+      showComposeModal: false,
+      replyToMessage: null,
+      forwardMessage: null
     };
   },
   computed: {
@@ -164,14 +180,16 @@ export default {
         if (this.selectedTag === 'archive') {
            params.archived = true;
         } else if (this.selectedTag === 'spam') {
-           params.tag = 'Spam'; // DB tag name is title case usually, but search likely case insensitive or exact. "Spam" is seeded.
+           params.tag = 'Spam';
         } else if (this.selectedTag) {
           params.tag = this.selectedTag;
           // Exclude archived by default unless viewing archive
           params.archived = false; 
         } else {
           // Inbox view (no specific tag selected)
+          // Exclude archived and spam emails
           params.archived = false;
+          params.excludeTag = 'Spam';
         }
         
         if (this.searchQuery) {
@@ -347,6 +365,38 @@ export default {
 
     closeSettings() {
       this.currentView = 'inbox';
+    },
+
+    openCompose() {
+      this.replyToMessage = null;
+      this.forwardMessage = null;
+      this.showComposeModal = true;
+      // Close mobile sidebar if open
+      if (this.isMobile) {
+        this.mobileView = 'list';
+      }
+    },
+
+    handleReply(message) {
+      this.replyToMessage = message;
+      this.forwardMessage = null;
+      this.showComposeModal = true;
+    },
+
+    handleForward(message) {
+      this.forwardMessage = message;
+      this.replyToMessage = null;
+      this.showComposeModal = true;
+    },
+
+    handleComposeClose() {
+      this.showComposeModal = false;
+      this.replyToMessage = null;
+      this.forwardMessage = null;
+    },
+
+    handleEmailSent() {
+      alert('Email sent successfully');
     },
 
     checkMobile() {

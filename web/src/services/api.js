@@ -210,3 +210,11 @@ export async function deleteTag(id) {
     method: 'DELETE'
   });
 }
+
+export async function sendEmail({ to, subject, body }) {
+  return request('/send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ to, subject, body })
+  });
+}
