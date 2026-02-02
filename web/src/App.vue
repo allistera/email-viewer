@@ -14,6 +14,8 @@
       @sent="handleEmailSent"
     />
 
+    <ToastNotification ref="toast" />
+
     <div v-if="!showAuthModal" class="app-layout">
       <div class="app-container" :class="mobileViewClass">
         <TagSidebar
@@ -69,6 +71,7 @@ import MessageList from './components/MessageList.vue';
 import MessageDetail from './components/MessageDetail.vue';
 import SettingsView from './components/SettingsView.vue';
 import ComposeModal from './components/ComposeModal.vue';
+import ToastNotification from './components/ToastNotification.vue';
 import { hasToken, setToken, clearToken } from './services/auth.js';
 import { getMessages, getMessage } from './services/api.js';
 import { realtimeClient } from './services/realtime.js';
@@ -81,7 +84,8 @@ export default {
     MessageList,
     MessageDetail,
     SettingsView,
-    ComposeModal
+    ComposeModal,
+    ToastNotification
   },
   data() {
     return {
@@ -396,7 +400,7 @@ export default {
     },
 
     handleEmailSent() {
-      alert('Email sent successfully');
+      this.$refs.toast?.success('Email sent successfully');
     },
 
     checkMobile() {
