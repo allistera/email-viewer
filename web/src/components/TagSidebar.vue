@@ -1,11 +1,15 @@
 <template>
   <aside class="tag-sidebar">
-    <div class="tag-header">
-      <button class="close-sidebar-btn" @click="$emit('close')" title="Close menu" aria-label="Close menu">
+    <div class="app-title" @click="$emit('select', null)" title="Go to Inbox">
+      <button class="close-sidebar-btn" @click.stop="$emit('close')" title="Close menu" aria-label="Close menu">
         <svg viewBox="0 0 24 24" class="close-icon" aria-hidden="true">
           <path d="M18 6L6 18M6 6l12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
         </svg>
       </button>
+      <h1>Inboxer</h1>
+    </div>
+
+    <div class="tag-header">
       <h2>Tags</h2>
       <button class="add-btn" @click="showAdd = !showAdd" aria-label="Add Tag">+</button>
     </div>
@@ -338,8 +342,24 @@ export default {
   height: 100%;
 }
 
-.tag-header {
+.app-title {
   padding: 16px;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+.app-title h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-primary, #db4c3f);
+  flex: 1;
+}
+
+.tag-header {
+  padding: 12px 16px 8px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -347,9 +367,11 @@ export default {
 
 .tag-header h2 {
   margin: 0;
-  font-size: 16px;
+  font-size: 12px;
   font-weight: 600;
-  color: #333;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .add-btn {
@@ -524,12 +546,8 @@ export default {
     justify-content: center;
   }
 
-  .tag-header {
+  .app-title {
     padding: 12px 16px;
-  }
-
-  .tag-header h2 {
-    flex: 1;
   }
 }
 </style>
