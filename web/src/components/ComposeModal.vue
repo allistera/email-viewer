@@ -41,7 +41,7 @@
                 :key="suggestion.email"
                 :class="{ selected: index === selectedSuggestionIndex }"
                 role="option"
-                :aria-selected="index === selectedSuggestionIndex"
+                :aria-selected="index === selectedSuggestionIndex ? 'true' : 'false'"
                 @mousedown.prevent="selectSuggestion(suggestion)"
                 @mouseenter="selectedSuggestionIndex = index"
               >
