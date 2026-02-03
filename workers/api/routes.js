@@ -295,8 +295,8 @@ export const ApiRouter = {
         const query = url.searchParams.get('q') || '';
         const limit = parseInt(url.searchParams.get('limit')) || 10;
 
-        // Get unique email addresses from both from_addr and to_addr
-        // Prioritize addresses the user has sent to (from to_addr where from_addr is the user's sending address)
+        // Get unique email addresses from both from_addr and to_addr, ordered by most recent use
+        // Note: this query does not filter by a specific user address; it relies solely on the search pattern and timestamps
         const sql = `
           SELECT DISTINCT email, MAX(last_used) as last_used FROM (
             SELECT from_addr as email, MAX(received_at) as last_used FROM messages
