@@ -275,19 +275,14 @@ test.describe('Compose Modal - Email Autocomplete', () => {
         // Click on the second suggestion
         await dropdown.locator('li').nth(1).click();
 
-        // Verify a pill is created for the selected email
-        const pills = page.locator('.to-pill');
-        await expect(pills).toHaveCount(1);
-        await expect(pills.first()).toContainText('diana.prince@example.com');
-
-        // Input should be cleared for the next recipient
-        await expect(toInput).toHaveValue('');
+        // Verify the To field is filled with selected email
+        await expect(toInput).toHaveValue('diana.prince@example.com');
 
         // Verify dropdown is hidden
         await expect(dropdown).toBeHidden();
 
-        // Keep focus in the To field for additional recipients
-        await expect(toInput).toBeFocused();
+        // Verify focus moved to subject field
+        await expect(page.locator('#compose-subject')).toBeFocused();
     });
 
     test('should not show dropdown when query is empty', async ({ page }) => {
