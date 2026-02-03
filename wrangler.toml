@@ -78,6 +78,10 @@ head_sampling_rate = 1
 enabled = true
 invocation_logs = true
 
+[observability.traces]
+enabled = true
+
+
 # Development
 [env.dev]
 name = "mail-app-worker-dev"
