@@ -1,4 +1,4 @@
-import { DB } from './db.js';
+import { DB } from '../shared/db.js';
 
 const MISSING_TABLE_PATTERN = /no such table/i;
 
@@ -327,7 +327,7 @@ export const ApiRouter = {
                 'Content-Type': 'application/json'
               },
               body: JSON.stringify({
-                from: env.SEND_FROM_EMAIL || 'noreply@example.com',
+                from: env.SEND_FROM_EMAIL || 'hello@infinitywave.design',
                 to: [to],
                 subject: subject || '(No Subject)',
                 text: emailBody || ''

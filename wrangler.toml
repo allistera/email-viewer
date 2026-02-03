@@ -1,5 +1,5 @@
 name = "mail-app-worker"
-main = "src/worker.js"
+main = "workers/api/index.js"
 compatibility_date = "2024-10-22"
 compatibility_flags = ["nodejs_compat"]
 
@@ -32,7 +32,7 @@ service = "mail-app-todoist"
 # Assuming only email worker uses it for classification. 
 # But let's keep it clean.)
 [vars]
-# OPENAI_MODEL = "gpt-4o-mini" # Removed as API doesn't use it
+SEND_FROM_EMAIL = "hello@infinitywave.design"
 TAG_LABELS = "Marketing, Recruitment, Personal, Finance, Support, Other"
 
 # Routes
@@ -54,6 +54,7 @@ service = "mail-app-todoist"
 
 [env.production.vars]
 OPENAI_MODEL = "gpt-4o-mini"
+SEND_FROM_EMAIL = "hello@infinitywave.design"
 SENTRY_DSN = "https://d29d6d205377084a3fa87aa4ba4d091b@o4510748410576896.ingest.de.sentry.io/4510748412346448"
 
 [[env.production.d1_databases]]

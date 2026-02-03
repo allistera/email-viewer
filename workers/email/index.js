@@ -1,8 +1,8 @@
 import * as Sentry from "@sentry/cloudflare";
-import { MimeParser } from './mime.js';
-import { DB } from './db.js';
-import { R2 } from './r2.js';
-import { MessageClassifier } from './openai.js';
+import { MimeParser } from '../shared/mime.js';
+import { DB } from '../shared/db.js';
+import { R2 } from '../shared/r2.js';
+import { MessageClassifier } from '../shared/openai.js';
 
 /**
  * Async Background Processor

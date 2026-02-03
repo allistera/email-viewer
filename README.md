@@ -30,21 +30,29 @@ A self-hosted, single-user email inbox built on Cloudflare Workers. It uses **Em
 
 ```bash
 /
-  src/
-    worker.js         # Main API + assets worker
-    worker-email.js   # Email ingest worker
-    worker-todoist.js # Todoist task creation worker
-    api.js            # REST API endpoints
-    stream.js         # SSE/WebSocket proxy
-    auth.js           # Auth middleware
-    db.js             # D1 database helpers
-    mime.js           # MIME parsing logic
-    openai.js         # Tag classifier client
-    r2.js             # R2 storage helpers
-    realtimeHub.js    # Durable Object class
-  web/                # Frontend assets (index.html, app.js, style.css)
+  workers/
+    api/
+      index.js        # Main API + assets worker entry point
+      routes.js       # REST API endpoints
+      stream.js       # SSE/WebSocket proxy
+    email/
+      index.js        # Email ingest worker
+    todoist/
+      index.js        # Todoist task creation worker
+    shared/
+      auth.js         # Auth middleware
+      cors.js         # CORS handling
+      db.js           # D1 database helpers
+      mime.js         # MIME parsing logic
+      openai.js       # Tag classifier & Todoist project selector
+      r2.js           # R2 storage helpers
+      realtimeHub.js  # Durable Object class
+      todoist.js      # Todoist API client
+  web/                # Frontend Vue.js application
   migrations/         # D1 SQL schemas
-  wrangler.toml       # Worker configuration
+  wrangler.toml       # API worker configuration
+  wrangler-email.toml # Email worker configuration
+  wrangler-todoist.toml # Todoist worker configuration
 ```
 
 ## Setup & Deployment
@@ -133,7 +141,7 @@ Open **Settings** to store your Todoist API token (optional).
 - **Download Attachment**: `GET /api/messages/:id/attachments/:attId`
 - **Send Email**: `POST /api/send`
 - **Add to Todoist**: `POST /api/messages/:id/todoist`
-
+git
 ## Development
 
 Run locally using Wrangler:

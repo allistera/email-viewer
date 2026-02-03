@@ -1,8 +1,8 @@
-import { authenticate } from './auth.js';
-import { ApiRouter } from './api.js';
+import { authenticate } from '../shared/auth.js';
+import { ApiRouter } from './routes.js';
 import { StreamRouter } from './stream.js';
-import { handleOptions, withCors } from './cors.js';
-export { RealtimeHub } from './realtimeHub.js';
+import { handleOptions, withCors } from '../shared/cors.js';
+export { RealtimeHub } from '../shared/realtimeHub.js';
 
 import * as Sentry from "@sentry/cloudflare";
 

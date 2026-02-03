@@ -1,7 +1,7 @@
 import * as Sentry from "@sentry/cloudflare";
-import { DB } from './db.js';
-import { TodoistProjectSelector } from './openai.js';
-import { buildTodoistTaskPayload, createTodoistTask, fetchTodoistProjects, findInboxProject } from './todoist.js';
+import { DB } from '../shared/db.js';
+import { TodoistProjectSelector } from '../shared/openai.js';
+import { buildTodoistTaskPayload, createTodoistTask, fetchTodoistProjects, findInboxProject } from '../shared/todoist.js';
 
 const MISSING_TABLE_PATTERN = /no such table/i;
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;

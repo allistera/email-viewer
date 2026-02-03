@@ -1,5 +1,5 @@
 name = "mail-app-todoist"
-main = "src/worker-todoist.js"
+main = "workers/todoist/index.js"
 compatibility_date = "2024-10-22"
 compatibility_flags = ["nodejs_compat"]
 
