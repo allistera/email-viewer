@@ -10,20 +10,36 @@
         <div class="form-field to-field">
           <label for="compose-to">To</label>
           <div class="to-input-wrapper">
-            <input
-              id="compose-to"
-              ref="toInput"
-              v-model="to"
-              type="email"
-              placeholder="recipient@example.com"
-              required
-              :disabled="sending"
-              autocomplete="off"
-              @input="handleToInput"
-              @keydown="handleToKeydown"
-              @focus="handleToFocus"
-              @blur="handleToBlur"
-            />
+            <div class="to-input-container" @click="focusToInput">
+              <span
+                v-for="(recipient, index) in recipients"
+                :key="`${recipient}-${index}`"
+                class="to-pill"
+              >
+                <span class="to-pill-text">{{ recipient }}</span>
+                <button
+                  type="button"
+                  class="to-pill-remove"
+                  :disabled="sending"
+                  @click.stop="removeRecipient(index)"
+                >
+                  &times;
+                </button>
+              </span>
+              <input
+                id="compose-to"
+                ref="toInput"
+                v-model="toInput"
+                type="text"
+                placeholder="recipient@example.com"
+                :disabled="sending"
+                autocomplete="off"
+                @input="handleToInput"
+                @keydown="handleToKeydown"
+                @focus="handleToFocus"
+                @blur="handleToBlur"
+              />
+            </div>
             <ul v-if="showSuggestions && suggestions.length > 0" class="suggestions-dropdown">
               <li
                 v-for="(suggestion, index) in suggestions"
@@ -69,7 +85,7 @@
           <button type="button" class="btn-secondary" @click="handleClose" :disabled="sending">
             Cancel
           </button>
-          <button type="submit" class="btn-primary" :disabled="sending || !to">
+          <button type="submit" class="btn-primary" :disabled="sending || !hasRecipients">
             {{ sending ? 'Sending...' : 'Send' }}
           </button>
         </div>
@@ -98,9 +114,15 @@ export default {
     }
   },
   emits: ['close', 'sent'],
+  computed: {
+    hasRecipients() {
+      return this.recipients.length > 0 || this.toInput.trim().length > 0;
+    }
+  },
   data() {
     return {
-      to: '',
+      recipients: [],
+      toInput: '',
       subject: '',
       body: '',
       sending: false,
@@ -149,7 +171,8 @@ export default {
   },
   methods: {
     resetForm() {
-      this.to = '';
+      this.recipients = [];
+      this.toInput = '';
       this.subject = '';
       this.body = '';
       this.error = null;
@@ -179,18 +202,19 @@ export default {
       }
     },
     handleToInput() {
+      this.updateRecipientsFromInput(this.toInput);
       if (this.debounceTimer) {
         clearTimeout(this.debounceTimer);
       }
       this.debounceTimer = setTimeout(() => {
-        this.fetchSuggestions(this.to);
+        this.fetchSuggestions(this.toInput.trim());
       }, 150);
     },
     handleToFocus() {
-      if (this.to && this.suggestions.length > 0) {
+      if (this.toInput && this.suggestions.length > 0) {
         this.showSuggestions = true;
-      } else if (this.to) {
-        this.fetchSuggestions(this.to);
+      } else if (this.toInput) {
+        this.fetchSuggestions(this.toInput.trim());
       }
     },
     handleToBlur() {
@@ -204,33 +228,91 @@ export default {
       }, 200);
     },
     handleToKeydown(event) {
-      if (!this.showSuggestions || this.suggestions.length === 0) {
+      if (this.showSuggestions && this.suggestions.length > 0) {
+        if (event.key === 'ArrowDown') {
+          event.preventDefault();
+          this.selectedSuggestionIndex = Math.min(
+            this.selectedSuggestionIndex + 1,
+            this.suggestions.length - 1
+          );
+          return;
+        }
+        if (event.key === 'ArrowUp') {
+          event.preventDefault();
+          this.selectedSuggestionIndex = Math.max(this.selectedSuggestionIndex - 1, -1);
+          return;
+        }
+        if (event.key === 'Enter' && this.selectedSuggestionIndex >= 0) {
+          event.preventDefault();
+          this.selectSuggestion(this.suggestions[this.selectedSuggestionIndex]);
+          return;
+        }
+        if (event.key === 'Escape') {
+          this.showSuggestions = false;
+          this.selectedSuggestionIndex = -1;
+          return;
+        }
+      }
+
+      if (event.key === 'Enter' && this.toInput.trim()) {
+        event.preventDefault();
+        this.addRecipient(this.toInput.trim());
+        this.toInput = '';
+        this.showSuggestions = false;
+        this.selectedSuggestionIndex = -1;
         return;
       }
-      if (event.key === 'ArrowDown') {
-        event.preventDefault();
-        this.selectedSuggestionIndex = Math.min(
-          this.selectedSuggestionIndex + 1,
-          this.suggestions.length - 1
-        );
-      } else if (event.key === 'ArrowUp') {
-        event.preventDefault();
-        this.selectedSuggestionIndex = Math.max(this.selectedSuggestionIndex - 1, -1);
-      } else if (event.key === 'Enter' && this.selectedSuggestionIndex >= 0) {
-        event.preventDefault();
-        this.selectSuggestion(this.suggestions[this.selectedSuggestionIndex]);
-      } else if (event.key === 'Escape') {
+
+      if (event.key === 'Backspace' && !this.toInput && this.recipients.length > 0) {
+        this.removeRecipient(this.recipients.length - 1);
+      }
+    },
+    selectSuggestion(suggestion) {
+      this.addRecipient(suggestion.email);
+      this.toInput = '';
+      this.showSuggestions = false;
+      this.selectedSuggestionIndex = -1;
+    },
+    focusToInput() {
+      this.$refs.toInput?.focus();
+    },
+    updateRecipientsFromInput(value) {
+      const parts = value.split(',');
+      if (parts.length === 1) {
+        return;
+      }
+      const lastPart = parts.pop();
+      const newRecipients = parts.map(part => part.trim()).filter(Boolean);
+      newRecipients.forEach(email => this.addRecipient(email));
+      this.toInput = (lastPart || '').replace(/^\s+/, '');
+      if (newRecipients.length > 0) {
         this.showSuggestions = false;
         this.selectedSuggestionIndex = -1;
       }
     },
-    selectSuggestion(suggestion) {
-      this.to = suggestion.email;
-      this.showSuggestions = false;
-      this.selectedSuggestionIndex = -1;
-      this.$nextTick(() => {
-        this.$refs.subjectInput?.focus();
-      });
+    addRecipient(email) {
+      const trimmed = String(email || '').trim();
+      if (!trimmed) return;
+      const normalized = trimmed.toLowerCase();
+      if (this.recipients.some(existing => existing.toLowerCase() === normalized)) {
+        return;
+      }
+      this.recipients.push(trimmed);
+    },
+    removeRecipient(index) {
+      if (index < 0 || index >= this.recipients.length) return;
+      this.recipients.splice(index, 1);
+    },
+    finalizeRecipients() {
+      const pending = this.toInput.trim();
+      if (pending) {
+        this.addRecipient(pending);
+        this.toInput = '';
+      }
+    },
+    isValidEmail(email) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      return emailRegex.test(email);
     },
     prefillReply() {
       if (!this.replyTo) return;
@@ -239,10 +321,12 @@ export default {
       const rawFrom = (this.replyTo.from || '').trim();
       if (rawFrom) {
         const fromMatch = rawFrom.match(/<([^>]+)>/);
-        this.to = (fromMatch && fromMatch[1] ? fromMatch[1] : rawFrom).trim();
+        const email = (fromMatch && fromMatch[1] ? fromMatch[1] : rawFrom).trim();
+        this.recipients = email ? [email] : [];
       } else {
-        this.to = '';
+        this.recipients = [];
       }
+      this.toInput = '';
       
       // Add Re: prefix if not already present
       const subj = this.replyTo.subject || '';
@@ -257,7 +341,8 @@ export default {
       if (!this.forwardFrom) return;
       
       // Leave To empty for user to fill
-      this.to = '';
+      this.recipients = [];
+      this.toInput = '';
       
       // Add Fwd: prefix if not already present
       const subj = this.forwardFrom.subject || '';
@@ -284,14 +369,25 @@ export default {
       });
     },
     async handleSend() {
-      if (!this.to || this.sending) return;
+      if (this.sending) return;
+      this.error = null;
+      this.finalizeRecipients();
+      if (this.recipients.length === 0) {
+        this.error = 'Recipient (to) is required';
+        return;
+      }
+      const invalidRecipients = this.recipients.filter(email => !this.isValidEmail(email));
+      if (invalidRecipients.length > 0) {
+        const label = invalidRecipients.length === 1 ? 'Invalid email address' : 'Invalid email addresses';
+        this.error = `${label}: ${invalidRecipients.join(', ')}`;
+        return;
+      }
 
       this.sending = true;
-      this.error = null;
 
       try {
         await sendEmail({
-          to: this.to,
+          to: this.recipients,
           subject: this.subject,
           body: this.body
         });
@@ -413,6 +509,65 @@ export default {
 .form-field textarea:focus {
   outline: none;
   border-color: var(--color-primary, #db4c3f);
+}
+
+.to-input-container {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 6px 8px;
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: 4px;
+  background: var(--color-bg, #fff);
+  margin-bottom: 12px;
+}
+
+.to-input-container:focus-within {
+  border-color: var(--color-primary, #db4c3f);
+}
+
+.to-input-container input {
+  border: none;
+  padding: 6px 4px;
+  margin: 0;
+  flex: 1;
+  min-width: 140px;
+  font-size: 14px;
+  background: transparent;
+}
+
+.to-input-container input:focus {
+  outline: none;
+  border: none;
+}
+
+.to-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: var(--color-bg-secondary, #f5f5f5);
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: 16px;
+  font-size: 12px;
+  color: var(--color-text, #202020);
+}
+
+.to-pill-remove {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary, #808080);
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  font-size: 14px;
+}
+
+.to-pill-remove:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .form-field input:disabled,

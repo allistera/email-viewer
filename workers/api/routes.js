@@ -336,14 +336,37 @@ export const ApiRouter = {
 
         const { to, subject, body: emailBody } = body;
 
-        if (!to) {
+        const rawRecipients = Array.isArray(to)
+          ? to
+          : typeof to === 'string'
+            ? to.split(',')
+            : [];
+
+        if (!rawRecipients || rawRecipients.length === 0) {
+          return jsonResponse({ error: 'Recipient (to) is required' }, { status: 400 });
+        }
+
+        const recipients = [];
+        const seenRecipients = new Set();
+        for (const email of rawRecipients) {
+          const normalized = String(email || '').trim();
+          if (!normalized) continue;
+          const key = normalized.toLowerCase();
+          if (seenRecipients.has(key)) continue;
+          seenRecipients.add(key);
+          recipients.push(normalized);
+        }
+
+        if (recipients.length === 0) {
           return jsonResponse({ error: 'Recipient (to) is required' }, { status: 400 });
         }
 
         // Validate email format
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(to)) {
-          return jsonResponse({ error: 'Invalid email address format' }, { status: 400 });
+        const invalidRecipients = recipients.filter(email => !emailRegex.test(email));
+        if (invalidRecipients.length > 0) {
+          const label = invalidRecipients.length === 1 ? 'Invalid email address' : 'Invalid email addresses';
+          return jsonResponse({ error: `${label}: ${invalidRecipients.join(', ')}` }, { status: 400 });
         }
 
         // Check if email sending is configured
@@ -359,6 +382,7 @@ export const ApiRouter = {
             const fromEmail = env.SEND_FROM_EMAIL || 'hello@infinitywave.design';
             const emailSubject = subject || '(No Subject)';
             const emailText = emailBody || '';
+            const toHeader = recipients.join(', ');
 
             const response = await fetch('https://api.resend.com/emails', {
               method: 'POST',
@@ -368,7 +392,7 @@ export const ApiRouter = {
               },
               body: JSON.stringify({
                 from: fromEmail,
-                to: [to],
+                to: recipients,
                 subject: emailSubject,
                 text: emailText
               })
@@ -390,7 +414,7 @@ export const ApiRouter = {
               id: messageId,
               received_at: now,
               from_addr: fromEmail,
-              to_addr: to,
+              to_addr: toHeader,
               subject: emailSubject,
               date_header: new Date(now).toISOString(),
               snippet: snippet,
@@ -401,7 +425,7 @@ export const ApiRouter = {
               headers_json: JSON.stringify({
                 'Message-ID': result.id,
                 'From': fromEmail,
-                'To': to,
+                'To': toHeader,
                 'Subject': emailSubject,
                 'Date': new Date(now).toISOString()
               })
