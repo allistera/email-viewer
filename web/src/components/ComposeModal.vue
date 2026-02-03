@@ -19,16 +19,29 @@
               required
               :disabled="sending"
               autocomplete="off"
+              role="combobox"
+              :aria-expanded="showSuggestions && suggestions.length > 0"
+              :aria-activedescendant="selectedSuggestionIndex >= 0 ? `suggestion-${selectedSuggestionIndex}` : undefined"
+              aria-autocomplete="list"
+              aria-controls="suggestions-list"
               @input="handleToInput"
               @keydown="handleToKeydown"
               @focus="handleToFocus"
               @blur="handleToBlur"
             />
-            <ul v-if="showSuggestions && suggestions.length > 0" class="suggestions-dropdown">
+            <ul 
+              v-if="showSuggestions && suggestions.length > 0" 
+              id="suggestions-list"
+              class="suggestions-dropdown"
+              role="listbox"
+            >
               <li
                 v-for="(suggestion, index) in suggestions"
+                :id="`suggestion-${index}`"
                 :key="suggestion.email"
                 :class="{ selected: index === selectedSuggestionIndex }"
+                role="option"
+                :aria-selected="index === selectedSuggestionIndex"
                 @mousedown.prevent="selectSuggestion(suggestion)"
                 @mouseenter="selectedSuggestionIndex = index"
               >
