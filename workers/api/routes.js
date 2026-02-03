@@ -289,6 +289,42 @@ export const ApiRouter = {
         return jsonResponse({ ok: true });
       }
 
+      // GET /api/contacts
+      // Returns unique email addresses from sent and received messages for autocomplete
+      if (path === 'contacts' && request.method === 'GET') {
+        const query = url.searchParams.get('q') || '';
+        const limit = parseInt(url.searchParams.get('limit')) || 10;
+
+        // Get unique email addresses from both from_addr and to_addr, ordered by most recent use
+        // Note: this query does not filter by a specific user address; it relies solely on the search pattern and timestamps
+        const sql = `
+          SELECT DISTINCT email, MAX(last_used) as last_used FROM (
+            SELECT from_addr as email, MAX(received_at) as last_used FROM messages
+            WHERE from_addr LIKE ?
+            GROUP BY from_addr
+            UNION
+            SELECT to_addr as email, MAX(received_at) as last_used FROM messages
+            WHERE to_addr LIKE ?
+            GROUP BY to_addr
+          )
+          GROUP BY email
+          ORDER BY last_used DESC
+          LIMIT ?
+        `;
+
+        const searchPattern = `%${query}%`;
+        const result = await env.DB.prepare(sql)
+          .bind(searchPattern, searchPattern, limit)
+          .all();
+
+        const contacts = (result.results || []).map(row => ({
+          email: row.email,
+          lastUsed: row.last_used
+        }));
+
+        return jsonResponse({ contacts });
+      }
+
       // POST /api/send
       if (path === 'send' && request.method === 'POST') {
         let body;

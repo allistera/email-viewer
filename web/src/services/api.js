@@ -218,3 +218,15 @@ export async function sendEmail({ to, subject, body }) {
     body: JSON.stringify({ to, subject, body })
   });
 }
+
+export async function getContactSuggestions(query = '', limit = 10) {
+  const params = new URLSearchParams();
+  if (query) params.set('q', query);
+  if (limit) params.set('limit', limit);
+
+  const queryString = params.toString();
+  const path = queryString ? `/contacts?${queryString}` : '/contacts';
+
+  const response = await request(path);
+  return response.contacts || [];
+}
