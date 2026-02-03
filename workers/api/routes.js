@@ -293,7 +293,14 @@ export const ApiRouter = {
       // Returns unique email addresses from sent and received messages for autocomplete
       if (path === 'contacts' && request.method === 'GET') {
         const query = url.searchParams.get('q') || '';
-        const limit = parseInt(url.searchParams.get('limit')) || 10;
+        
+        // Validate and clamp limit to safe range (1-50) to prevent abuse
+        let limit = parseInt(url.searchParams.get('limit'), 10);
+        if (isNaN(limit) || limit < 1) {
+          limit = 10; // default
+        } else if (limit > 50) {
+          limit = 50; // max
+        }
 
         // Get unique email addresses from both from_addr and to_addr, ordered by most recent use
         // Note: this query does not filter by a specific user address; it relies solely on the search pattern and timestamps
