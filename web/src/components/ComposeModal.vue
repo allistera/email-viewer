@@ -7,17 +7,35 @@
       </div>
 
       <form @submit.prevent="handleSend" class="compose-form">
-        <div class="form-field">
+        <div class="form-field to-field">
           <label for="compose-to">To</label>
-          <input
-            id="compose-to"
-            ref="toInput"
-            v-model="to"
-            type="email"
-            placeholder="recipient@example.com"
-            required
-            :disabled="sending"
-          />
+          <div class="autocomplete-wrapper">
+            <input
+              id="compose-to"
+              ref="toInput"
+              v-model="to"
+              type="email"
+              placeholder="recipient@example.com"
+              required
+              :disabled="sending"
+              @input="handleToInput"
+              @keydown="handleToKeydown"
+              @blur="handleToBlur"
+              @focus="handleToFocus"
+              autocomplete="off"
+            />
+            <ul v-if="showSuggestions && suggestions.length > 0" class="suggestions-dropdown">
+              <li
+                v-for="(contact, index) in suggestions"
+                :key="contact.email"
+                :class="{ active: index === selectedSuggestionIndex }"
+                @mousedown.prevent="selectSuggestion(contact)"
+                @mouseover="selectedSuggestionIndex = index"
+              >
+                {{ contact.email }}
+              </li>
+            </ul>
+          </div>
         </div>
 
         <div class="form-field">
@@ -61,7 +79,7 @@
 </template>
 
 <script>
-import { sendEmail } from '../services/api.js';
+import { sendEmail, searchContacts } from '../services/api.js';
 
 export default {
   name: 'ComposeModal',
@@ -86,7 +104,11 @@ export default {
       subject: '',
       body: '',
       sending: false,
-      error: null
+      error: null,
+      suggestions: [],
+      showSuggestions: false,
+      selectedSuggestionIndex: -1,
+      searchTimeout: null
     };
   },
   watch: {
@@ -132,6 +154,9 @@ export default {
       this.body = '';
       this.error = null;
       this.sending = false;
+      this.suggestions = [];
+      this.showSuggestions = false;
+      this.selectedSuggestionIndex = -1;
     },
     prefillReply() {
       if (!this.replyTo) return;
@@ -203,6 +228,85 @@ export default {
       } finally {
         this.sending = false;
       }
+    },
+
+    handleToInput() {
+      // Debounce the search
+      if (this.searchTimeout) {
+        clearTimeout(this.searchTimeout);
+      }
+
+      const query = this.to.trim();
+      if (query.length < 1) {
+        this.suggestions = [];
+        this.showSuggestions = false;
+        return;
+      }
+
+      this.searchTimeout = setTimeout(async () => {
+        try {
+          const results = await searchContacts(query, 8);
+          this.suggestions = results;
+          this.showSuggestions = results.length > 0;
+          this.selectedSuggestionIndex = -1;
+        } catch (e) {
+          console.error('Failed to search contacts:', e);
+          this.suggestions = [];
+        }
+      }, 150);
+    },
+
+    handleToKeydown(event) {
+      if (!this.showSuggestions || this.suggestions.length === 0) return;
+
+      switch (event.key) {
+        case 'ArrowDown':
+          event.preventDefault();
+          this.selectedSuggestionIndex = Math.min(
+            this.selectedSuggestionIndex + 1,
+            this.suggestions.length - 1
+          );
+          break;
+        case 'ArrowUp':
+          event.preventDefault();
+          this.selectedSuggestionIndex = Math.max(this.selectedSuggestionIndex - 1, -1);
+          break;
+        case 'Enter':
+          if (this.selectedSuggestionIndex >= 0) {
+            event.preventDefault();
+            this.selectSuggestion(this.suggestions[this.selectedSuggestionIndex]);
+          }
+          break;
+        case 'Escape':
+          this.showSuggestions = false;
+          this.selectedSuggestionIndex = -1;
+          break;
+      }
+    },
+
+    handleToBlur() {
+      // Delay hiding to allow click on suggestion
+      setTimeout(() => {
+        this.showSuggestions = false;
+        this.selectedSuggestionIndex = -1;
+      }, 150);
+    },
+
+    handleToFocus() {
+      if (this.suggestions.length > 0 && this.to.trim().length > 0) {
+        this.showSuggestions = true;
+      }
+    },
+
+    selectSuggestion(contact) {
+      this.to = contact.email;
+      this.showSuggestions = false;
+      this.suggestions = [];
+      this.selectedSuggestionIndex = -1;
+      // Move focus to subject field
+      this.$nextTick(() => {
+        this.$refs.subjectInput?.focus();
+      });
     }
   }
 };
@@ -320,6 +424,53 @@ export default {
 .form-field textarea:disabled {
   background: var(--color-bg-secondary, #f9f9f9);
   cursor: not-allowed;
+}
+
+.to-field {
+  position: relative;
+}
+
+.autocomplete-wrapper {
+  position: relative;
+}
+
+.suggestions-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--color-bg, #fff);
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 100;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.suggestions-dropdown li {
+  padding: 10px 12px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--color-text, #202020);
+  border-bottom: 1px solid var(--color-border-light, #f0f0f0);
+}
+
+.suggestions-dropdown li:last-child {
+  border-bottom: none;
+}
+
+.suggestions-dropdown li:hover,
+.suggestions-dropdown li.active {
+  background: var(--color-bg-secondary, #f5f5f5);
+}
+
+.suggestions-dropdown li.active {
+  background: var(--color-primary-light, #fef2f2);
 }
 
 .body-field {

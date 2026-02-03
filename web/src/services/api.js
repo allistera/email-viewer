@@ -218,3 +218,14 @@ export async function sendEmail({ to, subject, body }) {
     body: JSON.stringify({ to, subject, body })
   });
 }
+
+export async function searchContacts(query = '', limit = 10) {
+  const queryParams = new URLSearchParams();
+  if (query) queryParams.set('q', query);
+  if (limit) queryParams.set('limit', limit);
+
+  const queryString = queryParams.toString();
+  const path = queryString ? `/contacts?${queryString}` : '/contacts';
+
+  return request(path);
+}

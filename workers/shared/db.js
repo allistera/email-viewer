@@ -419,5 +419,37 @@ export const DB = {
       throw new Error(`Cannot delete system tag: ${tag.name}`);
     }
     await db.prepare('DELETE FROM tags WHERE id = ?').bind(id).run();
+  },
+
+  /**
+   * Search contacts from previous emails
+   * @param {D1Database} db
+   * @param {string} query - Search query to match against email addresses
+   * @param {number} limit - Maximum number of results
+   */
+  async searchContacts(db, query = '', limit = 10) {
+    const searchPattern = `%${query}%`;
+
+    // Get unique email addresses from both from_addr and to_addr
+    // Prioritize by frequency (most contacted first)
+    const { results } = await db.prepare(`
+      SELECT email, MAX(last_used) as last_used, SUM(count) as total_count
+      FROM (
+        SELECT from_addr as email, MAX(received_at) as last_used, COUNT(*) as count
+        FROM messages
+        WHERE from_addr LIKE ? AND from_addr != ''
+        GROUP BY from_addr
+        UNION ALL
+        SELECT to_addr as email, MAX(received_at) as last_used, COUNT(*) as count
+        FROM messages
+        WHERE to_addr LIKE ? AND to_addr != ''
+        GROUP BY to_addr
+      )
+      GROUP BY email
+      ORDER BY total_count DESC, last_used DESC
+      LIMIT ?
+    `).bind(searchPattern, searchPattern, limit).all();
+
+    return results || [];
   }
-};
+}

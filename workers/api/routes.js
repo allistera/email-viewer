@@ -289,6 +289,14 @@ export const ApiRouter = {
         return jsonResponse({ ok: true });
       }
 
+      // GET /api/contacts
+      if (path === 'contacts' && request.method === 'GET') {
+        const query = url.searchParams.get('q') || '';
+        const limit = Math.min(parseInt(url.searchParams.get('limit')) || 10, 50);
+        const contacts = await DB.searchContacts(env.DB, query, limit);
+        return jsonResponse(contacts);
+      }
+
       // POST /api/send
       if (path === 'send' && request.method === 'POST') {
         let body;
