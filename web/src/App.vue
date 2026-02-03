@@ -185,13 +185,15 @@ export default {
            params.archived = true;
         } else if (this.selectedTag === 'spam') {
            params.tag = 'Spam';
+        } else if (this.selectedTag === 'sent') {
+           params.tag = 'Sent';
         } else if (this.selectedTag) {
           params.tag = this.selectedTag;
           // Exclude archived by default unless viewing archive
-          params.archived = false; 
+          params.archived = false;
         } else {
           // Inbox view (no specific tag selected)
-          // Exclude archived and spam emails
+          // Exclude archived, spam, and sent emails
           params.archived = false;
           params.excludeTag = 'Spam';
         }
@@ -401,6 +403,10 @@ export default {
 
     handleEmailSent() {
       this.$refs.toast?.success('Email sent successfully');
+      // Refresh messages if viewing the Sent folder
+      if (this.selectedTag === 'sent') {
+        this.loadMessages(true);
+      }
     },
 
     checkMobile() {

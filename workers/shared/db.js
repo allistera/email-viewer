@@ -326,19 +326,29 @@ export const DB = {
    */
   async getTags(db) {
     const { results } = await db.prepare('SELECT * FROM tags ORDER BY created_at DESC').all();
+    let finalResults = results || [];
 
     // Ensure 'Spam' tag always exists
-    const spamTag = results.find(t => t.name === 'Spam');
+    const spamTag = finalResults.find(t => t.name === 'Spam');
     if (!spamTag) {
       const id = crypto.randomUUID();
       await db.prepare('INSERT INTO tags (id, name, created_at) VALUES (?, ?, ?)')
-        .bind(id, 'Spam', 0) // 0 to keep it at bottom/top depending on sort, or just old
+        .bind(id, 'Spam', 0)
         .run();
-      // Return with new tag
-      return [...results, { id, name: 'Spam', created_at: 0 }];
+      finalResults = [...finalResults, { id, name: 'Spam', created_at: 0 }];
     }
 
-    return results || [];
+    // Ensure 'Sent' tag always exists
+    const sentTag = finalResults.find(t => t.name === 'Sent');
+    if (!sentTag) {
+      const id = crypto.randomUUID();
+      await db.prepare('INSERT INTO tags (id, name, created_at) VALUES (?, ?, ?)')
+        .bind(id, 'Sent', 0)
+        .run();
+      finalResults = [...finalResults, { id, name: 'Sent', created_at: 0 }];
+    }
+
+    return finalResults;
   },
 
   /**
@@ -403,10 +413,10 @@ export const DB = {
    * @param {string} id
    */
   async deleteTag(db, id) {
-    // Prevent deleting Spam tag
+    // Prevent deleting system tags (Spam, Sent)
     const tag = await db.prepare('SELECT name FROM tags WHERE id = ?').bind(id).first();
-    if (tag && tag.name === 'Spam') {
-      throw new Error('Cannot delete system tag: Spam');
+    if (tag && (tag.name === 'Spam' || tag.name === 'Sent')) {
+      throw new Error(`Cannot delete system tag: ${tag.name}`);
     }
     await db.prepare('DELETE FROM tags WHERE id = ?').bind(id).run();
   }

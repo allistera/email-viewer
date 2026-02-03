@@ -83,6 +83,20 @@
       <div class="system-tags">
         <div
           class="tag-item"
+          :class="{ active: selectedTag === 'sent' && !settingsActive }"
+          @click="$emit('select', 'sent')"
+        >
+          <div class="tag-content">
+            <div class="tag-info">
+              <svg class="tag-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span class="tag-label">Sent</span>
+            </div>
+          </div>
+        </div>
+        <div
+          class="tag-item"
           :class="{ active: selectedTag === 'archive' && !settingsActive }"
           @click="$emit('select', 'archive')"
           @dragover="onDragOver($event)"
@@ -98,7 +112,7 @@
             </div>
           </div>
         </div>
-        <div 
+        <div
           class="tag-item"
           :class="{ active: selectedTag === 'spam' && !settingsActive }"
           @click="$emit('select', 'spam')"
@@ -154,11 +168,11 @@ export default {
   },
   computed: {
     userTags() {
-      // Sort tags alphabetically by name, exclude Spam
+      // Sort tags alphabetically by name, exclude system tags (Spam, Sent)
       const sorted = this.tags
-        .filter(t => t.name !== 'Spam')
+        .filter(t => t.name !== 'Spam' && t.name !== 'Sent')
         .sort((a, b) => a.name.localeCompare(b.name));
-      
+
       return sorted.map(tag => {
         const parts = tag.name.split('/');
         return {
