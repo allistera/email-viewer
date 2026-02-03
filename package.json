@@ -24,8 +24,8 @@
     "pages:create": "wrangler pages project create mail-app",
     "tail": "wrangler tail",
     "tail:email": "wrangler tail --config wrangler-email.toml",
-    "lint": "eslint src",
-    "lint:debug": "eslint src > lint_output.txt 2>&1"
+    "lint": "eslint workers",
+    "lint:debug": "eslint workers > lint_output.txt 2>&1"
   },
   "keywords": [
     "cloudflare",
