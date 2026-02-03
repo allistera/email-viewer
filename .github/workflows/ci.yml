@@ -30,6 +30,24 @@ jobs:
       - name: Lint worker code
         run: npm run lint
 
+  workers-tests:
+    name: Worker Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install worker dependencies
+        run: npm ci
+
+      - name: Run worker tests
+        run: npm run test:workers
+
   test:
     name: E2E Tests
     runs-on: ubuntu-latest
