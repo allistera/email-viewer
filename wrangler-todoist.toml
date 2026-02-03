@@ -43,6 +43,10 @@ database_id = "8f96a820-872b-42e9-bf7d-a5ae41aa4b7c"
 enabled = true
 head_sampling_rate = 1
 
+[observability.traces]
+enabled = true
+
+
 [observability.logs]
 enabled = true
 invocation_logs = true
