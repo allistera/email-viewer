@@ -1,5 +1,9 @@
 import { test, expect } from '@playwright/test';
 
+// Timing constants to match ComposeModal debounce and blur delays
+const DEBOUNCE_WAIT = 200; // 150ms debounce + 50ms buffer
+const BLUR_WAIT = 300; // 200ms blur delay + 100ms buffer
+
 test.describe('Compose Modal - Email Autocomplete', () => {
     test.beforeEach(async ({ page }) => {
         // Mock API endpoints
@@ -33,7 +37,7 @@ test.describe('Compose Modal - Email Autocomplete', () => {
 
     test('should show dropdown with suggestions when typing in To field', async ({ page }) => {
         // Mock contacts API
-        await page.route('**/api/contacts?q=john*', async route => {
+        await page.route('**/api/contacts?q=john**', async route => {
             await route.fulfill({
                 status: 200,
                 contentType: 'application/json',
@@ -52,7 +56,7 @@ test.describe('Compose Modal - Email Autocomplete', () => {
         await toInput.fill('john');
 
         // Wait for debounce (150ms) + some buffer
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(DEBOUNCE_WAIT);
 
         // Verify dropdown is visible
         const dropdown = page.locator('.suggestions-dropdown');
@@ -67,7 +71,7 @@ test.describe('Compose Modal - Email Autocomplete', () => {
 
     test('should navigate suggestions with ArrowDown key', async ({ page }) => {
         // Mock contacts API
-        await page.route('**/api/contacts?q=test*', async route => {
+        await page.route('**/api/contacts?q=test**', async route => {
             await route.fulfill({
                 status: 200,
                 contentType: 'application/json',
@@ -83,7 +87,7 @@ test.describe('Compose Modal - Email Autocomplete', () => {
 
         const toInput = page.locator('#compose-to');
         await toInput.fill('test');
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(DEBOUNCE_WAIT);
 
         const dropdown = page.locator('.suggestions-dropdown');
         await expect(dropdown).toBeVisible();
@@ -107,7 +111,7 @@ test.describe('Compose Modal - Email Autocomplete', () => {
 
     test('should navigate suggestions with ArrowUp key', async ({ page }) => {
         // Mock contacts API
-        await page.route('**/api/contacts?q=test*', async route => {
+        await page.route('**/api/contacts?q=test**', async route => {
             await route.fulfill({
                 status: 200,
                 contentType: 'application/json',
@@ -123,7 +127,7 @@ test.describe('Compose Modal - Email Autocomplete', () => {
 
         const toInput = page.locator('#compose-to');
         await toInput.fill('test');
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(DEBOUNCE_WAIT);
 
         const dropdown = page.locator('.suggestions-dropdown');
         await expect(dropdown).toBeVisible();
@@ -144,7 +148,7 @@ test.describe('Compose Modal - Email Autocomplete', () => {
 
     test('should select suggestion with Enter key', async ({ page }) => {
         // Mock contacts API
-        await page.route('**/api/contacts?q=alice*', async route => {
+        await page.route('**/api/contacts?q=alice**', async route => {
             await route.fulfill({
                 status: 200,
                 contentType: 'application/json',
@@ -159,7 +163,7 @@ test.describe('Compose Modal - Email Autocomplete', () => {
 
         const toInput = page.locator('#compose-to');
         await toInput.fill('alice');
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(DEBOUNCE_WAIT);
 
         const dropdown = page.locator('.suggestions-dropdown');
         await expect(dropdown).toBeVisible();
@@ -183,7 +187,7 @@ test.describe('Compose Modal - Email Autocomplete', () => {
 
     test('should hide dropdown on Escape key', async ({ page }) => {
         // Mock contacts API
-        await page.route('**/api/contacts?q=bob*', async route => {
+        await page.route('**/api/contacts?q=bob**', async route => {
             await route.fulfill({
                 status: 200,
                 contentType: 'application/json',
@@ -197,7 +201,7 @@ test.describe('Compose Modal - Email Autocomplete', () => {
 
         const toInput = page.locator('#compose-to');
         await toInput.fill('bob');
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(DEBOUNCE_WAIT);
 
         const dropdown = page.locator('.suggestions-dropdown');
         await expect(dropdown).toBeVisible();
@@ -212,7 +216,7 @@ test.describe('Compose Modal - Email Autocomplete', () => {
 
     test('should hide dropdown on blur', async ({ page }) => {
         // Mock contacts API
-        await page.route('**/api/contacts?q=charlie*', async route => {
+        await page.route('**/api/contacts?q=charlie**', async route => {
             await route.fulfill({
                 status: 200,
                 contentType: 'application/json',
@@ -226,7 +230,7 @@ test.describe('Compose Modal - Email Autocomplete', () => {
 
         const toInput = page.locator('#compose-to');
         await toInput.fill('charlie');
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(DEBOUNCE_WAIT);
 
         const dropdown = page.locator('.suggestions-dropdown');
         await expect(dropdown).toBeVisible();
@@ -235,7 +239,7 @@ test.describe('Compose Modal - Email Autocomplete', () => {
         await page.keyboard.press('Tab');
 
         // Wait for blur timer (200ms) + buffer
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(BLUR_WAIT);
 
         // Verify dropdown is hidden
         await expect(dropdown).toBeHidden();
@@ -243,7 +247,7 @@ test.describe('Compose Modal - Email Autocomplete', () => {
 
     test('should select suggestion by clicking', async ({ page }) => {
         // Mock contacts API
-        await page.route('**/api/contacts?q=diana*', async route => {
+        await page.route('**/api/contacts?q=diana**', async route => {
             await route.fulfill({
                 status: 200,
                 contentType: 'application/json',
@@ -258,7 +262,7 @@ test.describe('Compose Modal - Email Autocomplete', () => {
 
         const toInput = page.locator('#compose-to');
         await toInput.fill('diana');
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(DEBOUNCE_WAIT);
 
         const dropdown = page.locator('.suggestions-dropdown');
         await expect(dropdown).toBeVisible();
@@ -282,7 +286,7 @@ test.describe('Compose Modal - Email Autocomplete', () => {
 
         // Clear any existing value
         await toInput.fill('');
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(DEBOUNCE_WAIT);
 
         // Verify dropdown is not visible
         await expect(dropdown).not.toBeVisible();
@@ -290,7 +294,7 @@ test.describe('Compose Modal - Email Autocomplete', () => {
 
     test('should not show dropdown when no contacts match', async ({ page }) => {
         // Mock contacts API with empty results
-        await page.route('**/api/contacts?q=xyz*', async route => {
+        await page.route('**/api/contacts?q=xyz**', async route => {
             await route.fulfill({
                 status: 200,
                 contentType: 'application/json',
@@ -302,7 +306,7 @@ test.describe('Compose Modal - Email Autocomplete', () => {
 
         const toInput = page.locator('#compose-to');
         await toInput.fill('xyz');
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(DEBOUNCE_WAIT);
 
         const dropdown = page.locator('.suggestions-dropdown');
 
@@ -312,7 +316,7 @@ test.describe('Compose Modal - Email Autocomplete', () => {
 
     test('should update suggestions when typing continues', async ({ page }) => {
         // Mock contacts API for 'e'
-        await page.route('**/api/contacts?q=e*', async route => {
+        await page.route('**/api/contacts?q=e**', async route => {
             await route.fulfill({
                 status: 200,
                 contentType: 'application/json',
@@ -326,7 +330,7 @@ test.describe('Compose Modal - Email Autocomplete', () => {
         });
 
         // Mock contacts API for 'ev'
-        await page.route('**/api/contacts?q=ev*', async route => {
+        await page.route('**/api/contacts?q=ev**', async route => {
             await route.fulfill({
                 status: 200,
                 contentType: 'application/json',
@@ -340,7 +344,7 @@ test.describe('Compose Modal - Email Autocomplete', () => {
 
         const toInput = page.locator('#compose-to');
         await toInput.fill('e');
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(DEBOUNCE_WAIT);
 
         const dropdown = page.locator('.suggestions-dropdown');
         await expect(dropdown).toBeVisible();
@@ -348,7 +352,7 @@ test.describe('Compose Modal - Email Autocomplete', () => {
 
         // Type another character
         await toInput.fill('ev');
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(DEBOUNCE_WAIT);
 
         // Verify dropdown updated with new results
         await expect(dropdown).toBeVisible();
@@ -358,7 +362,7 @@ test.describe('Compose Modal - Email Autocomplete', () => {
 
     test('should highlight suggestion on mouse hover', async ({ page }) => {
         // Mock contacts API
-        await page.route('**/api/contacts?q=frank*', async route => {
+        await page.route('**/api/contacts?q=frank**', async route => {
             await route.fulfill({
                 status: 200,
                 contentType: 'application/json',
@@ -373,7 +377,7 @@ test.describe('Compose Modal - Email Autocomplete', () => {
 
         const toInput = page.locator('#compose-to');
         await toInput.fill('frank');
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(DEBOUNCE_WAIT);
 
         const dropdown = page.locator('.suggestions-dropdown');
         await expect(dropdown).toBeVisible();
