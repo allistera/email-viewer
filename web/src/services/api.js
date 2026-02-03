@@ -230,3 +230,33 @@ export async function getContactSuggestions(query = '', limit = 10) {
   const response = await request(path);
   return response.contacts || [];
 }
+
+// ==================
+// Tagging Rules API
+// ==================
+
+export async function getTaggingRules() {
+  return request('/tagging-rules');
+}
+
+export async function createTaggingRule(rule) {
+  return request('/tagging-rules', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(rule)
+  });
+}
+
+export async function updateTaggingRule(id, updates) {
+  return request(`/tagging-rules/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updates)
+  });
+}
+
+export async function deleteTaggingRule(id) {
+  return request(`/tagging-rules/${id}`, {
+    method: 'DELETE'
+  });
+}

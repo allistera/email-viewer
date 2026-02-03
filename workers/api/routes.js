@@ -274,12 +274,12 @@ export const ApiRouter = {
       // DELETE /api/tags/:id
       if (path.startsWith('tags/') && request.method === 'DELETE') {
         const id = path.split('/')[1];
-        
+
         // Validate tag ID format
         if (!isValidUUID(id)) {
           return jsonResponse({ error: 'Invalid tag ID format' }, { status: 400 });
         }
-        
+
         try {
           await DB.deleteTag(env.DB, id);
           return jsonResponse({ ok: true });
@@ -289,6 +289,109 @@ export const ApiRouter = {
           }
           throw e;
         }
+      }
+
+      // ==================
+      // Tagging Rules API
+      // ==================
+
+      // GET /api/tagging-rules
+      if (path === 'tagging-rules' && request.method === 'GET') {
+        const rules = await DB.getTaggingRules(env.DB);
+        return jsonResponse(rules);
+      }
+
+      // POST /api/tagging-rules
+      if (path === 'tagging-rules' && request.method === 'POST') {
+        let body;
+        try {
+          body = await readJsonBody(request);
+        } catch (error) {
+          return jsonResponse({ error: error.message || 'Invalid JSON body' }, { status: 400 });
+        }
+
+        const { name, matchFrom, matchTo, matchSubject, matchBody, tagName, priority, isEnabled } = body;
+
+        if (!name) {
+          return jsonResponse({ error: 'Rule name is required' }, { status: 400 });
+        }
+        if (!tagName) {
+          return jsonResponse({ error: 'Tag name is required' }, { status: 400 });
+        }
+        if (!matchFrom && !matchTo && !matchSubject && !matchBody) {
+          return jsonResponse({ error: 'At least one match condition is required' }, { status: 400 });
+        }
+
+        const rule = await DB.createTaggingRule(env.DB, {
+          name,
+          matchFrom,
+          matchTo,
+          matchSubject,
+          matchBody,
+          tagName,
+          priority: priority ?? 0,
+          isEnabled: isEnabled !== false
+        });
+
+        return jsonResponse(rule, { status: 201 });
+      }
+
+      // PUT /api/tagging-rules/:id
+      if (path.startsWith('tagging-rules/') && request.method === 'PUT') {
+        const id = path.split('/')[1];
+
+        if (!isValidUUID(id)) {
+          return jsonResponse({ error: 'Invalid rule ID format' }, { status: 400 });
+        }
+
+        let body;
+        try {
+          body = await readJsonBody(request);
+        } catch (error) {
+          return jsonResponse({ error: error.message || 'Invalid JSON body' }, { status: 400 });
+        }
+
+        const existing = await DB.getTaggingRule(env.DB, id);
+        if (!existing) {
+          return jsonResponse({ error: 'Tagging rule not found' }, { status: 404 });
+        }
+
+        const { name, matchFrom, matchTo, matchSubject, matchBody, tagName, priority, isEnabled } = body;
+
+        // Validate at least one condition after applying updates
+        const newMatchFrom = matchFrom !== undefined ? matchFrom : existing.match_from;
+        const newMatchTo = matchTo !== undefined ? matchTo : existing.match_to;
+        const newMatchSubject = matchSubject !== undefined ? matchSubject : existing.match_subject;
+        const newMatchBody = matchBody !== undefined ? matchBody : existing.match_body;
+
+        if (!newMatchFrom && !newMatchTo && !newMatchSubject && !newMatchBody) {
+          return jsonResponse({ error: 'At least one match condition is required' }, { status: 400 });
+        }
+
+        await DB.updateTaggingRule(env.DB, id, {
+          name,
+          matchFrom,
+          matchTo,
+          matchSubject,
+          matchBody,
+          tagName,
+          priority,
+          isEnabled
+        });
+
+        return jsonResponse({ ok: true });
+      }
+
+      // DELETE /api/tagging-rules/:id
+      if (path.startsWith('tagging-rules/') && request.method === 'DELETE') {
+        const id = path.split('/')[1];
+
+        if (!isValidUUID(id)) {
+          return jsonResponse({ error: 'Invalid rule ID format' }, { status: 400 });
+        }
+
+        await DB.deleteTaggingRule(env.DB, id);
+        return jsonResponse({ ok: true });
       }
 
       // GET /api/health
