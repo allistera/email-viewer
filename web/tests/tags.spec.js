@@ -55,16 +55,21 @@ test.describe('Tags CRUD', () => {
     });
 
     test('should add a new tag', async ({ page }) => {
-        // Mock POST /api/tags
-        let postRequest;
+        // Mock POST /api/tags - must pass through GET so beforeEach's handler can serve initial tags
+        const postRequestPromise = page.waitForRequest(
+            (req) => req.url().includes('/api/tags') && req.method() === 'POST',
+            { timeout: 5000 }
+        );
+
         await page.route('**/api/tags', async route => {
             if (route.request().method() === 'POST') {
-                postRequest = route.request();
                 await route.fulfill({
                     status: 201,
                     contentType: 'application/json',
                     body: JSON.stringify({ id: '2', name: 'MyNewTag' })
                 });
+            } else {
+                await route.continue();
             }
         });
 
@@ -76,7 +81,7 @@ test.describe('Tags CRUD', () => {
         await page.press('input[placeholder="New tag..."]', 'Enter');
 
         // Verify request
-        expect(postRequest).toBeTruthy();
+        const postRequest = await postRequestPromise;
         expect(postRequest.postDataJSON()).toEqual({ name: 'MyNewTag' });
 
         // Verify UI update

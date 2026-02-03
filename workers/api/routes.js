@@ -59,6 +59,13 @@ const databaseNotInitializedResponse = () =>
 const isMissingTableError = (error) =>
   Boolean(error?.message && MISSING_TABLE_PATTERN.test(error.message));
 
+// Cloudflare Workers only accepts status codes 200-599
+const clampStatus = (status) => {
+  const n = Number(status);
+  if (!Number.isFinite(n) || n < 200 || n > 599) return 502;
+  return Math.floor(n);
+};
+
 
 export const ApiRouter = {
   async handle(urlString, request, env) {
@@ -149,7 +156,7 @@ export const ApiRouter = {
           const contentType = todoistResponse.headers.get('Content-Type') || 'application/json';
 
           return new Response(responseBody, {
-            status: todoistResponse.status,
+            status: clampStatus(todoistResponse.status),
             headers: { 'Content-Type': contentType }
           });
         }

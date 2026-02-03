@@ -1,0 +1,4 @@
+name = "mail-app-worker-test"
+main = "workers/api/index.js"
+compatibility_date = "2024-10-22"
+compatibility_flags = ["nodejs_compat"]

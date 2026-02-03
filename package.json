@@ -25,7 +25,9 @@
     "tail": "wrangler tail",
     "tail:email": "wrangler tail --config wrangler-email.toml",
     "lint": "eslint workers",
-    "lint:debug": "eslint workers > lint_output.txt 2>&1"
+    "lint:debug": "eslint workers > lint_output.txt 2>&1",
+    "test:workers": "vitest run",
+    "test:workers:watch": "vitest"
   },
   "keywords": [
     "cloudflare",
@@ -37,7 +39,9 @@
   "license": "MIT",
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241127.0",
+    "@cloudflare/vitest-pool-workers": "^0.7.8",
     "eslint": "^8.57.0",
+    "vitest": "~3.0.5",
     "wrangler": "^4.59.2"
   },
   "dependencies": {

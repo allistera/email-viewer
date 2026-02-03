@@ -17,20 +17,28 @@ export function handleOptions(request) {
 export function withCors(response) {
     if (!response) return response;
 
+    // WebSocket upgrade uses status 101; Cloudflare Workers only allows 200-599 when
+    // constructing Response. Pass through WebSocket responses without wrapping to
+    // avoid RangeError. CORS headers are less critical for the upgrade handshake.
+    if (response.webSocket) {
+        return response;
+    }
+
     const newHeaders = new Headers(response.headers);
     Object.entries(corsHeaders).forEach(([key, value]) => {
         newHeaders.set(key, value);
     });
 
+    // Cloudflare Workers only accepts status 200-599
+    const status = response.status;
+    const safeStatus = (Number.isFinite(status) && status >= 200 && status <= 599)
+        ? Math.floor(status) : 502;
+
     const init = {
-        status: response.status,
+        status: safeStatus,
         statusText: response.statusText,
         headers: newHeaders
     };
-
-    if (response.webSocket) {
-        init.webSocket = response.webSocket;
-    }
 
     return new Response(response.body, init);
 }
