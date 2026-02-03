@@ -195,8 +195,12 @@ export default {
     },
     handleToBlur() {
       // Delay hiding to allow click on suggestion
-      setTimeout(() => {
+      if (this.blurTimer) {
+        clearTimeout(this.blurTimer);
+      }
+      this.blurTimer = setTimeout(() => {
         this.showSuggestions = false;
+        this.blurTimer = null;
       }, 200);
     },
     handleToKeydown(event) {
