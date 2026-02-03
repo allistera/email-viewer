@@ -312,14 +312,18 @@ export const ApiRouter = {
 
         // Check if email sending is configured
         if (!env.RESEND_API_KEY && !env.SENDGRID_API_KEY && !env.MAILGUN_API_KEY) {
-          return jsonResponse({ 
-            error: 'Email sending is not configured. Please set up an email provider (RESEND_API_KEY, SENDGRID_API_KEY, or MAILGUN_API_KEY) in your environment.' 
+          return jsonResponse({
+            error: 'Email sending is not configured. Please set up an email provider (RESEND_API_KEY, SENDGRID_API_KEY, or MAILGUN_API_KEY) in your environment.'
           }, { status: 501 });
         }
 
         try {
           // Use Resend if configured (recommended for Cloudflare Workers)
           if (env.RESEND_API_KEY) {
+            const fromEmail = env.SEND_FROM_EMAIL || 'hello@infinitywave.design';
+            const emailSubject = subject || '(No Subject)';
+            const emailText = emailBody || '';
+
             const response = await fetch('https://api.resend.com/emails', {
               method: 'POST',
               headers: {
@@ -327,10 +331,10 @@ export const ApiRouter = {
                 'Content-Type': 'application/json'
               },
               body: JSON.stringify({
-                from: env.SEND_FROM_EMAIL || 'hello@infinitywave.design',
+                from: fromEmail,
                 to: [to],
-                subject: subject || '(No Subject)',
-                text: emailBody || ''
+                subject: emailSubject,
+                text: emailText
               })
             });
 
@@ -340,6 +344,36 @@ export const ApiRouter = {
             }
 
             const result = await response.json();
+
+            // Save sent email to database with 'Sent' tag
+            const messageId = crypto.randomUUID();
+            const now = Date.now();
+            const snippet = emailText.substring(0, 150).replace(/\n/g, ' ');
+
+            await DB.insertMessage(env.DB, {
+              id: messageId,
+              received_at: now,
+              from_addr: fromEmail,
+              to_addr: to,
+              subject: emailSubject,
+              date_header: new Date(now).toISOString(),
+              snippet: snippet,
+              has_attachments: false,
+              raw_r2_key: null,
+              text_body: emailText,
+              html_body: null,
+              headers_json: JSON.stringify({
+                'Message-ID': result.id,
+                'From': fromEmail,
+                'To': to,
+                'Subject': emailSubject,
+                'Date': new Date(now).toISOString()
+              })
+            });
+
+            // Tag with 'Sent'
+            await DB.addMessageTag(env.DB, messageId, 'Sent');
+
             return jsonResponse({ ok: true, messageId: result.id });
           }
 
