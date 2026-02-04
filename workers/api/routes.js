@@ -18,6 +18,24 @@ const isValidTagName = (name) =>
   name.length <= MAX_TAG_NAME_LENGTH && 
   TAG_NAME_REGEX.test(name);
 
+// Rule name: same as tag name
+const MAX_RULE_NAME_LENGTH = 100;
+const MAX_MATCH_LENGTH = 1000;
+const isValidRuleName = (name) =>
+  typeof name === 'string' &&
+  name.length > 0 &&
+  name.length <= MAX_RULE_NAME_LENGTH &&
+  TAG_NAME_REGEX.test(name);
+
+const isValidMatchValue = (val) =>
+  val === null || val === undefined || val === '' ||
+  (typeof val === 'string' && val.length <= MAX_MATCH_LENGTH);
+
+const isValidPriority = (p) => {
+  const n = Number(p);
+  return Number.isInteger(n) && n >= 0 && n <= 100;
+};
+
 
 const resolveTodoistToken = (request, body = {}, env = {}) => {
   const headerToken = request.headers.get('X-Todoist-Token') || request.headers.get('Todoist-Token');
@@ -315,11 +333,29 @@ export const ApiRouter = {
         if (!name) {
           return jsonResponse({ error: 'Rule name is required' }, { status: 400 });
         }
+        if (!isValidRuleName(name)) {
+          return jsonResponse({ error: 'Invalid rule name. Use alphanumeric characters, spaces, hyphens, underscores, or slashes. Max 100 characters.' }, { status: 400 });
+        }
         if (!tagName) {
           return jsonResponse({ error: 'Tag name is required' }, { status: 400 });
         }
+        if (!isValidTagName(tagName)) {
+          return jsonResponse({ error: 'Invalid tag name format' }, { status: 400 });
+        }
+        if (!isValidMatchValue(matchFrom) || !isValidMatchValue(matchTo) || !isValidMatchValue(matchSubject) || !isValidMatchValue(matchBody)) {
+          return jsonResponse({ error: 'Match conditions must be 1000 characters or less' }, { status: 400 });
+        }
         if (!matchFrom && !matchTo && !matchSubject && !matchBody) {
           return jsonResponse({ error: 'At least one match condition is required' }, { status: 400 });
+        }
+        if (!isValidPriority(priority ?? 0)) {
+          return jsonResponse({ error: 'Priority must be an integer between 0 and 100' }, { status: 400 });
+        }
+
+        const tags = await DB.getTags(env.DB);
+        const tagExists = tags.some(t => (t.name || '').toLowerCase() === String(tagName).toLowerCase());
+        if (!tagExists) {
+          return jsonResponse({ error: 'Tag does not exist. Create the tag first.' }, { status: 400 });
         }
 
         const rule = await DB.createTaggingRule(env.DB, {
@@ -358,14 +394,35 @@ export const ApiRouter = {
 
         const { name, matchFrom, matchTo, matchSubject, matchBody, tagName, priority, isEnabled } = body;
 
-        // Validate at least one condition after applying updates
+        const newName = name !== undefined ? name : existing.name;
+        const newTagName = tagName !== undefined ? tagName : existing.tag_name;
         const newMatchFrom = matchFrom !== undefined ? matchFrom : existing.match_from;
         const newMatchTo = matchTo !== undefined ? matchTo : existing.match_to;
         const newMatchSubject = matchSubject !== undefined ? matchSubject : existing.match_subject;
         const newMatchBody = matchBody !== undefined ? matchBody : existing.match_body;
 
+        if (newName && !isValidRuleName(newName)) {
+          return jsonResponse({ error: 'Invalid rule name. Use alphanumeric characters, spaces, hyphens, underscores, or slashes. Max 100 characters.' }, { status: 400 });
+        }
+        if (newTagName && !isValidTagName(newTagName)) {
+          return jsonResponse({ error: 'Invalid tag name format' }, { status: 400 });
+        }
+        if (!isValidMatchValue(newMatchFrom) || !isValidMatchValue(newMatchTo) || !isValidMatchValue(newMatchSubject) || !isValidMatchValue(newMatchBody)) {
+          return jsonResponse({ error: 'Match conditions must be 1000 characters or less' }, { status: 400 });
+        }
         if (!newMatchFrom && !newMatchTo && !newMatchSubject && !newMatchBody) {
           return jsonResponse({ error: 'At least one match condition is required' }, { status: 400 });
+        }
+        if (priority !== undefined && !isValidPriority(priority)) {
+          return jsonResponse({ error: 'Priority must be an integer between 0 and 100' }, { status: 400 });
+        }
+
+        if (newTagName) {
+          const tags = await DB.getTags(env.DB);
+          const tagExists = tags.some(t => (t.name || '').toLowerCase() === String(newTagName).toLowerCase());
+          if (!tagExists) {
+            return jsonResponse({ error: 'Tag does not exist. Create the tag first.' }, { status: 400 });
+          }
         }
 
         await DB.updateTaggingRule(env.DB, id, {
@@ -388,6 +445,11 @@ export const ApiRouter = {
 
         if (!isValidUUID(id)) {
           return jsonResponse({ error: 'Invalid rule ID format' }, { status: 400 });
+        }
+
+        const existing = await DB.getTaggingRule(env.DB, id);
+        if (!existing) {
+          return jsonResponse({ error: 'Tagging rule not found' }, { status: 404 });
         }
 
         await DB.deleteTaggingRule(env.DB, id);
