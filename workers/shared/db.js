@@ -98,7 +98,7 @@ export const DB = {
       // Format search query for FTS5 (phrase or simple)
       // Escape double quotes in search terms to prevent FTS injection
       const sanitizedSearch = search.replace(/"/g, '');
-      const ftsQuery = sanitizedSearch.split(/\s+/).filter(s => s.length > 0).map(s => `"${s}"*`).join(' OR ');
+      const ftsQuery = sanitizedSearch.split(/\s+/).filter(s => s.length > 0).map(s => `"${s}"*`).join(' AND ');
       params.push(ftsQuery);
     }
 
@@ -180,7 +180,7 @@ export const DB = {
       query += ' JOIN messages_fts ON m.rowid = messages_fts.rowid';
       conditions.push('messages_fts MATCH ?');
       const sanitizedSearch = search.replace(/"/g, '');
-      const ftsQuery = sanitizedSearch.split(/\s+/).filter(s => s.length > 0).map(s => `"${s}"*`).join(' OR ');
+      const ftsQuery = sanitizedSearch.split(/\s+/).filter(s => s.length > 0).map(s => `"${s}"*`).join(' AND ');
       params.push(ftsQuery);
     }
 
