@@ -211,6 +211,56 @@ export const DB = {
   },
 
   /**
+   * Get all message counts in fewer queries
+   * @param {D1Database} db
+   */
+  async getMessageCounts(db) {
+    // 1. Tag Counts (for all tags, filtered by archived=false)
+    const tagsQuery = `
+      SELECT t.name, COUNT(mt.message_id) as count
+      FROM tags t
+      JOIN message_tags mt ON t.id = mt.tag_id
+      JOIN messages m ON mt.message_id = m.id
+      WHERE (m.is_archived = 0 OR m.is_archived IS NULL)
+      GROUP BY t.name
+    `;
+
+    // 2. Archive Count
+    const archiveQuery = `SELECT COUNT(*) as count FROM messages WHERE is_archived = 1`;
+
+    // 3. Inbox Count (Unarchived AND NOT Spam)
+    const inboxQuery = `
+      SELECT COUNT(*) as count
+      FROM messages m
+      WHERE (m.is_archived = 0 OR m.is_archived IS NULL)
+      AND NOT EXISTS (
+        SELECT 1 FROM message_tags mt
+        JOIN tags t ON mt.tag_id = t.id
+        WHERE mt.message_id = m.id AND t.name = 'Spam'
+      )
+    `;
+
+    const [tagsResult, archiveResult, inboxResult] = await Promise.all([
+      db.prepare(tagsQuery).all(),
+      db.prepare(archiveQuery).first(),
+      db.prepare(inboxQuery).first()
+    ]);
+
+    const tagCounts = {};
+    if (tagsResult && tagsResult.results) {
+      tagsResult.results.forEach(r => {
+        tagCounts[r.name] = r.count;
+      });
+    }
+
+    return {
+      inbox: inboxResult?.count ?? 0,
+      archive: archiveResult?.count ?? 0,
+      tags: tagCounts
+    };
+  },
+
+  /**
    * Archive a message
    * @param {D1Database} db 
    * @param {string} id 
