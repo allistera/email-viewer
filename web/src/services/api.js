@@ -167,6 +167,7 @@ function normalizeMessage(message) {
     from: message.from_addr ?? message.from,
     to: message.to_addr ?? message.to,
     hasAttachments: message.has_attachments ?? message.hasAttachments,
+    isRead: (message.is_read ?? message.isRead ?? 0) !== 0,
     tag: message.tag,
     tagConfidence: message.tag_confidence ?? message.tagConfidence,
     tagReason: message.tag_reason ?? message.tagReason,

@@ -229,6 +229,15 @@ export const DB = {
   },
 
   /**
+   * Mark a message as read
+   * @param {D1Database} db
+   * @param {string} id
+   */
+  async markRead(db, id) {
+    await db.prepare('UPDATE messages SET is_read = 1 WHERE id = ?').bind(id).run();
+  },
+
+  /**
    * Update Todoist info for a message
    * @param {D1Database} db
    * @param {string} id

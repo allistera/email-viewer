@@ -154,7 +154,8 @@ export const ApiRouter = {
         if (parts.length === 2 && request.method === 'GET') {
           const msg = await DB.getMessage(env.DB, id);
           if (!msg) return new Response('Not Found', { status: 404 });
-          return jsonResponse(msg);
+          await DB.markRead(env.DB, id);
+          return jsonResponse({ ...msg, is_read: 1 });
         }
 
         // Archive

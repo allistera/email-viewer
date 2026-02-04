@@ -310,6 +310,13 @@ export default {
 
       try {
         this.currentMessage = await getMessage(messageId);
+        // Mark message as read in the list
+        const idx = this.messages.findIndex(m => m.id === messageId);
+        if (idx >= 0) {
+          this.messages = this.messages.map((m, i) =>
+            i === idx ? { ...m, isRead: true } : m
+          );
+        }
       } catch (error) {
         if (error.status === 401 && !hasToken()) {
           clearToken();

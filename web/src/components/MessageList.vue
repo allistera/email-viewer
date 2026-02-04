@@ -30,7 +30,7 @@
       <div
         v-for="message in messages"
         :key="message.id"
-        :class="['message-item', { active: selectedId === message.id }]"
+        :class="['message-item', { active: selectedId === message.id, unread: !message.isRead }]"
         draggable="true"
         @dragstart="onDragStart($event, message)"
         @click="$emit('select', message.id)"
@@ -234,6 +234,16 @@ export default {
   background: #fff5f5;
   border-left: 3px solid var(--color-primary);
   padding-left: 13px;
+}
+
+.message-item.unread .from,
+.message-item.unread .message-subject {
+  font-weight: 700;
+}
+
+.message-item:not(.unread) .from,
+.message-item:not(.unread) .message-subject {
+  font-weight: 400;
 }
 
 .message-header {
