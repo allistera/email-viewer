@@ -31,7 +31,6 @@
         <div class="tag-info">
           <span class="tag-dot"></span>
           <span class="tag-label">Inbox</span>
-          <span v-if="inboxCount !== null" class="tag-count">({{ inboxCount }})</span>
         </div>
       </div>
     </div>
