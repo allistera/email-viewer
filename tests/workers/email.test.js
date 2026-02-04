@@ -17,6 +17,7 @@ vi.mock("../../workers/shared/db.js", () => ({
     })),
     getTags: vi.fn(async () => []),
     updateTagInfo: vi.fn(async () => {}),
+    matchTaggingRules: vi.fn(async () => null),
   },
 }));
 
