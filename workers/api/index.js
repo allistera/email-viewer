@@ -44,6 +44,9 @@ export default Sentry.withSentry(sentryOptions, {
         return withCors(authError);
       }
 
+      // Check if this is a WebSocket upgrade request (before processing)
+      const isWebSocketUpgrade = request.headers.get('Upgrade') === 'websocket';
+
       // Try Stream Router (SSE/WS)
       let response = await StreamRouter.handle(urlString, request, env);
       if (!response) {
@@ -53,6 +56,12 @@ export default Sentry.withSentry(sentryOptions, {
 
       // Append CORS Headers to final response
       if (response) {
+        // WebSocket upgrades return status 101 which cannot be wrapped in a new Response
+        // (Cloudflare Workers only allows 200-599 for Response constructor).
+        // Pass through WebSocket responses directly without CORS wrapping.
+        if (isWebSocketUpgrade) {
+          return response;
+        }
         return withCors(response);
       }
 
