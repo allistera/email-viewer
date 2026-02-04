@@ -18,11 +18,12 @@
 
     <div v-if="!showAuthModal" class="app-layout">
       <div class="app-container" :class="mobileViewClass">
-        <TagSidebar
-          ref="sidebar"
-          :selected-tag="selectedTag"
-          :settings-active="currentView === 'settings'"
-          class="sidebar-panel"
+          <TagSidebar
+            ref="sidebar"
+            :selected-tag="selectedTag"
+            :message-counts="messageCounts"
+            :settings-active="currentView === 'settings'"
+            class="sidebar-panel"
           @select="handleTagSelect"
           @settings="openSettings"
           @close="closeMobileSidebar"
@@ -73,7 +74,7 @@ import SettingsView from './components/SettingsView.vue';
 import ComposeModal from './components/ComposeModal.vue';
 import ToastNotification from './components/ToastNotification.vue';
 import { hasToken, setToken, clearToken } from './services/auth.js';
-import { getMessages, getMessage } from './services/api.js';
+import { getMessages, getMessage, getMessageCounts } from './services/api.js';
 import { realtimeClient } from './services/realtime.js';
 
 export default {
@@ -110,13 +111,47 @@ export default {
       resizeTimeout: null,
       showComposeModal: false,
       replyToMessage: null,
-      forwardMessage: null
+      forwardMessage: null,
+      messageCounts: null
     };
   },
   computed: {
     mobileViewClass() {
       if (!this.isMobile) return '';
       return `mobile-view-${this.mobileView}`;
+    },
+    pageTitle() {
+      const base = 'Inboxer';
+      if (this.showAuthModal) return base;
+      if (this.currentView === 'settings') return `${base} - Settings`;
+      const counts = this.messageCounts;
+      let label;
+      let count;
+      if (this.selectedTag === null) {
+        label = 'Inbox';
+        count = counts?.inbox ?? null;
+      } else if (this.selectedTag === 'archive') {
+        label = 'Archive';
+        count = counts?.archive ?? null;
+      } else if (this.selectedTag === 'spam') {
+        label = 'Spam';
+        count = counts?.spam ?? null;
+      } else if (this.selectedTag === 'sent') {
+        label = 'Sent';
+        count = counts?.sent ?? null;
+      } else {
+        label = this.selectedTag;
+        count = counts?.tags?.[this.selectedTag] ?? null;
+      }
+      return count !== null && count !== undefined ? `${label} (${count})` : label;
+    }
+  },
+  watch: {
+    pageTitle: {
+      handler(title) {
+        document.title = title;
+      },
+      immediate: true
     }
   },
   mounted() {
@@ -139,8 +174,15 @@ export default {
   },
   methods: {
     async init() {
-      await this.loadMessages();
+      await Promise.all([this.loadMessages(), this.loadCounts()]);
       this.connectRealtime();
+    },
+    async loadCounts() {
+      try {
+        this.messageCounts = await getMessageCounts();
+      } catch (e) {
+        console.error('Failed to load message counts:', e);
+      }
     },
 
     async handleAuthSubmit(token) {
@@ -237,6 +279,7 @@ export default {
         this.loadingMessages = false;
         this.loadingMore = false;
       }
+      this.loadCounts();
     },
     getDeepLinkMessageId() {
       try {
@@ -323,6 +366,7 @@ export default {
     handleMessageReceived(event) {
       console.log('New message received:', event);
       this.handleRefresh();
+      this.loadCounts();
     },
 
     handleMessageTagged(event) {
@@ -343,6 +387,7 @@ export default {
     handleMessageArchived(messageId) {
       // Remove the archived message from the list
       this.messages = this.messages.filter(m => m.id !== messageId);
+      this.loadCounts();
 
       // Clear the current message view
       if (this.currentMessage && this.currentMessage.id === messageId) {
@@ -407,6 +452,7 @@ export default {
       if (this.selectedTag === 'sent') {
         this.loadMessages(true);
       }
+      this.loadCounts();
     },
 
     checkMobile() {

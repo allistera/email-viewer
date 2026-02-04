@@ -21,6 +21,21 @@
       <button class="add-btn" @click="showAdd = !showAdd" aria-label="Add Tag">+</button>
     </div>
 
+    <!-- Inbox -->
+    <div
+      class="tag-item inbox-item"
+      :class="{ active: selectedTag === null && !settingsActive }"
+      @click="$emit('select', null)"
+    >
+      <div class="tag-content">
+        <div class="tag-info">
+          <span class="tag-dot"></span>
+          <span class="tag-label">Inbox</span>
+          <span v-if="inboxCount !== null" class="tag-count">({{ inboxCount }})</span>
+        </div>
+      </div>
+    </div>
+
     <div v-if="showAdd" class="add-container">
       <input 
         v-model.trim="newTagName" 
@@ -59,6 +74,7 @@
             <div class="tag-info" :style="{ paddingLeft: `${tag.depth * 12}px` }">
               <span class="tag-dot"></span>
               <span class="tag-label" :title="tag.name">{{ tag.label }}</span>
+              <span v-if="tag.count !== null && tag.count !== undefined" class="tag-count">({{ tag.count }})</span>
             </div>
             
             <div class="tag-actions">
@@ -92,6 +108,7 @@
                 <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
               <span class="tag-label">Sent</span>
+              <span v-if="sentCount !== null" class="tag-count">({{ sentCount }})</span>
             </div>
           </div>
         </div>
@@ -109,6 +126,7 @@
                 <path d="M7 12l3 3 7-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
               <span class="tag-label">Done</span>
+              <span v-if="archiveCount !== null" class="tag-count">({{ archiveCount }})</span>
             </div>
           </div>
         </div>
@@ -123,6 +141,7 @@
             <div class="tag-info">
               <span class="tag-icon">🚫</span>
               <span class="tag-label">Spam</span>
+              <span v-if="spamCount !== null" class="tag-count">({{ spamCount }})</span>
             </div>
           </div>
         </div>
@@ -150,6 +169,10 @@ export default {
   name: 'TagSidebar',
   props: {
     selectedTag: String,
+    messageCounts: {
+      type: Object,
+      default: null
+    },
     settingsActive: {
       type: Boolean,
       default: false
@@ -167,6 +190,18 @@ export default {
     };
   },
   computed: {
+    inboxCount() {
+      return this.messageCounts?.inbox ?? null;
+    },
+    archiveCount() {
+      return this.messageCounts?.archive ?? null;
+    },
+    spamCount() {
+      return this.messageCounts?.spam ?? null;
+    },
+    sentCount() {
+      return this.messageCounts?.sent ?? null;
+    },
     userTags() {
       // Sort tags alphabetically by name, exclude system tags (Spam, Sent)
       const sorted = this.tags
@@ -178,6 +213,7 @@ export default {
         return {
           ...tag,
           label: parts[parts.length - 1],
+          count: this.messageCounts?.tags?.[tag.name] ?? null,
           depth: parts.length - 1
         };
       });
@@ -522,6 +558,12 @@ export default {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+.tag-count {
+  margin-left: 4px;
+  font-size: 12px;
+  color: #888;
 }
 
 .edit-mode {

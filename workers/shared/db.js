@@ -167,6 +167,50 @@ export const DB = {
   },
 
   /**
+   * Count messages with same filters as listMessages (no limit/before)
+   * @param {D1Database} db
+   * @param {Object} filters { tag, excludeTag, archived, includeArchived, search }
+   */
+  async countMessages(db, { tag = null, excludeTag = null, archived = false, includeArchived = false, search = null } = {}) {
+    let query = 'SELECT COUNT(*) as count FROM messages m';
+    const params = [];
+    const conditions = [];
+
+    if (search) {
+      query += ' JOIN messages_fts ON m.rowid = messages_fts.rowid';
+      conditions.push('messages_fts MATCH ?');
+      const sanitizedSearch = search.replace(/"/g, '');
+      const ftsQuery = sanitizedSearch.split(/\s+/).filter(s => s.length > 0).map(s => `"${s}"*`).join(' OR ');
+      params.push(ftsQuery);
+    }
+
+    if (tag) {
+      conditions.push('EXISTS (SELECT 1 FROM message_tags mt JOIN tags t ON mt.tag_id = t.id WHERE mt.message_id = m.id AND (t.name = ? OR t.name LIKE ?))');
+      params.push(tag, `${tag}/%`);
+    }
+
+    if (excludeTag) {
+      conditions.push('NOT EXISTS (SELECT 1 FROM message_tags mt JOIN tags t ON mt.tag_id = t.id WHERE mt.message_id = m.id AND t.name = ?)');
+      params.push(excludeTag);
+    }
+
+    if (!includeArchived) {
+      if (archived === true) {
+        conditions.push('m.is_archived = 1');
+      } else if (archived === false) {
+        conditions.push('(m.is_archived = 0 OR m.is_archived IS NULL)');
+      }
+    }
+
+    if (conditions.length > 0) {
+      query += ' WHERE ' + conditions.join(' AND ');
+    }
+
+    const row = await db.prepare(query).bind(...params).first();
+    return row?.count ?? 0;
+  },
+
+  /**
    * Archive a message
    * @param {D1Database} db 
    * @param {string} id 

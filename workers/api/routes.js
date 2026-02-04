@@ -107,6 +107,37 @@ export const ApiRouter = {
         return jsonResponse({ items, nextBefore });
       }
 
+      // GET /api/messages/counts - returns counts for inbox, archive, spam, sent, and each tag
+      if (path === 'messages/counts' && request.method === 'GET') {
+        const tags = await DB.getTags(env.DB);
+        const userTagNames = tags
+          .filter(t => t.name !== 'Spam' && t.name !== 'Sent')
+          .map(t => t.name);
+
+        const [inboxCount, archiveCount, spamCount, sentCount, ...tagCounts] = await Promise.all([
+          DB.countMessages(env.DB, { archived: false, excludeTag: 'Spam' }),
+          DB.countMessages(env.DB, { archived: true }),
+          DB.countMessages(env.DB, { tag: 'Spam' }),
+          DB.countMessages(env.DB, { tag: 'Sent' }),
+          ...userTagNames.map(tagName =>
+            DB.countMessages(env.DB, { tag: tagName, archived: false })
+          )
+        ]);
+
+        const tagCountMap = {};
+        userTagNames.forEach((name, i) => {
+          tagCountMap[name] = tagCounts[i] ?? 0;
+        });
+
+        return jsonResponse({
+          inbox: inboxCount,
+          archive: archiveCount,
+          spam: spamCount,
+          sent: sentCount,
+          tags: tagCountMap
+        });
+      }
+
       // GET /api/messages/:id
       // GET /api/messages/:id/attachments/:attId
       // POST /api/messages/:id/archive

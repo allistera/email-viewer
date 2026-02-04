@@ -100,6 +100,11 @@ export async function getMessage(id) {
   return normalizeMessage(response);
 }
 
+export async function getMessageCounts() {
+  const response = await request('/messages/counts');
+  return response;
+}
+
 export function getAttachmentUrl(messageId, attachmentId) {
   const token = getToken();
   return `${API_BASE}/messages/${messageId}/attachments/${attachmentId}?token=${encodeURIComponent(token)}`;
