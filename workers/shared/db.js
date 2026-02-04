@@ -337,13 +337,60 @@ export const DB = {
     // Clear existing
     await db.prepare('DELETE FROM message_tags WHERE message_id = ?').bind(messageId).run();
 
-    if (tags && tags.length > 0) {
-      for (const tagName of tags) {
-        await this.addMessageTag(db, messageId, tagName);
-      }
-    } else {
+    const uniqueTags = [...new Set(tags || [])].filter(t => t && t.trim().length > 0);
+
+    if (uniqueTags.length === 0) {
       await db.prepare('UPDATE messages SET tag = NULL WHERE id = ?').bind(messageId).run();
+      return;
     }
+
+    // 1. Resolve Tag IDs
+    const placeholders = uniqueTags.map(() => '?').join(',');
+    const { results: existing } = await db.prepare(`SELECT id, name FROM tags WHERE name IN (${placeholders})`)
+      .bind(...uniqueTags)
+      .all();
+
+    const existingMap = new Map((existing || []).map(t => [t.name, t.id]));
+    const missingNames = uniqueTags.filter(name => !existingMap.has(name));
+
+    // Create missing tags
+    if (missingNames.length > 0) {
+      const createStmt = db.prepare('INSERT OR IGNORE INTO tags (id, name, created_at) VALUES (?, ?, ?)');
+      const now = Date.now();
+      await db.batch(missingNames.map(name =>
+        createStmt.bind(crypto.randomUUID(), name, now)
+      ));
+
+      // Fetch IDs for the newly created tags
+      const missingPlaceholders = missingNames.map(() => '?').join(',');
+      const { results: newTags } = await db.prepare(`SELECT id, name FROM tags WHERE name IN (${missingPlaceholders})`)
+        .bind(...missingNames)
+        .all();
+
+      if (newTags) {
+        for (const t of newTags) {
+          existingMap.set(t.name, t.id);
+        }
+      }
+    }
+
+    // 2. Insert Message Tags
+    const insertMtStmt = db.prepare('INSERT INTO message_tags (message_id, tag_id) VALUES (?, ?)');
+    const batch = [];
+
+    for (const name of uniqueTags) {
+      const tagId = existingMap.get(name);
+      if (tagId) {
+        batch.push(insertMtStmt.bind(messageId, tagId));
+      }
+    }
+
+    if (batch.length > 0) {
+      await db.batch(batch);
+    }
+
+    // 3. Update legacy field
+    await db.prepare('UPDATE messages SET tag = ? WHERE id = ?').bind(uniqueTags[0], messageId).run();
   },
 
   /**
