@@ -26,38 +26,63 @@ async function processMessage(messageId, env) {
             })
         });
 
-        const dbTags = await DB.getTags(env.DB);
-        const tagLabels = new Set(dbTags.map(t => t.name));
-        // Fallback or auxiliary from env if needed, but primary is DB now
-        if (env.TAG_LABELS) {
-            env.TAG_LABELS.split(',').forEach(t => tagLabels.add(t.trim()));
-        }
-        tagLabels.add('spam');
-
         const shouldClassifyTag = !message.tag_checked_at;
 
-        // 3. Unified Classification (tag, including spam)
+        // 3. Tag Classification (rules take priority over AI)
         if (shouldClassifyTag) {
-            const result = await MessageClassifier.classify(
-                message,
-                Array.from(tagLabels),
-                env.OPENAI_API_KEY,
-                env.OPENAI_MODEL
-            );
+            // First, check user-defined tagging rules
+            const ruleMatch = await DB.matchTaggingRules(env.DB, message);
 
-            if (result?.tag && shouldClassifyTag) {
-                await DB.updateTagInfo(env.DB, messageId, result.tag);
+            if (ruleMatch) {
+                // Rule matched - apply the tag
+                await DB.updateTagInfo(env.DB, messageId, {
+                    tag: ruleMatch.tag,
+                    confidence: ruleMatch.confidence,
+                    reason: ruleMatch.reason
+                });
 
-                if (result.tag.tag) {
-                    await hub.fetch('http://do/broadcast', {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            type: 'message.tagged',
-                            messageId: message.id,
-                            tag: result.tag.tag,
-                            tagConfidence: result.tag.confidence
-                        })
-                    });
+                await hub.fetch('http://do/broadcast', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        type: 'message.tagged',
+                        messageId: message.id,
+                        tag: ruleMatch.tag,
+                        tagConfidence: ruleMatch.confidence,
+                        taggedByRule: true,
+                        ruleName: ruleMatch.ruleName
+                    })
+                });
+            } else {
+                // No rule matched - fall back to AI classification
+                const dbTags = await DB.getTags(env.DB);
+                const tagLabels = new Set(dbTags.map(t => t.name));
+                // Fallback or auxiliary from env if needed, but primary is DB now
+                if (env.TAG_LABELS) {
+                    env.TAG_LABELS.split(',').forEach(t => tagLabels.add(t.trim()));
+                }
+                tagLabels.add('spam');
+
+                const result = await MessageClassifier.classify(
+                    message,
+                    Array.from(tagLabels),
+                    env.OPENAI_API_KEY,
+                    env.OPENAI_MODEL
+                );
+
+                if (result?.tag) {
+                    await DB.updateTagInfo(env.DB, messageId, result.tag);
+
+                    if (result.tag.tag) {
+                        await hub.fetch('http://do/broadcast', {
+                            method: 'POST',
+                            body: JSON.stringify({
+                                type: 'message.tagged',
+                                messageId: message.id,
+                                tag: result.tag.tag,
+                                tagConfidence: result.tag.confidence
+                            })
+                        });
+                    }
                 }
             }
         }

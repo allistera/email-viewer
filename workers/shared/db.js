@@ -419,5 +419,176 @@ export const DB = {
       throw new Error(`Cannot delete system tag: ${tag.name}`);
     }
     await db.prepare('DELETE FROM tags WHERE id = ?').bind(id).run();
+  },
+
+  // ==================
+  // Tagging Rules CRUD
+  // ==================
+
+  /**
+   * Get all tagging rules ordered by priority
+   * @param {D1Database} db
+   */
+  async getTaggingRules(db) {
+    const { results } = await db.prepare(
+      'SELECT * FROM tagging_rules ORDER BY priority DESC, created_at ASC'
+    ).all();
+    return results || [];
+  },
+
+  /**
+   * Get enabled tagging rules (for matching)
+   * @param {D1Database} db
+   */
+  async getEnabledTaggingRules(db) {
+    const { results } = await db.prepare(
+      'SELECT * FROM tagging_rules WHERE is_enabled = 1 ORDER BY priority DESC, created_at ASC'
+    ).all();
+    return results || [];
+  },
+
+  /**
+   * Get a tagging rule by ID
+   * @param {D1Database} db
+   * @param {string} id
+   */
+  async getTaggingRule(db, id) {
+    return db.prepare('SELECT * FROM tagging_rules WHERE id = ?').bind(id).first();
+  },
+
+  /**
+   * Create a new tagging rule
+   * @param {D1Database} db
+   * @param {Object} rule
+   */
+  async createTaggingRule(db, rule) {
+    const id = crypto.randomUUID();
+    const now = Date.now();
+
+    await db.prepare(`
+      INSERT INTO tagging_rules (
+        id, name, match_from, match_to, match_subject, match_body,
+        tag_name, priority, is_enabled, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      id,
+      rule.name,
+      rule.matchFrom || null,
+      rule.matchTo || null,
+      rule.matchSubject || null,
+      rule.matchBody || null,
+      rule.tagName,
+      rule.priority ?? 0,
+      rule.isEnabled !== false ? 1 : 0,
+      now,
+      now
+    ).run();
+
+    return { id, ...rule, created_at: now, updated_at: now };
+  },
+
+  /**
+   * Update a tagging rule
+   * @param {D1Database} db
+   * @param {string} id
+   * @param {Object} updates
+   */
+  async updateTaggingRule(db, id, updates) {
+    const existing = await this.getTaggingRule(db, id);
+    if (!existing) throw new Error('Tagging rule not found');
+
+    const now = Date.now();
+
+    await db.prepare(`
+      UPDATE tagging_rules SET
+        name = ?,
+        match_from = ?,
+        match_to = ?,
+        match_subject = ?,
+        match_body = ?,
+        tag_name = ?,
+        priority = ?,
+        is_enabled = ?,
+        updated_at = ?
+      WHERE id = ?
+    `).bind(
+      updates.name ?? existing.name,
+      updates.matchFrom !== undefined ? (updates.matchFrom || null) : existing.match_from,
+      updates.matchTo !== undefined ? (updates.matchTo || null) : existing.match_to,
+      updates.matchSubject !== undefined ? (updates.matchSubject || null) : existing.match_subject,
+      updates.matchBody !== undefined ? (updates.matchBody || null) : existing.match_body,
+      updates.tagName ?? existing.tag_name,
+      updates.priority ?? existing.priority,
+      updates.isEnabled !== undefined ? (updates.isEnabled ? 1 : 0) : existing.is_enabled,
+      now,
+      id
+    ).run();
+  },
+
+  /**
+   * Delete a tagging rule
+   * @param {D1Database} db
+   * @param {string} id
+   */
+  async deleteTaggingRule(db, id) {
+    await db.prepare('DELETE FROM tagging_rules WHERE id = ?').bind(id).run();
+  },
+
+  /**
+   * Match a message against enabled tagging rules
+   * Returns the first matching rule's tag, or null if no match
+   * @param {D1Database} db
+   * @param {Object} message - Message with from_addr, to_addr, subject, text_body, html_body
+   */
+  async matchTaggingRules(db, message) {
+    const rules = await this.getEnabledTaggingRules(db);
+
+    for (const rule of rules) {
+      if (this.doesRuleMatch(rule, message)) {
+        return {
+          tag: rule.tag_name,
+          ruleId: rule.id,
+          ruleName: rule.name,
+          confidence: 1.0,
+          reason: `Matched rule: ${rule.name}`
+        };
+      }
+    }
+
+    return null;
+  },
+
+  /**
+   * Check if a rule matches a message
+   * All non-null conditions must match (AND logic)
+   * @param {Object} rule
+   * @param {Object} message
+   */
+  doesRuleMatch(rule, message) {
+    const from = (message.from_addr || '').toLowerCase();
+    const to = (message.to_addr || '').toLowerCase();
+    const subject = (message.subject || '').toLowerCase();
+    const body = (message.text_body || message.html_body || '').toLowerCase();
+
+    // All specified conditions must match
+    if (rule.match_from && !from.includes(rule.match_from.toLowerCase())) {
+      return false;
+    }
+    if (rule.match_to && !to.includes(rule.match_to.toLowerCase())) {
+      return false;
+    }
+    if (rule.match_subject && !subject.includes(rule.match_subject.toLowerCase())) {
+      return false;
+    }
+    if (rule.match_body && !body.includes(rule.match_body.toLowerCase())) {
+      return false;
+    }
+
+    // At least one condition must be specified
+    if (!rule.match_from && !rule.match_to && !rule.match_subject && !rule.match_body) {
+      return false;
+    }
+
+    return true;
   }
 };
