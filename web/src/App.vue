@@ -144,7 +144,7 @@ export default {
         label = this.selectedTag;
         count = counts?.tags?.[this.selectedTag] ?? null;
       }
-      return count !== null && count !== undefined ? `${label} (${count})` : label;
+      return (count != null && count !== 0) ? `${label} (${count})` : label;
     }
   },
   watch: {

@@ -73,7 +73,7 @@
             <div class="tag-info" :style="{ paddingLeft: `${tag.depth * 12}px` }">
               <span class="tag-dot"></span>
               <span class="tag-label" :title="tag.name">{{ tag.label }}</span>
-              <span v-if="tag.count !== null && tag.count !== undefined" class="tag-count">({{ tag.count }})</span>
+              <span v-if="tag.count != null && tag.count !== 0" class="tag-count">({{ tag.count }})</span>
             </div>
             
             <div class="tag-actions">
@@ -135,7 +135,7 @@
                 <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
               <span class="tag-label">Sent</span>
-              <span v-if="sentCount !== null" class="tag-count">({{ sentCount }})</span>
+              <span v-if="sentCount != null && sentCount !== 0" class="tag-count">({{ sentCount }})</span>
             </div>
           </div>
         </div>
@@ -153,7 +153,7 @@
                 <path d="M7 12l3 3 7-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
               <span class="tag-label">Done</span>
-              <span v-if="archiveCount !== null" class="tag-count">({{ archiveCount }})</span>
+              <span v-if="archiveCount != null && archiveCount !== 0" class="tag-count">({{ archiveCount }})</span>
             </div>
           </div>
         </div>
@@ -168,7 +168,7 @@
             <div class="tag-info">
               <span class="tag-icon">🚫</span>
               <span class="tag-label">Spam</span>
-              <span v-if="spamCount !== null" class="tag-count">({{ spamCount }})</span>
+              <span v-if="spamCount != null && spamCount !== 0" class="tag-count">({{ spamCount }})</span>
             </div>
           </div>
         </div>
