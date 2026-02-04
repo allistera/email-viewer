@@ -67,6 +67,16 @@ export default Sentry.withSentry(sentryOptions, {
     const path = url.pathname.replace(/^\//, '').replace(/\/$/, '');
 
     try {
+      // GET /projects - return Todoist projects for sidebar
+      if (path === 'projects' && request.method === 'GET') {
+        const todoistToken = (request.headers.get('X-Todoist-Token') || '').trim();
+        if (!todoistToken) {
+          return jsonResponse({ error: 'Todoist token missing.' }, { status: 400 });
+        }
+        const projects = await fetchTodoistProjects(todoistToken);
+        return jsonResponse({ projects });
+      }
+
       if (!path.startsWith('messages/')) {
         return new Response('Not Found', { status: 404 });
       }
@@ -90,16 +100,33 @@ export default Sentry.withSentry(sentryOptions, {
       const message = await DB.getMessage(env.DB, messageId);
       if (!message) return new Response('Message Not Found', { status: 404 });
 
-      const projects = await fetchTodoistProjects(todoistToken);
-      const selection = await TodoistProjectSelector.selectProject(
-        message,
-        projects,
-        env.OPENAI_API_KEY,
-        env.OPENAI_MODEL
-      );
+      let body = {};
+      try {
+        const ct = request.headers.get('Content-Type') || '';
+        if (ct.includes('application/json')) {
+          const text = await request.text();
+          if (text) body = JSON.parse(text);
+        }
+      } catch {
+        // Ignore invalid JSON body
+      }
 
-      const inboxProject = findInboxProject(projects);
-      const selectedProject = selectProject(projects, selection) || inboxProject || null;
+      const projects = await fetchTodoistProjects(todoistToken);
+      let selectedProject = null;
+
+      if (body.projectId) {
+        selectedProject = projects.find(p => String(p.id) === String(body.projectId)) || null;
+      }
+      if (!selectedProject) {
+        const selection = await TodoistProjectSelector.selectProject(
+          message,
+          projects,
+          env.OPENAI_API_KEY,
+          env.OPENAI_MODEL
+        );
+        const inboxProject = findInboxProject(projects);
+        selectedProject = selectProject(projects, selection) || inboxProject || null;
+      }
       const messageUrl = resolveMessageUrl(request.headers.get('X-App-Origin'), message.id);
 
       const payload = buildTodoistTaskPayload(message, messageUrl, selectedProject?.id);

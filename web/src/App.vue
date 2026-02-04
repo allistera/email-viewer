@@ -28,6 +28,7 @@
           @settings="openSettings"
           @close="closeMobileSidebar"
           @compose="openCompose"
+          @todoist-added="handleTodoistAdded"
         />
 
         <template v-if="currentView === 'settings'">
@@ -460,6 +461,17 @@ export default {
         this.loadMessages(true);
       }
       this.loadCounts();
+    },
+
+    handleTodoistAdded({ messageId, projectName }) {
+      this.$refs.toast?.success(`Added to ${projectName}`);
+      const msg = this.messages.find(m => m.id === messageId);
+      if (msg) {
+        msg.todoistProjectName = projectName;
+      }
+      if (this.currentMessage?.id === messageId) {
+        this.currentMessage = { ...this.currentMessage, todoistProjectName: projectName };
+      }
     },
 
     checkMobile() {

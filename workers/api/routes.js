@@ -138,6 +138,38 @@ export const ApiRouter = {
         });
       }
 
+      // GET /api/todoist/projects - proxy to Todoist worker
+      if (path === 'todoist/projects' && request.method === 'GET') {
+        const todoistToken = resolveTodoistToken(request, {}, env);
+        if (!todoistToken) {
+          return jsonResponse(
+            { error: 'Todoist token missing. Add it in Settings.' },
+            { status: 400 }
+          );
+        }
+        if (!env.TODOIST_WORKER || typeof env.TODOIST_WORKER.fetch !== 'function') {
+          return jsonResponse(
+            { error: 'Todoist worker not configured.' },
+            { status: 500 }
+          );
+        }
+        const origin = new URL(request.url).origin;
+        const todoistRequest = new Request(`https://todoist-worker/projects`, {
+          method: 'GET',
+          headers: {
+            'X-Todoist-Token': todoistToken,
+            'X-App-Origin': origin
+          }
+        });
+        const todoistResponse = await env.TODOIST_WORKER.fetch(todoistRequest);
+        const responseBody = await todoistResponse.text();
+        const contentType = todoistResponse.headers.get('Content-Type') || 'application/json';
+        return new Response(responseBody, {
+          status: clampStatus(todoistResponse.status),
+          headers: { 'Content-Type': contentType }
+        });
+      }
+
       // GET /api/messages/:id
       // GET /api/messages/:id/attachments/:attId
       // POST /api/messages/:id/archive

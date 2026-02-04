@@ -121,6 +121,16 @@ export async function archiveMessage(id) {
   });
 }
 
+export async function getTodoistProjects() {
+  const todoistToken = getTodoistToken();
+  const headers = {};
+  if (todoistToken) {
+    headers['X-Todoist-Token'] = todoistToken;
+  }
+  const response = await request('/todoist/projects', { headers });
+  return response.projects || [];
+}
+
 export async function addTodoistTask(id, options = {}) {
   const todoistToken = getTodoistToken();
   const headers = { 'Content-Type': 'application/json' };

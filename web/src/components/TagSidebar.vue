@@ -94,6 +94,34 @@
       </li>
     </ul>
 
+    <!-- Todoist Projects -->
+    <div v-if="hasTodoistToken" class="todoist-section">
+      <div class="tag-header">
+        <h2>Todoist</h2>
+      </div>
+      <div v-if="loadingTodoistProjects" class="todoist-loading">Loading projects...</div>
+      <ul v-else class="todoist-project-list">
+        <li
+          v-for="project in todoistProjects"
+          :key="project.id"
+          class="tag-item todoist-project-item"
+          @dragover="onDragOver($event)"
+          @drop="onDropTodoist($event, project)"
+          @click="openTodoistProject(project)"
+        >
+          <div class="tag-content">
+            <div class="tag-info">
+              <svg class="tag-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.75"/>
+                <path d="M12 8v8M8 12h8" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+              </svg>
+              <span class="tag-label" :title="project.name">{{ project.name }}</span>
+            </div>
+          </div>
+        </li>
+      </ul>
+    </div>
+
     <div class="sidebar-footer">
       <div class="system-tags">
         <div
@@ -162,7 +190,8 @@
 </template>
 
 <script>
-import { getTags, createTag, deleteTag, updateTag, updateMessageTag, archiveMessage } from '../services/api.js';
+import { getTags, createTag, deleteTag, updateTag, updateMessageTag, archiveMessage, getTodoistProjects, addTodoistTask } from '../services/api.js';
+import { hasTodoistToken } from '../services/auth.js';
 
 export default {
   name: 'TagSidebar',
@@ -177,7 +206,7 @@ export default {
       default: false
     }
   },
-  emits: ['select', 'settings', 'close', 'compose'],
+  emits: ['select', 'settings', 'close', 'compose', 'todoist-added'],
   data() {
     return {
       tags: [],
@@ -185,10 +214,15 @@ export default {
       showAdd: false,
       draggedTag: null,
       editingTagId: null,
-      editName: ''
+      editName: '',
+      todoistProjects: [],
+      loadingTodoistProjects: false
     };
   },
   computed: {
+    hasTodoistToken() {
+      return hasTodoistToken();
+    },
     inboxCount() {
       return this.messageCounts?.inbox ?? null;
     },
@@ -218,8 +252,18 @@ export default {
       });
     }
   },
+  watch: {
+    settingsActive(active) {
+      if (!active && this.hasTodoistToken) {
+        this.loadTodoistProjects();
+      }
+    }
+  },
   async created() {
     await this.loadTags();
+    if (this.hasTodoistToken) {
+      await this.loadTodoistProjects();
+    }
   },
   methods: {
     async loadTags() {
@@ -230,6 +274,36 @@ export default {
         // but we filter it out of user list.
       } catch (e) {
         console.error('Failed to load tags', e);
+      }
+    },
+    async loadTodoistProjects() {
+      if (!this.hasTodoistToken) return;
+      this.loadingTodoistProjects = true;
+      try {
+        this.todoistProjects = await getTodoistProjects();
+      } catch (e) {
+        console.error('Failed to load Todoist projects:', e);
+        this.todoistProjects = [];
+      } finally {
+        this.loadingTodoistProjects = false;
+      }
+    },
+    openTodoistProject(project) {
+      const url = project.url || `https://app.todoist.com/app/project/${project.id}`;
+      window.open(url, '_blank', 'noopener');
+    },
+    async onDropTodoist(event, project) {
+      event.preventDefault();
+      event.stopPropagation();
+      const messageId = event.dataTransfer.getData('application/x-message-id');
+      if (!messageId) return;
+
+      try {
+        const response = await addTodoistTask(messageId, { projectId: project.id });
+        const projectName = response?.project?.name || project.name;
+        this.$emit('todoist-added', { messageId, projectName, project });
+      } catch (e) {
+        alert('Failed to add to Todoist: ' + (e.message || 'Unknown error'));
       }
     },
 
@@ -491,6 +565,27 @@ export default {
   margin: 0;
   overflow-y: auto;
   flex: 1;
+}
+
+.todoist-section {
+  border-top: 1px solid #eee;
+  padding-top: 4px;
+}
+
+.todoist-loading {
+  padding: 8px 16px;
+  font-size: 13px;
+  color: #888;
+}
+
+.todoist-project-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.todoist-project-item .tag-dot {
+  display: none;
 }
 
 .sidebar-footer {
