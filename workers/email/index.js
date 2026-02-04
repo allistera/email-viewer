@@ -162,13 +162,12 @@ export default Sentry.withSentry(sentryOptions, {
             await DB.insertMessage(env.DB, dbMessage);
 
             // 5. Save Attachments
-            const attachmentInserts = [];
-            for (const att of parsed.attachments) {
+            const attachmentPromises = parsed.attachments.map(async (att) => {
                 const attId = crypto.randomUUID();
                 const filename = att.filename || `attachment-${attId}`;
                 const attKey = await R2.saveAttachment(env.MAILSTORE, messageId, attId, filename, att.content);
 
-                attachmentInserts.push({
+                return {
                     id: attId,
                     message_id: messageId,
                     filename,
@@ -176,8 +175,10 @@ export default Sentry.withSentry(sentryOptions, {
                     size_bytes: att.content?.byteLength ?? 0,
                     sha256: null, // skipped for now
                     r2_key: attKey
-                });
-            }
+                };
+            });
+
+            const attachmentInserts = await Promise.all(attachmentPromises);
             await DB.insertAttachments(env.DB, attachmentInserts);
 
             // 6. Trigger Post-Processing (Background)
