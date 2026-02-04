@@ -543,8 +543,8 @@ export default {
 
 <style scoped>
 .tag-sidebar {
-  background: #f5f5f5;
-  border-right: 1px solid #ddd;
+  background: var(--color-bg-secondary);
+  border-right: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -552,7 +552,7 @@ export default {
 
 .app-title {
   padding: 16px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--color-border);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -602,7 +602,7 @@ export default {
   margin: 0;
   font-size: 12px;
   font-weight: 600;
-  color: #888;
+  color: var(--color-text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -612,7 +612,7 @@ export default {
   border: none;
   font-size: 20px;
   cursor: pointer;
-  color: #666;
+  color: var(--color-text-secondary);
   width: 24px;
   height: 24px;
   display: flex;
@@ -622,7 +622,7 @@ export default {
 }
 
 .add-btn:hover {
-  background: rgba(0,0,0,0.1);
+  background: var(--color-bg-hover);
 }
 
 .add-container {
@@ -632,9 +632,11 @@ export default {
 .add-container input {
   width: 100%;
   padding: 6px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--color-border);
   border-radius: 4px;
   font-size: 14px;
+  background: var(--color-bg);
+  color: var(--color-text);
 }
 
 .tag-list {
@@ -646,14 +648,14 @@ export default {
 }
 
 .todoist-section {
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--color-border);
   padding-top: 4px;
 }
 
 .todoist-loading {
   padding: 8px 16px;
   font-size: 13px;
-  color: #888;
+  color: var(--color-text-secondary);
 }
 
 .todoist-project-list {
@@ -711,8 +713,8 @@ export default {
 }
 
 .system-tags {
-    border-top: 1px solid #eee;
-    padding-top: 4px;
+  border-top: 1px solid var(--color-border);
+  padding-top: 4px;
 }
 
 .tag-item {
@@ -721,18 +723,18 @@ export default {
   display: flex;
   align-items: center;
   font-size: 14px;
-  color: #555;
+  color: var(--color-text);
   border-left: 3px solid transparent;
 }
 
 .tag-item:hover {
-  background: #eaeaea;
+  background: var(--color-bg-hover);
 }
 
 .tag-item.active {
-  background: #e0e0e0;
+  background: var(--color-bg-hover);
   border-left-color: var(--color-primary, #007bff);
-  color: #333;
+  color: var(--color-text);
   font-weight: 500;
 }
 
@@ -740,7 +742,7 @@ export default {
   display: inline-block;
   width: 8px;
   height: 8px;
-  background: #ccc;
+  background: var(--color-text-secondary);
   border-radius: 50%;
   margin-right: 8px;
 }
@@ -771,7 +773,7 @@ export default {
 .tag-count {
   margin-left: 4px;
   font-size: 12px;
-  color: #888;
+  color: var(--color-text-secondary);
 }
 
 .edit-mode {
@@ -785,6 +787,8 @@ export default {
   border: 1px solid var(--color-primary);
   border-radius: 4px;
   font-size: 13px;
+  background: var(--color-bg);
+  color: var(--color-text);
 }
 
 .tag-actions {
@@ -802,17 +806,17 @@ export default {
   cursor: pointer;
   font-size: 14px;
   padding: 2px 4px;
-  color: #999;
+  color: var(--color-text-secondary);
   border-radius: 4px;
 }
 
 .action-btn:hover {
-  background-color: rgba(0,0,0,0.05);
+  background: var(--color-bg-hover);
   color: var(--color-text);
 }
 
 .delete-btn:hover {
-  color: #d9534f;
+  color: var(--color-primary);
 }
 
 /* Close button - hidden on desktop */
@@ -827,7 +831,7 @@ export default {
 }
 
 .close-sidebar-btn:hover {
-  background: rgba(0, 0, 0, 0.1);
+  background: var(--color-bg-hover);
 }
 
 .close-icon {
