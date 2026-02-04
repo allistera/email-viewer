@@ -102,20 +102,39 @@
       <div v-if="loadingTodoistProjects" class="todoist-loading">Loading projects...</div>
       <ul v-else class="todoist-project-list">
         <li
-          v-for="project in todoistProjects"
-          :key="project.id"
-          class="tag-item todoist-project-item"
-          @dragover="onDragOver($event)"
-          @drop="onDropTodoist($event, project)"
-          @click="openTodoistProject(project)"
+          v-for="node in todoistProjectsFlat"
+          :key="node.project.id"
+          class="todoist-project-node"
         >
-          <div class="tag-content">
-            <div class="tag-info">
-              <svg class="tag-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-                <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.75"/>
-                <path d="M12 8v8M8 12h8" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
-              </svg>
-              <span class="tag-label" :title="project.name">{{ project.name }}</span>
+          <div
+            class="tag-item todoist-project-item"
+            :class="{ 'has-children': node.hasChildren }"
+            :style="{ paddingLeft: `${node.depth * 12 + 16}px` }"
+            @dragover="onDragOver($event)"
+            @drop="onDropTodoist($event, node.project)"
+            @click="handleTodoistProjectClick(node)"
+          >
+            <div class="tag-content">
+              <div class="tag-info">
+                <button
+                  v-if="node.hasChildren"
+                  type="button"
+                  class="todoist-expand-btn"
+                  :class="{ expanded: node.expanded }"
+                  :aria-label="node.expanded ? 'Collapse' : 'Expand'"
+                  @click.stop="toggleTodoistExpanded(node.project.id)"
+                >
+                  <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true">
+                    <path d="M8 10l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </button>
+                <span v-else class="todoist-expand-spacer"></span>
+                <svg class="tag-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                  <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.75"/>
+                  <path d="M12 8v8M8 12h8" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+                </svg>
+                <span class="tag-label" :title="node.project.name">{{ node.project.name }}</span>
+              </div>
             </div>
           </div>
         </li>
@@ -216,7 +235,8 @@ export default {
       editingTagId: null,
       editName: '',
       todoistProjects: [],
-      loadingTodoistProjects: false
+      loadingTodoistProjects: false,
+      expandedTodoistProjects: new Set()
     };
   },
   computed: {
@@ -250,6 +270,51 @@ export default {
           depth: parts.length - 1
         };
       });
+    },
+    todoistProjectTree() {
+      const projects = this.todoistProjects || [];
+      const parentId = (p) => p.parent_id ?? p.parentId ?? null;
+      const order = (p) => p.order ?? 0;
+
+      const byParent = new Map();
+      byParent.set(null, []);
+      for (const p of projects) {
+        const pid = parentId(p);
+        if (!byParent.has(pid)) byParent.set(pid, []);
+        byParent.get(pid).push(p);
+      }
+      for (const arr of byParent.values()) {
+        arr.sort((a, b) => order(a) - order(b));
+      }
+
+      const buildNode = (project, depth = 0) => {
+        const children = (byParent.get(String(project.id)) || [])
+          .map((p) => buildNode(p, depth + 1));
+        return { project, children, depth };
+      };
+
+      return (byParent.get(null) || []).map((p) => buildNode(p, 0));
+    },
+    todoistProjectsFlat() {
+      const expanded = this.expandedTodoistProjects;
+      const flatten = (nodes) => {
+        const out = [];
+        for (const node of nodes) {
+          const hasChildren = node.children.length > 0;
+          const isExpanded = hasChildren && expanded.has(String(node.project.id));
+          out.push({
+            project: node.project,
+            depth: node.depth,
+            hasChildren,
+            expanded: isExpanded
+          });
+          if (hasChildren && isExpanded) {
+            out.push(...flatten(node.children));
+          }
+        }
+        return out;
+      };
+      return flatten(this.todoistProjectTree);
     }
   },
   watch: {
@@ -287,6 +352,19 @@ export default {
       } finally {
         this.loadingTodoistProjects = false;
       }
+    },
+    isTodoistExpanded(projectId) {
+      return this.expandedTodoistProjects.has(String(projectId));
+    },
+    toggleTodoistExpanded(projectId) {
+      const id = String(projectId);
+      const next = new Set(this.expandedTodoistProjects);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      this.expandedTodoistProjects = next;
+    },
+    handleTodoistProjectClick(node) {
+      this.openTodoistProject(node.project);
     },
     openTodoistProject(project) {
       const url = project.url || `https://app.todoist.com/app/project/${project.id}`;
@@ -582,6 +660,42 @@ export default {
   list-style: none;
   padding: 0;
   margin: 0;
+}
+
+.todoist-project-node {
+  list-style: none;
+}
+
+.todoist-expand-btn {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  margin: 0 4px 0 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+  flex-shrink: 0;
+  transition: transform 0.15s;
+}
+
+.todoist-expand-btn.expanded {
+  transform: rotate(-90deg);
+}
+
+.todoist-expand-btn:hover {
+  opacity: 0.8;
+}
+
+.todoist-expand-spacer {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin-right: 4px;
+  flex-shrink: 0;
 }
 
 .todoist-project-item .tag-dot {
