@@ -73,7 +73,7 @@
           </button>
 
           <button
-            class="toolbar-btn"
+            class="toolbar-btn toolbar-btn-todoist"
             type="button"
             @click="handleTodoistAction"
             :disabled="addingTodoist"
@@ -169,18 +169,6 @@
               </div>
             </template>
             <button v-else @click="startAddingTag" class="add-tag-btn" title="Add Tag">+</button>
-          </div>
-
-          <div
-            v-if="(message.tagConfidence !== null && message.tagConfidence !== undefined) || message.tagReason"
-            class="header-footnote"
-          >
-            <span v-if="message.tagConfidence !== null && message.tagConfidence !== undefined" class="footnote-item">
-              Confidence: {{ formatConfidence(message.tagConfidence) }}
-            </span>
-            <span v-if="message.tagReason" class="footnote-item footnote-reason">
-              {{ message.tagReason }}
-            </span>
           </div>
         </div>
 
@@ -443,9 +431,6 @@ export default {
       const i = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), sizes.length - 1);
       return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
     },
-    formatConfidence(value) {
-      return `${Math.round(value * 100)}%`;
-    },
     getAttachmentUrl(attachmentId) {
       return getAttachmentUrl(this.message.id, attachmentId);
     },
@@ -538,6 +523,12 @@ export default {
 
 .toolbar-label {
   white-space: nowrap;
+}
+
+.toolbar-btn-todoist .toolbar-label {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .tag-display {
@@ -753,24 +744,6 @@ export default {
   color: #5f6368;
   white-space: nowrap;
   margin-left: 10px;
-}
-
-.header-footnote {
-  font-size: 12px;
-  color: var(--color-text-secondary);
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.footnote-item {
-  opacity: 0.9;
-}
-
-.footnote-reason {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .attachments {
