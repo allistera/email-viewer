@@ -18,12 +18,12 @@
 
     <div v-if="!showAuthModal" class="app-layout">
       <div class="app-container" :class="mobileViewClass">
-          <TagSidebar
-            ref="sidebar"
-            :selected-tag="selectedTag"
-            :message-counts="messageCounts"
-            :settings-active="currentView === 'settings'"
-            class="sidebar-panel"
+        <TagSidebar
+          ref="sidebar"
+          :selected-tag="selectedTag"
+          :message-counts="messageCounts"
+          :settings-active="currentView === 'settings'"
+          class="sidebar-panel"
           @select="handleTagSelect"
           @settings="openSettings"
           @close="closeMobileSidebar"
@@ -61,6 +61,7 @@
             @forward="handleForward"
           />
         </template>
+        <RightSidebar class="right-sidebar-panel" />
       </div>
     </div>
   </div>
@@ -74,6 +75,7 @@ import MessageDetail from './components/MessageDetail.vue';
 import SettingsView from './components/SettingsView.vue';
 import ComposeModal from './components/ComposeModal.vue';
 import ToastNotification from './components/ToastNotification.vue';
+import RightSidebar from './components/RightSidebar.vue';
 import { hasToken, setToken, clearToken } from './services/auth.js';
 import { getMessages, getMessage, getMessageCounts } from './services/api.js';
 import { realtimeClient } from './services/realtime.js';
@@ -87,7 +89,8 @@ export default {
     MessageDetail,
     SettingsView,
     ComposeModal,
-    ToastNotification
+    ToastNotification,
+    RightSidebar
   },
   data() {
     return {
@@ -563,7 +566,7 @@ export default {
 
 .app-container {
   display: grid;
-  grid-template-columns: 220px 360px 1fr;
+  grid-template-columns: 220px 360px 1fr 72px;
   flex: 1;
   min-height: 0;
 }
@@ -571,13 +574,18 @@ export default {
 /* Ensure grid items are constrained to enable inner scrolling */
 .sidebar-panel,
 .list-panel,
-.detail-panel {
+.detail-panel,
+.right-sidebar-panel {
   min-height: 0;
   overflow: hidden;
 }
 
 .settings-panel {
   grid-column: 2 / 4;
+}
+
+.right-sidebar-panel {
+  grid-column: 4 / 5;
 }
 
 @media (max-width: 768px) {
@@ -609,6 +617,10 @@ export default {
 
   .app-container.mobile-view-detail .detail-panel {
     display: flex;
+  }
+
+  .right-sidebar-panel {
+    display: none;
   }
 }
 </style>

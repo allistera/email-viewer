@@ -4,11 +4,85 @@
   --color-primary-dark: #c53727;
   --color-bg: #ffffff;
   --color-bg-secondary: #f9f9f9;
+  --color-bg-hover: #f1f3f4;
   --color-border: #e0e0e0;
   --color-text: #202020;
   --color-text-secondary: #808080;
   --color-success: #058527;
   --color-warning: #ff9a14;
+  --color-rail-bg: #f4f5f7;
+  --color-rail-bg-alt: #eef1f4;
+  --color-rail-border: #dadde1;
+  --color-rail-icon-bg: #ffffff;
+  --color-rail-icon-bg-hover: #f1f3f4;
+  --color-rail-icon: #5f6368;
+  --color-rail-icon-active: #1a73e8;
+  --color-rail-toggle-bg: #d7dbe0;
+  --color-rail-toggle-knob: #ffffff;
+  --color-rail-shadow: rgba(32, 33, 36, 0.12);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #111216;
+    --color-bg-secondary: #181b20;
+    --color-bg-hover: #22252b;
+    --color-border: #2a2f36;
+    --color-text: #e8eaed;
+    --color-text-secondary: #9aa0a6;
+    --color-rail-bg: #15171c;
+    --color-rail-bg-alt: #1c2026;
+    --color-rail-border: #2a2f36;
+    --color-rail-icon-bg: #1f242b;
+    --color-rail-icon-bg-hover: #262c34;
+    --color-rail-icon: #c2c6cc;
+    --color-rail-icon-active: #8ab4f8;
+    --color-rail-toggle-bg: #2e3440;
+    --color-rail-toggle-knob: #e8eaed;
+    --color-rail-shadow: rgba(0, 0, 0, 0.45);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme='light'] {
+  --color-bg: #ffffff;
+  --color-bg-secondary: #f9f9f9;
+  --color-bg-hover: #f1f3f4;
+  --color-border: #e0e0e0;
+  --color-text: #202020;
+  --color-text-secondary: #808080;
+  --color-rail-bg: #f4f5f7;
+  --color-rail-bg-alt: #eef1f4;
+  --color-rail-border: #dadde1;
+  --color-rail-icon-bg: #ffffff;
+  --color-rail-icon-bg-hover: #f1f3f4;
+  --color-rail-icon: #5f6368;
+  --color-rail-icon-active: #1a73e8;
+  --color-rail-toggle-bg: #d7dbe0;
+  --color-rail-toggle-knob: #ffffff;
+  --color-rail-shadow: rgba(32, 33, 36, 0.12);
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --color-bg: #111216;
+  --color-bg-secondary: #181b20;
+  --color-bg-hover: #22252b;
+  --color-border: #2a2f36;
+  --color-text: #e8eaed;
+  --color-text-secondary: #9aa0a6;
+  --color-rail-bg: #15171c;
+  --color-rail-bg-alt: #1c2026;
+  --color-rail-border: #2a2f36;
+  --color-rail-icon-bg: #1f242b;
+  --color-rail-icon-bg-hover: #262c34;
+  --color-rail-icon: #c2c6cc;
+  --color-rail-icon-active: #8ab4f8;
+  --color-rail-toggle-bg: #2e3440;
+  --color-rail-toggle-knob: #e8eaed;
+  --color-rail-shadow: rgba(0, 0, 0, 0.45);
+  color-scheme: dark;
 }
 
 * {
