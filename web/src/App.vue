@@ -17,7 +17,11 @@
     <ToastNotification ref="toast" />
 
     <div v-if="!showAuthModal" class="app-layout">
-      <div class="app-container" :class="mobileViewClass">
+      <div
+        class="app-container"
+        :class="mobileViewClass"
+        :style="gridStyle"
+      >
         <TagSidebar
           ref="sidebar"
           :selected-tag="selectedTag"
@@ -29,6 +33,13 @@
           @close="closeMobileSidebar"
           @compose="openCompose"
           @todoist-added="handleTodoistAdded"
+        />
+
+        <div
+          v-if="!isMobile && currentView !== 'settings'"
+          class="resize-handle resize-handle-sidebar"
+          aria-label="Resize sidebar"
+          @mousedown.prevent="startResize('sidebar', $event)"
         />
 
         <template v-if="currentView === 'settings'">
@@ -50,6 +61,13 @@
             @open-sidebar="openMobileSidebar"
           />
 
+          <div
+            v-if="!isMobile"
+            class="resize-handle resize-handle-list"
+            aria-label="Resize message list"
+            @mousedown.prevent="startResize('list', $event)"
+          />
+
           <MessageDetail
             :message="currentMessage"
             :loading="loadingDetail"
@@ -61,6 +79,13 @@
             @forward="handleForward"
           />
         </template>
+
+        <div
+          v-if="!isMobile"
+          class="resize-handle resize-handle-right"
+          aria-label="Resize right sidebar"
+          @mousedown.prevent="startResize('right', $event)"
+        />
         <RightSidebar class="right-sidebar-panel" />
       </div>
     </div>
@@ -116,10 +141,28 @@ export default {
       showComposeModal: false,
       replyToMessage: null,
       forwardMessage: null,
-      messageCounts: null
+      messageCounts: null,
+      sidebarWidth: 220,
+      listWidth: 360,
+      rightSidebarWidth: 72,
+      resizing: null,
+      resizeStartX: 0,
+      resizeStartSidebar: 0,
+      resizeStartList: 0,
+      resizeStartRight: 0
     };
   },
   computed: {
+    gridStyle() {
+      if (this.currentView === 'settings') {
+        return {
+          gridTemplateColumns: `${this.sidebarWidth}px 1fr 4px ${this.rightSidebarWidth}px`
+        };
+      }
+      return {
+        gridTemplateColumns: `${this.sidebarWidth}px 4px ${this.listWidth}px 4px 1fr 4px ${this.rightSidebarWidth}px`
+      };
+    },
     mobileViewClass() {
       if (!this.isMobile) return '';
       return `mobile-view-${this.mobileView}`;
@@ -167,8 +210,16 @@ export default {
     this.isMobile = window.innerWidth <= 768;
     window.addEventListener('resize', this.checkMobile);
     window.addEventListener('keydown', this.handleKeydown);
+
+    const sw = localStorage.getItem('sidebar-width');
+    const lw = localStorage.getItem('list-width');
+    const rw = localStorage.getItem('right-sidebar-width');
+    if (sw) this.sidebarWidth = Math.max(160, Math.min(400, parseInt(sw, 10) || 220));
+    if (lw) this.listWidth = Math.max(280, Math.min(600, parseInt(lw, 10) || 360));
+    if (rw) this.rightSidebarWidth = Math.max(48, Math.min(200, parseInt(rw, 10) || 72));
   },
   beforeUnmount() {
+    this.stopResize();
     realtimeClient.disconnect();
     window.removeEventListener('resize', this.checkMobile);
     window.removeEventListener('keydown', this.handleKeydown);
@@ -514,6 +565,43 @@ export default {
       }
     },
 
+    startResize(which, event) {
+      this.resizing = which;
+      this.resizeStartX = event.clientX;
+      this.resizeStartSidebar = this.sidebarWidth;
+      this.resizeStartList = this.listWidth;
+      this.resizeStartRight = this.rightSidebarWidth;
+      window.addEventListener('mousemove', this.doResize);
+      window.addEventListener('mouseup', this.stopResize);
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    },
+    doResize(event) {
+      if (!this.resizing) return;
+      const dx = event.clientX - this.resizeStartX;
+      if (this.resizing === 'sidebar') {
+        const w = Math.max(160, Math.min(400, this.resizeStartSidebar + dx));
+        this.sidebarWidth = w;
+      } else if (this.resizing === 'list') {
+        const w = Math.max(280, Math.min(600, this.resizeStartList + dx));
+        this.listWidth = w;
+      } else if (this.resizing === 'right') {
+        const w = Math.max(48, Math.min(200, this.resizeStartRight - dx));
+        this.rightSidebarWidth = w;
+      }
+    },
+    stopResize() {
+      if (this.resizing) {
+        localStorage.setItem('sidebar-width', String(this.sidebarWidth));
+        localStorage.setItem('list-width', String(this.listWidth));
+        localStorage.setItem('right-sidebar-width', String(this.rightSidebarWidth));
+      }
+      this.resizing = null;
+      window.removeEventListener('mousemove', this.doResize);
+      window.removeEventListener('mouseup', this.stopResize);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    },
     handleKeydown(event) {
       // Skip if user is typing in an input field
       if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA' || event.target.tagName === 'SELECT') {
@@ -566,7 +654,6 @@ export default {
 
 .app-container {
   display: grid;
-  grid-template-columns: 220px 360px 1fr 72px;
   flex: 1;
   min-height: 0;
 }
@@ -580,12 +667,21 @@ export default {
   overflow: hidden;
 }
 
-.settings-panel {
-  grid-column: 2 / 4;
+.resize-handle {
+  width: 4px;
+  min-width: 4px;
+  cursor: col-resize;
+  background: var(--color-border);
+  flex-shrink: 0;
+  transition: background 0.15s;
 }
 
-.right-sidebar-panel {
-  grid-column: 4 / 5;
+.resize-handle:hover {
+  background: var(--color-primary);
+}
+
+.resize-handle:active {
+  background: var(--color-primary);
 }
 
 @media (max-width: 768px) {
