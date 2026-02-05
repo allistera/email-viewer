@@ -10,6 +10,27 @@
       </button>
     </header>
 
+    <!-- Appearance Section -->
+    <div class="settings-card">
+      <h3>Appearance</h3>
+      <label class="field-label">Theme</label>
+      <p class="field-help">Automatic follows your system (OS) preference by default.</p>
+      <div class="theme-options">
+        <label class="theme-option">
+          <input type="radio" v-model="themePreference" value="system" @change="handleThemeChange" />
+          <span>Automatic (system)</span>
+        </label>
+        <label class="theme-option">
+          <input type="radio" v-model="themePreference" value="light" @change="handleThemeChange" />
+          <span>Light</span>
+        </label>
+        <label class="theme-option">
+          <input type="radio" v-model="themePreference" value="dark" @change="handleThemeChange" />
+          <span>Dark</span>
+        </label>
+      </div>
+    </div>
+
     <!-- Tagging Rules Section -->
     <div class="settings-card">
       <div class="card-header">
@@ -221,12 +242,14 @@
 <script>
 import { getTodoistToken, setTodoistToken, clearTodoistToken } from '../services/auth.js';
 import { getTaggingRules, createTaggingRule, updateTaggingRule, deleteTaggingRule, getTags } from '../services/api.js';
+import { getPreference, setPreference } from '../services/theme.js';
 
 export default {
   name: 'SettingsView',
   emits: ['close'],
   data() {
     return {
+      themePreference: getPreference(),
       // Todoist
       todoistToken: '',
       showToken: false,
@@ -268,11 +291,15 @@ export default {
     }
   },
   mounted() {
+    this.themePreference = getPreference();
     this.loadToken();
     this.loadRules();
     this.loadTags();
   },
   methods: {
+    handleThemeChange() {
+      setPreference(this.themePreference);
+    },
     // Todoist methods
     loadToken() {
       const token = getTodoistToken() || '';
@@ -461,6 +488,26 @@ export default {
   margin: 0 0 12px 0;
   font-size: 16px;
   color: var(--color-text);
+}
+
+.theme-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.theme-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--color-text);
+}
+
+.theme-option input {
+  margin: 0;
 }
 
 .field-label {

@@ -103,6 +103,7 @@ import ToastNotification from './components/ToastNotification.vue';
 import RightSidebar from './components/RightSidebar.vue';
 import { hasToken, setToken, clearToken } from './services/auth.js';
 import { getMessages, getMessage, getMessageCounts } from './services/api.js';
+import { init as initTheme } from './services/theme.js';
 import { realtimeClient } from './services/realtime.js';
 
 export default {
@@ -202,6 +203,7 @@ export default {
     }
   },
   mounted() {
+    initTheme();
     if (!this.showAuthModal) {
       this.pendingDeepLinkId = this.getDeepLinkMessageId();
       this.init();
