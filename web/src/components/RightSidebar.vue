@@ -4,42 +4,44 @@
       <button
         class="rail-app"
         type="button"
-        title="Calendar"
-        aria-label="Calendar"
-        data-active="true"
+        title="Email"
+        aria-label="Email"
+        :data-active="activeView === 'email'"
+        @click="$emit('select', 'email')"
       >
         <svg viewBox="0 0 24 24" aria-hidden="true">
-          <rect x="3" y="4.5" width="18" height="16.5" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.7" />
-          <path d="M7 3v3.5M17 3v3.5M3 9h18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+          <rect x="2" y="4" width="20" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.7" />
+          <path d="M22 6L12 13 2 6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
         </svg>
       </button>
-      <button class="rail-app" type="button" title="Keep" aria-label="Keep notes">
+      <button
+        class="rail-app"
+        type="button"
+        title="Kanban"
+        aria-label="Kanban"
+        :data-active="activeView === 'kanban'"
+        @click="$emit('select', 'kanban')"
+      >
         <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M12 3a6 6 0 0 0-3.2 11.1V18a1 1 0 0 0 1 1h4.4a1 1 0 0 0 1-1v-3.9A6 6 0 0 0 12 3z" fill="none" stroke="currentColor" stroke-width="1.7" />
-          <path d="M9.3 21h5.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
-        </svg>
-      </button>
-      <button class="rail-app" type="button" title="Tasks" aria-label="Tasks">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M7 7h11M7 12h11M7 17h11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
-          <path d="M4 7l1.2 1.2L7 6.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
-          <path d="M4 12l1.2 1.2L7 11.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
-        </svg>
-      </button>
-      <button class="rail-app" type="button" title="Contacts" aria-label="Contacts">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M12 12.5a3.5 3.5 0 1 0-3.5-3.5 3.5 3.5 0 0 0 3.5 3.5z" fill="none" stroke="currentColor" stroke-width="1.7" />
-          <path d="M5 20a7 7 0 0 1 14 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+          <rect x="3" y="3" width="6" height="18" rx="1" fill="none" stroke="currentColor" stroke-width="1.7" />
+          <rect x="9" y="3" width="6" height="18" rx="1" fill="none" stroke="currentColor" stroke-width="1.7" />
+          <rect x="15" y="3" width="6" height="18" rx="1" fill="none" stroke="currentColor" stroke-width="1.7" />
         </svg>
       </button>
     </nav>
-
   </aside>
 </template>
 
 <script>
 export default {
-  name: 'RightSidebar'
+  name: 'RightSidebar',
+  props: {
+    activeView: {
+      type: String,
+      default: 'email'
+    }
+  },
+  emits: ['select']
 };
 </script>
 

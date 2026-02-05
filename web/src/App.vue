@@ -45,6 +45,9 @@
         <template v-if="currentView === 'settings'">
           <SettingsView class="settings-panel" @close="closeSettings" />
         </template>
+        <template v-else-if="rightRailView === 'kanban'">
+          <KanbanView class="kanban-panel" />
+        </template>
         <template v-else>
           <MessageList
             :messages="messages"
@@ -86,7 +89,11 @@
           aria-label="Resize right sidebar"
           @mousedown.prevent="startResize('right', $event)"
         />
-        <RightSidebar class="right-sidebar-panel" />
+        <RightSidebar
+          class="right-sidebar-panel"
+          :active-view="rightRailView"
+          @select="rightRailView = $event"
+        />
       </div>
     </div>
   </div>
@@ -101,6 +108,7 @@ import SettingsView from './components/SettingsView.vue';
 import ComposeModal from './components/ComposeModal.vue';
 import ToastNotification from './components/ToastNotification.vue';
 import RightSidebar from './components/RightSidebar.vue';
+import KanbanView from './components/KanbanView.vue';
 import { hasToken, setToken, clearToken } from './services/auth.js';
 import { getMessages, getMessage, getMessageCounts } from './services/api.js';
 import { init as initTheme } from './services/theme.js';
@@ -116,7 +124,8 @@ export default {
     SettingsView,
     ComposeModal,
     ToastNotification,
-    RightSidebar
+    RightSidebar,
+    KanbanView
   },
   data() {
     return {
@@ -143,6 +152,7 @@ export default {
       replyToMessage: null,
       forwardMessage: null,
       messageCounts: null,
+      rightRailView: 'email',
       sidebarWidth: 220,
       listWidth: 360,
       rightSidebarWidth: 72,
@@ -664,6 +674,7 @@ export default {
 .sidebar-panel,
 .list-panel,
 .detail-panel,
+.kanban-panel,
 .right-sidebar-panel {
   min-height: 0;
   overflow: hidden;
