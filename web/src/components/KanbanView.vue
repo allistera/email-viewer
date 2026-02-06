@@ -57,7 +57,7 @@ export default {
 
 <style scoped>
 .kanban-view {
-  grid-column: 3 / 6;
+  grid-column: 3 / 4;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -85,14 +85,13 @@ export default {
   display: flex;
   gap: 20px;
   padding: 24px;
-  overflow-x: auto;
-  overflow-y: hidden;
+  overflow: hidden;
   min-height: 0;
 }
 
 .kanban-lane {
-  flex: 0 0 280px;
-  min-width: 280px;
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   background: var(--color-bg);

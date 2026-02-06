@@ -45,6 +45,9 @@
         <template v-if="currentView === 'settings'">
           <SettingsView class="settings-panel" @close="closeSettings" />
         </template>
+        <template v-else-if="rightRailView === 'calendar'">
+          <CalendarView class="calendar-panel" />
+        </template>
         <template v-else-if="rightRailView === 'kanban'">
           <KanbanView class="kanban-panel" />
         </template>
@@ -83,12 +86,6 @@
           />
         </template>
 
-        <div
-          v-if="!isMobile"
-          class="resize-handle resize-handle-right"
-          aria-label="Resize right sidebar"
-          @mousedown.prevent="startResize('right', $event)"
-        />
         <RightSidebar
           class="right-sidebar-panel"
           :active-view="rightRailView"
@@ -109,6 +106,7 @@ import ComposeModal from './components/ComposeModal.vue';
 import ToastNotification from './components/ToastNotification.vue';
 import RightSidebar from './components/RightSidebar.vue';
 import KanbanView from './components/KanbanView.vue';
+import CalendarView from './components/CalendarView.vue';
 import { hasToken, setToken, clearToken } from './services/auth.js';
 import { getMessages, getMessage, getMessageCounts } from './services/api.js';
 import { init as initTheme } from './services/theme.js';
@@ -125,7 +123,8 @@ export default {
     ComposeModal,
     ToastNotification,
     RightSidebar,
-    KanbanView
+    KanbanView,
+    CalendarView
   },
   data() {
     return {
@@ -159,8 +158,7 @@ export default {
       resizing: null,
       resizeStartX: 0,
       resizeStartSidebar: 0,
-      resizeStartList: 0,
-      resizeStartRight: 0
+      resizeStartList: 0
     };
   },
   computed: {
@@ -170,8 +168,13 @@ export default {
           gridTemplateColumns: `${this.sidebarWidth}px 1fr 4px ${this.rightSidebarWidth}px`
         };
       }
+      if (this.rightRailView === 'kanban' || this.rightRailView === 'calendar') {
+        return {
+          gridTemplateColumns: `${this.sidebarWidth}px 4px 1fr ${this.rightSidebarWidth}px`
+        };
+      }
       return {
-        gridTemplateColumns: `${this.sidebarWidth}px 4px ${this.listWidth}px 4px 1fr 4px ${this.rightSidebarWidth}px`
+        gridTemplateColumns: `${this.sidebarWidth}px 4px ${this.listWidth}px 4px 1fr ${this.rightSidebarWidth}px`
       };
     },
     mobileViewClass() {
@@ -582,7 +585,6 @@ export default {
       this.resizeStartX = event.clientX;
       this.resizeStartSidebar = this.sidebarWidth;
       this.resizeStartList = this.listWidth;
-      this.resizeStartRight = this.rightSidebarWidth;
       window.addEventListener('mousemove', this.doResize);
       window.addEventListener('mouseup', this.stopResize);
       document.body.style.cursor = 'col-resize';
@@ -597,16 +599,12 @@ export default {
       } else if (this.resizing === 'list') {
         const w = Math.max(280, Math.min(600, this.resizeStartList + dx));
         this.listWidth = w;
-      } else if (this.resizing === 'right') {
-        const w = Math.max(48, Math.min(200, this.resizeStartRight - dx));
-        this.rightSidebarWidth = w;
       }
     },
     stopResize() {
       if (this.resizing) {
         localStorage.setItem('sidebar-width', String(this.sidebarWidth));
         localStorage.setItem('list-width', String(this.listWidth));
-        localStorage.setItem('right-sidebar-width', String(this.rightSidebarWidth));
       }
       this.resizing = null;
       window.removeEventListener('mousemove', this.doResize);
@@ -675,6 +673,7 @@ export default {
 .list-panel,
 .detail-panel,
 .kanban-panel,
+.calendar-panel,
 .right-sidebar-panel {
   min-height: 0;
   overflow: hidden;
