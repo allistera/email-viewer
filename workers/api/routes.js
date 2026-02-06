@@ -555,7 +555,7 @@ export const ApiRouter = {
           LIMIT ?
         `;
 
-        const searchPattern = `%${query}%`;
+        const searchPattern = `${query}%`;
         const result = await env.DB.prepare(sql)
           .bind(searchPattern, searchPattern, limit)
           .all();
