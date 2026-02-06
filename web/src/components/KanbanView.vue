@@ -57,7 +57,6 @@ export default {
 
 <style scoped>
 .kanban-view {
-  grid-column: 3 / 4;
   display: flex;
   flex-direction: column;
   min-height: 0;

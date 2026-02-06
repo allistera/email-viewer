@@ -45,12 +45,6 @@
         <template v-if="currentView === 'settings'">
           <SettingsView class="settings-panel" @close="closeSettings" />
         </template>
-        <template v-else-if="rightRailView === 'calendar'">
-          <CalendarView class="calendar-panel" />
-        </template>
-        <template v-else-if="rightRailView === 'kanban'">
-          <KanbanView class="kanban-panel" />
-        </template>
         <template v-else>
           <MessageList
             :messages="messages"
@@ -74,7 +68,12 @@
             @mousedown.prevent="startResize('list', $event)"
           />
 
+          <KanbanView
+            v-if="rightRailView === 'kanban' && !isMobile"
+            class="kanban-panel"
+          />
           <MessageDetail
+            v-else
             :message="currentMessage"
             :loading="loadingDetail"
             :error="detailError"
@@ -106,7 +105,6 @@ import ComposeModal from './components/ComposeModal.vue';
 import ToastNotification from './components/ToastNotification.vue';
 import RightSidebar from './components/RightSidebar.vue';
 import KanbanView from './components/KanbanView.vue';
-import CalendarView from './components/CalendarView.vue';
 import { hasToken, setToken, clearToken } from './services/auth.js';
 import { getMessages, getMessage, getMessageCounts } from './services/api.js';
 import { init as initTheme } from './services/theme.js';
@@ -123,8 +121,7 @@ export default {
     ComposeModal,
     ToastNotification,
     RightSidebar,
-    KanbanView,
-    CalendarView
+    KanbanView
   },
   data() {
     return {
@@ -166,11 +163,6 @@ export default {
       if (this.currentView === 'settings') {
         return {
           gridTemplateColumns: `${this.sidebarWidth}px 1fr 4px ${this.rightSidebarWidth}px`
-        };
-      }
-      if (this.rightRailView === 'kanban' || this.rightRailView === 'calendar') {
-        return {
-          gridTemplateColumns: `${this.sidebarWidth}px 4px 1fr ${this.rightSidebarWidth}px`
         };
       }
       return {
@@ -673,7 +665,6 @@ export default {
 .list-panel,
 .detail-panel,
 .kanban-panel,
-.calendar-panel,
 .right-sidebar-panel {
   min-height: 0;
   overflow: hidden;

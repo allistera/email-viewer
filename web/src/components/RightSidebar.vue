@@ -17,19 +17,6 @@
       <button
         class="rail-app"
         type="button"
-        title="Calendar"
-        aria-label="Calendar"
-        :data-active="activeView === 'calendar'"
-        @click="$emit('select', 'calendar')"
-      >
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <rect x="3" y="4.5" width="18" height="16.5" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.7" />
-          <path d="M7 3v3.5M17 3v3.5M3 9h18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
-        </svg>
-      </button>
-      <button
-        class="rail-app"
-        type="button"
         title="Kanban"
         aria-label="Kanban"
         :data-active="activeView === 'kanban'"
