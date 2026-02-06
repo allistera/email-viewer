@@ -1,6 +1,11 @@
 import { describe, it, expect, vi } from "vitest";
 import { env } from "cloudflare:test";
 
+vi.mock("@sentry/cloudflare", () => ({
+  withSentry: (_options, handler) => handler,
+  captureException: vi.fn(),
+}));
+
 vi.mock("../../workers/shared/db.js", () => ({
   DB: {
     checkDedupe: vi.fn(async () => true),
@@ -56,8 +61,9 @@ describe("email worker", () => {
     const workerModule = await import("../../workers/email/index.js");
     const worker = workerModule.default;
 
-    const raw = new Response("From: sender@example.com\nTo: recipient@example.com\n\nHello")
-      .body;
+    const raw = new TextEncoder().encode(
+      "From: sender@example.com\nTo: recipient@example.com\n\nHello"
+    );
 
     const message = {
       raw,
