@@ -190,6 +190,20 @@ export const ApiRouter = {
           return jsonResponse({ ...msg, is_read: 1 });
         }
 
+        // Raw .eml download
+        if (parts.length === 3 && parts[2] === 'raw' && request.method === 'GET') {
+          const msg = await DB.getMessage(env.DB, id);
+          if (!msg) return new Response('Not Found', { status: 404 });
+          if (!msg.raw_r2_key) {
+            return new Response('Raw email not available', { status: 404 });
+          }
+          const object = await env.MAILSTORE.get(msg.raw_r2_key);
+          if (!object) return new Response('Raw email not found in storage', { status: 404 });
+          return new Response(object.body, {
+            headers: { 'Content-Type': 'message/rfc822' }
+          });
+        }
+
         // Archive
         if (parts.length === 3 && parts[2] === 'archive' && request.method === 'POST') {
           await DB.archiveMessage(env.DB, id);
