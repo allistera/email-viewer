@@ -18,6 +18,7 @@ A self-hosted, single-user email inbox built on Cloudflare Workers. It uses **Em
 
 ## Recent Updates
 
+- **iOS Push Notifications**: Get notified on your iPhone when new emails arrive via [ntfy](https://ntfy.sh).
 - **Compose Emails**: New compose window (Gmail-style popup from bottom-right) for creating new emails
 - **Reply & Forward**: Reply to or forward emails with pre-filled recipient, subject, and quoted message
 - **Keyboard Navigation**: Use Up/Down arrow keys to navigate through the message list
@@ -141,7 +142,42 @@ Open **Settings** to store your Todoist API token (optional).
 - **Download Attachment**: `GET /api/messages/:id/attachments/:attId`
 - **Send Email**: `POST /api/send`
 - **Add to Todoist**: `POST /api/messages/:id/todoist`
-git
+## iOS Push Notifications
+
+Get native iOS notifications on your iPhone when new emails arrive, powered by [ntfy](https://ntfy.sh) (free, open-source).
+
+### Setup
+
+1. Install the **ntfy** app from the App Store
+2. Subscribe to a unique topic (e.g., `my-email-inbox-abc123`)
+3. Set environment variables:
+
+```bash
+npx wrangler secret put NTFY_TOPIC                              # enter: my-email-inbox-abc123
+npx wrangler secret put NTFY_TOPIC -c wrangler-email.toml       # enter: my-email-inbox-abc123
+
+# Optional: for self-hosted ntfy server
+npx wrangler secret put NTFY_SERVER -c wrangler-email.toml      # enter: https://your-ntfy.example.com
+
+# Optional: for authenticated topics
+npx wrangler secret put NTFY_TOKEN -c wrangler-email.toml       # enter: tk_...
+
+# Optional: skip spam notifications (default: spam is not notified)
+npx wrangler secret put NOTIFY_SPAM -c wrangler-email.toml      # enter: false
+
+# Optional: deep-link URL in notifications
+npx wrangler secret put NOTIFY_APP_URL -c wrangler-email.toml   # enter: https://mail.yourdomain.com
+```
+
+### Testing Notifications
+
+Go to **Settings** in the web UI and click **Send Test Notification** to verify your setup. Or use the API:
+
+```bash
+curl -X POST https://your-worker.workers.dev/api/notifications/test \
+  -H "Authorization: Bearer YOUR_API_TOKEN"
+```
+
 ## Development
 
 Run locally using Wrangler:

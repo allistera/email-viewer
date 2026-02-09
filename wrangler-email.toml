@@ -24,6 +24,8 @@ script_name = "mail-app-worker"
 # Environment Variables
 [vars]
 OPENAI_MODEL = "gpt-4o-mini"
+# Push notifications via ntfy (https://ntfy.sh)
+# NTFY_TOPIC = "my-email-inbox"
 
 # Email Configuration
 [email]

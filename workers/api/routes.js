@@ -1,4 +1,5 @@
 import { DB } from '../shared/db.js';
+import { sendNewEmailNotification } from '../shared/notifications.js';
 
 const MISSING_TABLE_PATTERN = /no such table/i;
 
@@ -518,6 +519,58 @@ export const ApiRouter = {
 
         await DB.deleteTaggingRule(env.DB, id);
         return jsonResponse({ ok: true });
+      }
+
+      // GET /api/notifications/status - check ntfy notification configuration
+      if (path === 'notifications/status' && request.method === 'GET') {
+        const topic = (env.NTFY_TOPIC || '').trim();
+        const configured = Boolean(topic);
+
+        const status = {
+          configured,
+          provider: configured ? 'ntfy' : null,
+          notifySpam: (env.NOTIFY_SPAM || 'false').toLowerCase() === 'true',
+          appUrl: env.NOTIFY_APP_URL || env.APP_URL || null,
+          details: {
+            topic: topic ? '***configured***' : null,
+            server: env.NTFY_SERVER || 'https://ntfy.sh',
+            hasToken: Boolean(env.NTFY_TOKEN),
+          },
+        };
+
+        return jsonResponse(status);
+      }
+
+      // POST /api/notifications/test - send a test notification via ntfy
+      if (path === 'notifications/test' && request.method === 'POST') {
+        const topic = (env.NTFY_TOPIC || '').trim();
+        if (!topic) {
+          return jsonResponse(
+            { error: 'No NTFY_TOPIC configured. Set it in your environment variables.' },
+            { status: 400 }
+          );
+        }
+
+        const testMessage = {
+          id: 'test-notification',
+          from_addr: 'test@example.com',
+          to_addr: env.SEND_FROM_EMAIL || 'you@example.com',
+          subject: 'Test Notification',
+          snippet: 'This is a test notification from your email inbox app. If you see this on your phone, notifications are working!',
+          received_at: Date.now(),
+          has_attachments: false,
+          tag: null,
+        };
+
+        const result = await sendNewEmailNotification(testMessage, env);
+        if (result.ok) {
+          return jsonResponse({ ok: true, provider: 'ntfy' });
+        } else {
+          return jsonResponse(
+            { ok: false, error: result.error, provider: 'ntfy' },
+            { status: 502 }
+          );
+        }
       }
 
       // GET /api/health

@@ -186,6 +186,63 @@
       </div>
     </div>
 
+    <!-- Push Notifications Section -->
+    <div class="settings-card">
+      <h3>Push Notifications</h3>
+      <p class="field-help">
+        Get iOS push notifications when new emails arrive via <a href="https://ntfy.sh" target="_blank" rel="noopener">ntfy</a> (free, open-source).
+      </p>
+
+      <div v-if="notifyLoading" class="loading">Checking notification status...</div>
+      <div v-else-if="notifyStatus">
+        <div class="notify-status">
+          <div class="notify-status-row">
+            <span class="notify-label">Status:</span>
+            <span :class="['notify-badge', notifyStatus.configured ? 'badge-active' : 'badge-inactive']">
+              {{ notifyStatus.configured ? 'Configured' : 'Not Configured' }}
+            </span>
+          </div>
+          <div v-if="notifyStatus.provider" class="notify-status-row">
+            <span class="notify-label">Provider:</span>
+            <span class="notify-value">{{ notifyStatus.provider }}</span>
+          </div>
+          <div v-if="notifyStatus.details" class="notify-details">
+            <div v-for="(value, key) in notifyStatus.details" :key="key" class="notify-status-row">
+              <span class="notify-label">{{ formatDetailKey(key) }}:</span>
+              <span class="notify-value">{{ value === true ? 'Yes' : value === false ? 'No' : (value || 'Not set') }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="notifyStatus.configured" class="actions" style="margin-top: 12px;">
+          <button class="btn-primary" type="button" :disabled="testingSend" @click="handleTestNotification">
+            {{ testingSend ? 'Sending...' : 'Send Test Notification' }}
+          </button>
+        </div>
+        <p v-if="notifyTestMessage" class="status" :class="{ error: notifyTestType === 'error' }">
+          {{ notifyTestMessage }}
+        </p>
+
+        <div v-if="!notifyStatus.configured" class="notify-setup-help">
+          <p class="field-help" style="margin-top: 16px; margin-bottom: 8px;">
+            <strong>Quick setup:</strong>
+          </p>
+          <div class="notify-provider-list">
+            <div class="notify-provider-option">
+              Uses <strong>ntfy</strong> — free &amp; open-source. <a href="https://ntfy.sh" target="_blank" rel="noopener">ntfy.sh</a>
+              <ol class="setup-steps">
+                <li>Install the <strong>ntfy</strong> app from the App Store</li>
+                <li>Subscribe to a unique topic (e.g. <code>my-email-inbox-abc123</code>)</li>
+                <li>Set the <code>NTFY_TOPIC</code> environment variable to that topic name</li>
+              </ol>
+              <code>NTFY_TOPIC=your-topic</code>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div v-else-if="notifyError" class="status error">{{ notifyError }}</div>
+    </div>
+
     <!-- Todoist Section -->
     <div class="settings-card">
       <h3>Todoist</h3>
@@ -241,7 +298,7 @@
 
 <script>
 import { getTodoistToken, setTodoistToken, clearTodoistToken } from '../services/auth.js';
-import { getTaggingRules, createTaggingRule, updateTaggingRule, deleteTaggingRule, getTags } from '../services/api.js';
+import { getTaggingRules, createTaggingRule, updateTaggingRule, deleteTaggingRule, getTags, getNotificationStatus, sendTestNotification } from '../services/api.js';
 import { getPreference, setPreference } from '../services/theme.js';
 
 export default {
@@ -257,6 +314,14 @@ export default {
       hasSavedToken: false,
       statusMessage: '',
       statusType: 'success',
+
+      // Notifications
+      notifyLoading: false,
+      notifyStatus: null,
+      notifyError: '',
+      testingSend: false,
+      notifyTestMessage: '',
+      notifyTestType: 'success',
 
       // Tagging Rules
       rules: [],
@@ -295,10 +360,50 @@ export default {
     this.loadToken();
     this.loadRules();
     this.loadTags();
+    this.loadNotificationStatus();
   },
   methods: {
     handleThemeChange() {
       setPreference(this.themePreference);
+    },
+    // Notification methods
+    async loadNotificationStatus() {
+      this.notifyLoading = true;
+      this.notifyError = '';
+      try {
+        this.notifyStatus = await getNotificationStatus();
+      } catch (e) {
+        console.error('Failed to load notification status:', e);
+        this.notifyError = 'Failed to check notification status.';
+      } finally {
+        this.notifyLoading = false;
+      }
+    },
+    async handleTestNotification() {
+      this.testingSend = true;
+      this.notifyTestMessage = '';
+      try {
+        const result = await sendTestNotification();
+        if (result.ok) {
+          this.notifyTestMessage = `Test notification sent via ${result.provider}. Check your phone!`;
+          this.notifyTestType = 'success';
+        } else {
+          this.notifyTestMessage = result.error || 'Failed to send test notification.';
+          this.notifyTestType = 'error';
+        }
+      } catch (e) {
+        this.notifyTestMessage = e.message || 'Failed to send test notification.';
+        this.notifyTestType = 'error';
+      } finally {
+        this.testingSend = false;
+      }
+    },
+    formatDetailKey(key) {
+      return key
+        .replace(/([A-Z])/g, ' $1')
+        .replace(/^./, s => s.toUpperCase())
+        .replace(/^Has /, '')
+        .replace(/^Is /, '');
     },
     // Todoist methods
     loadToken() {
@@ -840,5 +945,108 @@ export default {
   display: flex;
   gap: 10px;
   justify-content: flex-end;
+}
+
+/* Notifications Styles */
+.notify-status {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.notify-status-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.notify-label {
+  color: var(--color-text-secondary);
+  min-width: 80px;
+}
+
+.notify-value {
+  color: var(--color-text);
+  font-family: monospace;
+  font-size: 12px;
+}
+
+.notify-badge {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badge-active {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.badge-inactive {
+  background: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
+}
+
+.notify-details {
+  margin-top: 4px;
+  padding: 8px 12px;
+  background: var(--color-bg-secondary);
+  border-radius: 6px;
+}
+
+.notify-setup-help {
+  margin-top: 8px;
+}
+
+.notify-provider-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.notify-provider-option {
+  font-size: 13px;
+  color: var(--color-text);
+  line-height: 1.5;
+}
+
+.notify-provider-option a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.notify-provider-option a:hover {
+  text-decoration: underline;
+}
+
+.notify-provider-option code {
+  display: block;
+  margin-top: 4px;
+  padding: 6px 10px;
+  background: var(--color-bg-secondary);
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  word-break: break-all;
+}
+
+.setup-steps {
+  margin: 8px 0;
+  padding-left: 20px;
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+.setup-steps li {
+  color: var(--color-text);
+}
+
+.setup-steps code {
+  display: inline;
+  margin-top: 0;
+  padding: 1px 5px;
+  font-size: 12px;
 }
 </style>

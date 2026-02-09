@@ -276,3 +276,17 @@ export async function deleteTaggingRule(id) {
     method: 'DELETE'
   });
 }
+
+// ==================
+// Notifications API
+// ==================
+
+export async function getNotificationStatus() {
+  return request('/notifications/status');
+}
+
+export async function sendTestNotification() {
+  return request('/notifications/test', {
+    method: 'POST'
+  });
+}
