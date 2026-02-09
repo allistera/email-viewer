@@ -24,6 +24,10 @@ script_name = "mail-app-worker"
 # Environment Variables
 [vars]
 OPENAI_MODEL = "gpt-4o-mini"
+# Push notification provider: "ntfy", "pushover", "bark", or "webhook"
+# NOTIFY_PROVIDER = "ntfy"
+# NTFY_TOPIC = "my-email-inbox"
+# NOTIFY_SPAM = "false"
 
 # Email Configuration
 [email]

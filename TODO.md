@@ -7,6 +7,7 @@
 - [ ] **Multi-User**: Update schema and auth to support multiple inboxes.
 - [ ] **Reply/Send**: Integrate with an outbound SMTP provider (e.g. MailChannels or AWS SES) to allow replying.
 - [ ] **PWA**: Add a manifest.json and Service Worker to make it installable.
+- [x] **iOS Push Notifications**: Send push notifications when new emails arrive (ntfy, Pushover, Bark, webhook).
 
 ## Completed
 

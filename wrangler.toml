@@ -34,6 +34,11 @@ service = "mail-app-todoist"
 [vars]
 SEND_FROM_EMAIL = "hello@infinitywave.design"
 TAG_LABELS = "Marketing, Recruitment, Personal, Finance, Support, Other"
+# Push notification provider: "ntfy", "pushover", "bark", or "webhook"
+# NOTIFY_PROVIDER = "ntfy"
+# NTFY_TOPIC = "my-email-inbox"
+# NOTIFY_SPAM = "false"
+# NOTIFY_APP_URL = "https://mail.infinitywave.design"
 
 # Routes
 [env.production]
