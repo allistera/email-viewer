@@ -1,4 +1,5 @@
 import { DB } from '../shared/db.js';
+import { sendNewEmailNotification } from '../shared/notifications.js';
 
 const MISSING_TABLE_PATTERN = /no such table/i;
 
@@ -518,6 +519,78 @@ export const ApiRouter = {
 
         await DB.deleteTaggingRule(env.DB, id);
         return jsonResponse({ ok: true });
+      }
+
+      // GET /api/notifications/status - check notification configuration
+      if (path === 'notifications/status' && request.method === 'GET') {
+        const provider = (env.NOTIFY_PROVIDER || '').toLowerCase().trim();
+        const configured = Boolean(provider);
+
+        const status = {
+          configured,
+          provider: provider || null,
+          notifySpam: (env.NOTIFY_SPAM || 'false').toLowerCase() === 'true',
+          appUrl: env.NOTIFY_APP_URL || env.APP_URL || null,
+        };
+
+        // Check provider-specific config (without leaking secrets)
+        if (provider === 'ntfy') {
+          status.details = {
+            topic: env.NTFY_TOPIC ? '***configured***' : null,
+            server: env.NTFY_SERVER || 'https://ntfy.sh',
+            hasToken: Boolean(env.NTFY_TOKEN),
+          };
+        } else if (provider === 'pushover') {
+          status.details = {
+            hasToken: Boolean(env.PUSHOVER_TOKEN),
+            hasUser: Boolean(env.PUSHOVER_USER),
+            device: env.PUSHOVER_DEVICE || null,
+          };
+        } else if (provider === 'bark') {
+          status.details = {
+            server: env.BARK_SERVER || 'https://api.day.app',
+            hasKey: Boolean(env.BARK_KEY),
+          };
+        } else if (provider === 'webhook') {
+          status.details = {
+            hasUrl: Boolean(env.WEBHOOK_URL),
+            hasSecret: Boolean(env.WEBHOOK_SECRET),
+          };
+        }
+
+        return jsonResponse(status);
+      }
+
+      // POST /api/notifications/test - send a test notification
+      if (path === 'notifications/test' && request.method === 'POST') {
+        const provider = (env.NOTIFY_PROVIDER || '').toLowerCase().trim();
+        if (!provider) {
+          return jsonResponse(
+            { error: 'No NOTIFY_PROVIDER configured. Set it in your environment variables.' },
+            { status: 400 }
+          );
+        }
+
+        const testMessage = {
+          id: 'test-notification',
+          from_addr: 'test@example.com',
+          to_addr: env.SEND_FROM_EMAIL || 'you@example.com',
+          subject: 'Test Notification',
+          snippet: 'This is a test notification from your email inbox app. If you see this on your phone, notifications are working!',
+          received_at: Date.now(),
+          has_attachments: false,
+          tag: null,
+        };
+
+        const result = await sendNewEmailNotification(testMessage, env);
+        if (result.ok) {
+          return jsonResponse({ ok: true, provider: result.provider || provider });
+        } else {
+          return jsonResponse(
+            { ok: false, error: result.error, provider: result.provider || provider },
+            { status: 502 }
+          );
+        }
       }
 
       // GET /api/health
