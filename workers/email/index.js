@@ -3,6 +3,7 @@ import { MimeParser } from '../shared/mime.js';
 import { DB } from '../shared/db.js';
 import { R2 } from '../shared/r2.js';
 import { MessageClassifier } from '../shared/openai.js';
+import { sendNewEmailNotification } from '../shared/notifications.js';
 
 /**
  * Async Background Processor
@@ -85,6 +86,19 @@ async function processMessage(messageId, env) {
                     }
                 }
             }
+        }
+        // 4. Send push notification (after tagging so we can skip spam)
+        try {
+            const taggedMessage = await DB.getMessage(env.DB, messageId);
+            if (taggedMessage) {
+                const notifyResult = await sendNewEmailNotification(taggedMessage, env);
+                if (notifyResult && !notifyResult.ok && !notifyResult.skipped) {
+                    console.error(`Push notification failed: ${notifyResult.error}`);
+                }
+            }
+        } catch (notifyErr) {
+            // Notification failures should never block email processing
+            console.error(`Push notification error: ${notifyErr.message || notifyErr}`);
         }
     } catch (e) {
         console.error(`Post-processing failed for ${messageId}:`, e);
