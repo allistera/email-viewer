@@ -190,7 +190,7 @@
     <div class="settings-card">
       <h3>Push Notifications</h3>
       <p class="field-help">
-        Get iOS push notifications when new emails arrive. Configure a notification provider in your environment variables.
+        Get iOS push notifications when new emails arrive via <a href="https://ntfy.sh" target="_blank" rel="noopener">ntfy</a> (free, open-source).
       </p>
 
       <div v-if="notifyLoading" class="loading">Checking notification status...</div>
@@ -225,24 +225,17 @@
 
         <div v-if="!notifyStatus.configured" class="notify-setup-help">
           <p class="field-help" style="margin-top: 16px; margin-bottom: 8px;">
-            <strong>Quick setup (choose one):</strong>
+            <strong>Quick setup:</strong>
           </p>
           <div class="notify-provider-list">
             <div class="notify-provider-option">
-              <strong>ntfy</strong> — Free &amp; open-source. <a href="https://ntfy.sh" target="_blank" rel="noopener">ntfy.sh</a>
-              <code>NOTIFY_PROVIDER=ntfy, NTFY_TOPIC=your-topic</code>
-            </div>
-            <div class="notify-provider-option">
-              <strong>Pushover</strong> — $5 one-time iOS app. <a href="https://pushover.net" target="_blank" rel="noopener">pushover.net</a>
-              <code>NOTIFY_PROVIDER=pushover, PUSHOVER_TOKEN=..., PUSHOVER_USER=...</code>
-            </div>
-            <div class="notify-provider-option">
-              <strong>Bark</strong> — Free iOS app. <a href="https://github.com/nicegram/Bark" target="_blank" rel="noopener">GitHub</a>
-              <code>NOTIFY_PROVIDER=bark, BARK_KEY=your-device-key</code>
-            </div>
-            <div class="notify-provider-option">
-              <strong>Webhook</strong> — Any HTTP endpoint (IFTTT, Make, Home Assistant, etc.)
-              <code>NOTIFY_PROVIDER=webhook, WEBHOOK_URL=https://...</code>
+              Uses <strong>ntfy</strong> — free &amp; open-source. <a href="https://ntfy.sh" target="_blank" rel="noopener">ntfy.sh</a>
+              <ol class="setup-steps">
+                <li>Install the <strong>ntfy</strong> app from the App Store</li>
+                <li>Subscribe to a unique topic (e.g. <code>my-email-inbox-abc123</code>)</li>
+                <li>Set the <code>NTFY_TOPIC</code> environment variable to that topic name</li>
+              </ol>
+              <code>NTFY_TOPIC=your-topic</code>
             </div>
           </div>
         </div>
@@ -1037,5 +1030,23 @@ export default {
   font-size: 11px;
   color: var(--color-text-secondary);
   word-break: break-all;
+}
+
+.setup-steps {
+  margin: 8px 0;
+  padding-left: 20px;
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+.setup-steps li {
+  color: var(--color-text);
+}
+
+.setup-steps code {
+  display: inline;
+  margin-top: 0;
+  padding: 1px 5px;
+  font-size: 12px;
 }
 </style>

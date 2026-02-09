@@ -521,52 +521,32 @@ export const ApiRouter = {
         return jsonResponse({ ok: true });
       }
 
-      // GET /api/notifications/status - check notification configuration
+      // GET /api/notifications/status - check ntfy notification configuration
       if (path === 'notifications/status' && request.method === 'GET') {
-        const provider = (env.NOTIFY_PROVIDER || '').toLowerCase().trim();
-        const configured = Boolean(provider);
+        const topic = (env.NTFY_TOPIC || '').trim();
+        const configured = Boolean(topic);
 
         const status = {
           configured,
-          provider: provider || null,
+          provider: configured ? 'ntfy' : null,
           notifySpam: (env.NOTIFY_SPAM || 'false').toLowerCase() === 'true',
           appUrl: env.NOTIFY_APP_URL || env.APP_URL || null,
-        };
-
-        // Check provider-specific config (without leaking secrets)
-        if (provider === 'ntfy') {
-          status.details = {
-            topic: env.NTFY_TOPIC ? '***configured***' : null,
+          details: {
+            topic: topic ? '***configured***' : null,
             server: env.NTFY_SERVER || 'https://ntfy.sh',
             hasToken: Boolean(env.NTFY_TOKEN),
-          };
-        } else if (provider === 'pushover') {
-          status.details = {
-            hasToken: Boolean(env.PUSHOVER_TOKEN),
-            hasUser: Boolean(env.PUSHOVER_USER),
-            device: env.PUSHOVER_DEVICE || null,
-          };
-        } else if (provider === 'bark') {
-          status.details = {
-            server: env.BARK_SERVER || 'https://api.day.app',
-            hasKey: Boolean(env.BARK_KEY),
-          };
-        } else if (provider === 'webhook') {
-          status.details = {
-            hasUrl: Boolean(env.WEBHOOK_URL),
-            hasSecret: Boolean(env.WEBHOOK_SECRET),
-          };
-        }
+          },
+        };
 
         return jsonResponse(status);
       }
 
-      // POST /api/notifications/test - send a test notification
+      // POST /api/notifications/test - send a test notification via ntfy
       if (path === 'notifications/test' && request.method === 'POST') {
-        const provider = (env.NOTIFY_PROVIDER || '').toLowerCase().trim();
-        if (!provider) {
+        const topic = (env.NTFY_TOPIC || '').trim();
+        if (!topic) {
           return jsonResponse(
-            { error: 'No NOTIFY_PROVIDER configured. Set it in your environment variables.' },
+            { error: 'No NTFY_TOPIC configured. Set it in your environment variables.' },
             { status: 400 }
           );
         }
@@ -584,10 +564,10 @@ export const ApiRouter = {
 
         const result = await sendNewEmailNotification(testMessage, env);
         if (result.ok) {
-          return jsonResponse({ ok: true, provider: result.provider || provider });
+          return jsonResponse({ ok: true, provider: 'ntfy' });
         } else {
           return jsonResponse(
-            { ok: false, error: result.error, provider: result.provider || provider },
+            { ok: false, error: result.error, provider: 'ntfy' },
             { status: 502 }
           );
         }

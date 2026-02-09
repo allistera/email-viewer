@@ -18,7 +18,7 @@ A self-hosted, single-user email inbox built on Cloudflare Workers. It uses **Em
 
 ## Recent Updates
 
-- **iOS Push Notifications**: Get notified on your iPhone when new emails arrive. Supports ntfy, Pushover, Bark, and generic webhooks.
+- **iOS Push Notifications**: Get notified on your iPhone when new emails arrive via [ntfy](https://ntfy.sh).
 - **Compose Emails**: New compose window (Gmail-style popup from bottom-right) for creating new emails
 - **Reply & Forward**: Reply to or forward emails with pre-filled recipient, subject, and quoted message
 - **Keyboard Navigation**: Use Up/Down arrow keys to navigate through the message list
@@ -144,74 +144,28 @@ Open **Settings** to store your Todoist API token (optional).
 - **Add to Todoist**: `POST /api/messages/:id/todoist`
 ## iOS Push Notifications
 
-Get native iOS notifications on your iPhone when new emails arrive. Choose from several providers:
+Get native iOS notifications on your iPhone when new emails arrive, powered by [ntfy](https://ntfy.sh) (free, open-source).
 
-### Option 1: ntfy (Recommended — Free)
-
-[ntfy](https://ntfy.sh) is a free, open-source push notification service with an iOS app.
+### Setup
 
 1. Install the **ntfy** app from the App Store
 2. Subscribe to a unique topic (e.g., `my-email-inbox-abc123`)
 3. Set environment variables:
 
 ```bash
-npx wrangler secret put NOTIFY_PROVIDER  # enter: ntfy
-npx wrangler secret put NTFY_TOPIC       # enter: my-email-inbox-abc123
-# Optional: for self-hosted ntfy server
-npx wrangler secret put NTFY_SERVER      # enter: https://your-ntfy.example.com
-# Optional: for authenticated topics  
-npx wrangler secret put NTFY_TOKEN       # enter: tk_...
-```
-
-Also set the same secrets for the email worker:
-```bash
-npx wrangler secret put NOTIFY_PROVIDER -c wrangler-email.toml  # enter: ntfy
+npx wrangler secret put NTFY_TOPIC                              # enter: my-email-inbox-abc123
 npx wrangler secret put NTFY_TOPIC -c wrangler-email.toml       # enter: my-email-inbox-abc123
-```
 
-### Option 2: Pushover ($5 one-time)
+# Optional: for self-hosted ntfy server
+npx wrangler secret put NTFY_SERVER -c wrangler-email.toml      # enter: https://your-ntfy.example.com
 
-[Pushover](https://pushover.net) is a polished push service with a $5 one-time-purchase iOS app.
+# Optional: for authenticated topics
+npx wrangler secret put NTFY_TOKEN -c wrangler-email.toml       # enter: tk_...
 
-1. Buy & install the **Pushover** app from the App Store
-2. Create an application at [pushover.net/apps/build](https://pushover.net/apps/build)
-3. Set environment variables:
-
-```bash
-npx wrangler secret put NOTIFY_PROVIDER -c wrangler-email.toml  # enter: pushover
-npx wrangler secret put PUSHOVER_TOKEN -c wrangler-email.toml   # enter: your app token
-npx wrangler secret put PUSHOVER_USER -c wrangler-email.toml    # enter: your user key
-```
-
-### Option 3: Bark (Free, iOS-only)
-
-[Bark](https://github.com/nicegram/Bark) is a free, open-source iOS notification app.
-
-1. Install the **Bark** app from the App Store
-2. Copy your device key from the app
-3. Set environment variables:
-
-```bash
-npx wrangler secret put NOTIFY_PROVIDER -c wrangler-email.toml  # enter: bark
-npx wrangler secret put BARK_KEY -c wrangler-email.toml         # enter: your device key
-```
-
-### Option 4: Generic Webhook
-
-Send a JSON payload to any HTTP endpoint (IFTTT, Make, Home Assistant, Shortcuts, etc.).
-
-```bash
-npx wrangler secret put NOTIFY_PROVIDER -c wrangler-email.toml  # enter: webhook
-npx wrangler secret put WEBHOOK_URL -c wrangler-email.toml      # enter: https://...
-```
-
-### Additional Options
-
-```bash
-# Skip spam notifications (default: false = spam is not notified)
+# Optional: skip spam notifications (default: spam is not notified)
 npx wrangler secret put NOTIFY_SPAM -c wrangler-email.toml      # enter: false
 
-# Set the app URL for deep-link in notifications
+# Optional: deep-link URL in notifications
 npx wrangler secret put NOTIFY_APP_URL -c wrangler-email.toml   # enter: https://mail.yourdomain.com
 ```
 
