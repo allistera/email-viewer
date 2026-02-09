@@ -70,7 +70,11 @@
 
           <KanbanView
             v-if="rightRailView === 'kanban' && !isMobile"
+            :messages="messages"
             class="kanban-panel"
+            @message-dropped="handleMessageDropped"
+            @select-message="handleSelectMessage"
+            @drop-error="handleDropError"
           />
           <MessageDetail
             v-else
@@ -163,6 +167,11 @@ export default {
       if (this.currentView === 'settings') {
         return {
           gridTemplateColumns: `${this.sidebarWidth}px 1fr 4px ${this.rightSidebarWidth}px`
+        };
+      }
+      if (this.rightRailView === 'kanban' || this.rightRailView === 'calendar') {
+        return {
+          gridTemplateColumns: `${this.sidebarWidth}px 4px 1fr ${this.rightSidebarWidth}px`
         };
       }
       return {
@@ -472,6 +481,30 @@ export default {
       // Select the next message if available (only on desktop)
       if (!this.isMobile && this.messages.length > 0 && !this.selectedMessageId) {
         this.handleSelectMessage(this.messages[0].id);
+      }
+    },
+
+    async handleMessageDropped({ messageId, newTag }) {
+      // Update the message tag in the local state
+      const messageInList = this.messages.find(m => m.id === messageId);
+      if (messageInList) {
+        messageInList.tag = newTag;
+      }
+
+      // Update current message if it's the one being moved
+      if (this.currentMessage && this.currentMessage.id === messageId) {
+        this.currentMessage.tag = newTag;
+      }
+
+      // Refresh message counts to reflect the change
+      await this.loadCounts();
+    },
+
+    handleDropError({ messageId, error }) {
+      console.error('Failed to drop message:', error);
+      // Show error toast
+      if (this.$refs.toast) {
+        this.$refs.toast.show('Failed to move email. Please try again.', 'error');
       }
     },
 
