@@ -17,8 +17,8 @@ async function processMessage(messageId, env) {
         const message = await DB.getMessage(env.DB, messageId);
         if (!message) return;
 
-        // 2. Broadcast received event
-        await hub.fetch('http://do/broadcast', {
+        // 2. Broadcast received event (Non-blocking)
+        const broadcastPromise = hub.fetch('http://do/broadcast', {
             method: 'POST',
             body: JSON.stringify({
                 type: 'message.received',
@@ -41,6 +41,9 @@ async function processMessage(messageId, env) {
                     confidence: ruleMatch.confidence,
                     reason: ruleMatch.reason
                 });
+
+                // Update local message object for notification
+                message.tag = ruleMatch.tag;
 
                 await hub.fetch('http://do/broadcast', {
                     method: 'POST',
@@ -74,6 +77,9 @@ async function processMessage(messageId, env) {
                     await DB.updateTagInfo(env.DB, messageId, result.tag);
 
                     if (result.tag.tag) {
+                        // Update local message object for notification
+                        message.tag = result.tag.tag;
+
                         await hub.fetch('http://do/broadcast', {
                             method: 'POST',
                             body: JSON.stringify({
@@ -87,14 +93,16 @@ async function processMessage(messageId, env) {
                 }
             }
         }
+
+        // Await initial broadcast before continuing to notification
+        await broadcastPromise;
+
         // 4. Send push notification (after tagging so we can skip spam)
         try {
-            const taggedMessage = await DB.getMessage(env.DB, messageId);
-            if (taggedMessage) {
-                const notifyResult = await sendNewEmailNotification(taggedMessage, env);
-                if (notifyResult && !notifyResult.ok && !notifyResult.skipped) {
-                    console.error(`Push notification failed: ${notifyResult.error}`);
-                }
+            // Optimization: Use local message object instead of re-fetching from DB
+            const notifyResult = await sendNewEmailNotification(message, env);
+            if (notifyResult && !notifyResult.ok && !notifyResult.skipped) {
+                console.error(`Push notification failed: ${notifyResult.error}`);
             }
         } catch (notifyErr) {
             // Notification failures should never block email processing
