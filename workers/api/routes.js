@@ -598,7 +598,7 @@ export const ApiRouter = {
             SELECT from_addr as email, MAX(received_at) as last_used FROM messages
             WHERE from_addr LIKE ?
             GROUP BY from_addr
-            UNION
+            UNION ALL
             SELECT to_addr as email, MAX(received_at) as last_used FROM messages
             WHERE to_addr LIKE ?
             GROUP BY to_addr
