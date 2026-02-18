@@ -43,7 +43,11 @@ export const MimeParser = {
   }
 };
 
-function extractTextFromHtml(html) {
+export function extractTextFromHtml(html, limit = 102400) {
   // Very naive stripper, sufficient for snippet generation fallback
+  // Optimized to truncate large inputs before regex processing
+  if (html && html.length > limit) {
+    html = html.substring(0, limit);
+  }
   return html.replace(/<[^>]*>?/gm, ' ');
 }
