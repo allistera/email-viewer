@@ -643,8 +643,17 @@ export const DB = {
   async matchTaggingRules(db, message) {
     const rules = await this.getEnabledTaggingRules(db);
 
+    // Pre-calculate lowercased values once for performance
+    const normalizedMessage = {
+      ...message,
+      _lower_from: (message.from_addr || '').toLowerCase(),
+      _lower_to: (message.to_addr || '').toLowerCase(),
+      _lower_subject: (message.subject || '').toLowerCase(),
+      _lower_body: (message.text_body || message.html_body || '').toLowerCase()
+    };
+
     for (const rule of rules) {
-      if (this.doesRuleMatch(rule, message)) {
+      if (this.doesRuleMatch(rule, normalizedMessage)) {
         return {
           tag: rule.tag_name,
           ruleId: rule.id,
@@ -665,10 +674,10 @@ export const DB = {
    * @param {Object} message
    */
   doesRuleMatch(rule, message) {
-    const from = (message.from_addr || '').toLowerCase();
-    const to = (message.to_addr || '').toLowerCase();
-    const subject = (message.subject || '').toLowerCase();
-    const body = (message.text_body || message.html_body || '').toLowerCase();
+    const from = message._lower_from !== undefined ? message._lower_from : (message.from_addr || '').toLowerCase();
+    const to = message._lower_to !== undefined ? message._lower_to : (message.to_addr || '').toLowerCase();
+    const subject = message._lower_subject !== undefined ? message._lower_subject : (message.subject || '').toLowerCase();
+    const body = message._lower_body !== undefined ? message._lower_body : (message.text_body || message.html_body || '').toLowerCase();
 
     // All specified conditions must match
     if (rule.match_from && !from.includes(rule.match_from.toLowerCase())) {
