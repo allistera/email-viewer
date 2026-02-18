@@ -16,7 +16,7 @@
     "test:report": "playwright show-report"
   },
   "dependencies": {
-    "dompurify": "^3.3.1",
+    "sanitize-html": "^2.17.0",
     "vue": "^3.4.0"
   },
   "devDependencies": {

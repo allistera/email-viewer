@@ -191,7 +191,9 @@
 
       <div class="body-content">
         <div v-if="message.htmlBody" class="html-body">
+          <div v-if="isSanitizing" class="loading-content">Loading content...</div>
           <iframe
+            v-else
             :srcdoc="sanitizedHtml"
             sandbox
             class="html-iframe"
@@ -206,17 +208,10 @@
 </template>
 
 <script>
-import DOMPurify from 'dompurify';
 import TagBadge from './TagBadge.vue';
+import { sanitize } from '../services/htmlSanitizer.js';
 import { getAttachmentUrl, addMessageTag, removeMessageTag, getTags, archiveMessage, addTodoistTask } from '../services/api.js';
 import { formatRelativeDate } from '../utils/dateFormat.js';
-
-const EMAIL_HTML_SANITIZE_CONFIG = {
-  USE_PROFILES: { html: true },
-  FORBID_TAGS: ['script', 'noscript', 'iframe', 'frame', 'object', 'embed']
-};
-
-const sanitizeEmailHtml = (html) => DOMPurify.sanitize(html, EMAIL_HTML_SANITIZE_CONFIG);
 
 export default {
   name: 'MessageDetail',
@@ -244,15 +239,13 @@ export default {
       selectedAddTag: '',
       archiving: false,
       addingTodoist: false,
-      todoistTaskUrl: ''
+      todoistTaskUrl: '',
+      sanitizedHtml: '',
+      isSanitizing: false
     };
   },
   emits: ['archived', 'back', 'reply', 'forward'],
   computed: {
-    sanitizedHtml() {
-      if (!this.message || !this.message.htmlBody) return '';
-      return sanitizeEmailHtml(this.message.htmlBody);
-    },
     currentTags() {
       if (!this.message) return [];
       // Prefer tags array (new per-message list), fallback to tag string wrapped in array
@@ -319,9 +312,13 @@ export default {
     }
   },
   watch: {
-    message() {
-      this.cancelAddingTag();
-      this.resetTodoistState();
+    message: {
+      immediate: true,
+      handler(newMsg) {
+        this.cancelAddingTag();
+        this.resetTodoistState();
+        this.updateSanitizedHtml(newMsg);
+      }
     }
   },
   async mounted() {
@@ -445,6 +442,22 @@ export default {
         alert('Failed to mark as done: ' + e.message);
       } finally {
         this.archiving = false;
+      }
+    },
+    async updateSanitizedHtml(message) {
+      if (!message || !message.htmlBody) {
+        this.sanitizedHtml = '';
+        return;
+      }
+      this.isSanitizing = true;
+      this.sanitizedHtml = '';
+      try {
+        this.sanitizedHtml = await sanitize(message.htmlBody);
+      } catch (e) {
+        console.error('Sanitization failed', e);
+        this.sanitizedHtml = '<div style="padding: 24px; text-align: center; color: red;">Failed to load content.</div>';
+      } finally {
+        this.isSanitizing = false;
       }
     },
   }
@@ -859,6 +872,12 @@ export default {
 }
 
 .no-content {
+  padding: 24px;
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+
+.loading-content {
   padding: 24px;
   text-align: center;
   color: var(--color-text-secondary);
