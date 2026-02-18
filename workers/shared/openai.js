@@ -2,6 +2,9 @@
  * OpenAI Tag Classifier Client
  */
 
+// Limit HTML body to 100KB before processing to prevent DoS/ReDoS
+const MAX_HTML_LENGTH = 100000;
+
 const buildInput = (message) => {
   const input = {
     from: (message.from_addr || '').substring(0, 200),
@@ -12,7 +15,10 @@ const buildInput = (message) => {
   };
 
   if (!input.body && message.html_body) {
-    input.body = message.html_body.replace(/<[^>]*>?/gm, ' ').substring(0, 2000);
+    const truncatedHtml = message.html_body.length > MAX_HTML_LENGTH
+      ? message.html_body.substring(0, MAX_HTML_LENGTH)
+      : message.html_body;
+    input.body = truncatedHtml.replace(/<[^>]*>?/gm, ' ').substring(0, 2000);
   }
 
   return input;
@@ -28,7 +34,10 @@ const buildTodoistInput = (message) => {
   };
 
   if (!input.body && message.html_body) {
-    input.body = message.html_body.replace(/<[^>]*>?/gm, ' ').substring(0, 3000);
+    const truncatedHtml = message.html_body.length > MAX_HTML_LENGTH
+      ? message.html_body.substring(0, MAX_HTML_LENGTH)
+      : message.html_body;
+    input.body = truncatedHtml.replace(/<[^>]*>?/gm, ' ').substring(0, 3000);
   }
 
   return input;
