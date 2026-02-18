@@ -115,26 +115,18 @@ export const ApiRouter = {
           .filter(t => t.name !== 'Spam' && t.name !== 'Sent')
           .map(t => t.name);
 
-        const [inboxCount, archiveCount, spamCount, sentCount, ...tagCounts] = await Promise.all([
-          DB.countMessages(env.DB, { archived: false, excludeTag: 'Spam' }),
-          DB.countMessages(env.DB, { archived: true }),
-          DB.countMessages(env.DB, { tag: 'Spam' }),
-          DB.countMessages(env.DB, { tag: 'Sent' }),
-          ...userTagNames.map(tagName =>
-            DB.countMessages(env.DB, { tag: tagName, archived: false })
-          )
-        ]);
+        const counts = await DB.getCounts(env.DB);
 
         const tagCountMap = {};
-        userTagNames.forEach((name, i) => {
-          tagCountMap[name] = tagCounts[i] ?? 0;
+        userTagNames.forEach((name) => {
+          tagCountMap[name] = counts.tagCounts[name] ?? 0;
         });
 
         return jsonResponse({
-          inbox: inboxCount,
-          archive: archiveCount,
-          spam: spamCount,
-          sent: sentCount,
+          inbox: counts.inbox,
+          archive: counts.archive,
+          spam: counts.spam,
+          sent: counts.sent,
           tags: tagCountMap
         });
       }
