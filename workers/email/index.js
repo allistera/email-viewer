@@ -8,13 +8,15 @@ import { sendNewEmailNotification } from '../shared/notifications.js';
 /**
  * Async Background Processor
  */
-async function processMessage(messageId, env) {
+async function processMessage(messageId, env, message = null) {
     try {
         const id = env.REALTIME_HUB.idFromName('global');
         const hub = env.REALTIME_HUB.get(id);
 
         // 1. Get current message state
-        const message = await DB.getMessage(env.DB, messageId);
+        if (!message) {
+            message = await DB.getMessage(env.DB, messageId);
+        }
         if (!message) return;
 
         // 2. Broadcast received event (Non-blocking)
@@ -203,8 +205,14 @@ export default Sentry.withSentry(sentryOptions, {
             const attachmentInserts = await Promise.all(attachmentPromises);
             await DB.insertAttachments(env.DB, attachmentInserts);
 
+            // Enrich local message object with attachments and tags for post-processing
+            // This ensures it matches the structure returned by DB.getMessage()
+            dbMessage.attachments = attachmentInserts;
+            dbMessage.tags = [];
+            dbMessage.tag = null;
+
             // 6. Trigger Post-Processing (Background)
-            ctx.waitUntil(processMessage(messageId, env));
+            ctx.waitUntil(processMessage(messageId, env, dbMessage));
 
         } catch (e) {
             Sentry.captureException(e);
