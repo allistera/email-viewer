@@ -3,7 +3,7 @@
     <div class="compose-modal">
       <div class="compose-header">
         <h2>{{ replyTo ? 'Reply' : forwardFrom ? 'Forward' : 'New Message' }}</h2>
-        <button class="close-btn" @click="handleClose" title="Close">&times;</button>
+        <button class="close-btn" @click="handleClose" title="Close" aria-label="Close">&times;</button>
       </div>
 
       <form @submit.prevent="handleSend" class="compose-form">
@@ -22,6 +22,7 @@
                   class="to-pill-remove"
                   :disabled="sending"
                   @click.stop="removeRecipient(index)"
+                  :aria-label="'Remove ' + recipient"
                 >
                   &times;
                 </button>
@@ -85,7 +86,8 @@
           <button type="button" class="btn-secondary" @click="handleClose" :disabled="sending">
             Cancel
           </button>
-          <button type="submit" class="btn-primary" :disabled="sending || !hasRecipients">
+          <button type="submit" class="btn-primary" :disabled="sending || !hasRecipients" :aria-busy="sending">
+            <span v-if="sending" class="spinner" aria-hidden="true"></span>
             {{ sending ? 'Sending...' : 'Send' }}
           </button>
         </div>
@@ -673,6 +675,22 @@ export default {
 .btn-primary:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #fff;
+  animation: spin 1s ease-in-out infinite;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .btn-secondary {
