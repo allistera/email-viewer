@@ -16,11 +16,11 @@
         <div class="lane-header">
           <span class="lane-dot" :style="{ background: lane.color }"></span>
           <h3 class="lane-title">{{ lane.title }}</h3>
-          <span class="lane-count">{{ getLaneCount(lane.id) }}</span>
+          <span class="lane-count">{{ lanesWithMessages[lane.id].length }}</span>
         </div>
         <div class="lane-cards">
           <div
-            v-for="message in getMessagesForLane(lane.id)"
+            v-for="message in lanesWithMessages[lane.id]"
             :key="message.id"
             class="kanban-card"
             @click="$emit('select-message', message.id)"
@@ -32,7 +32,7 @@
             <div class="card-content">{{ message.subject || '(No subject)' }}</div>
             <div class="card-snippet">{{ message.snippet }}</div>
           </div>
-          <div v-if="getMessagesForLane(lane.id).length === 0" class="lane-empty">
+          <div v-if="lanesWithMessages[lane.id].length === 0" class="lane-empty">
             <span class="empty-hint">Drop emails here</span>
           </div>
         </div>
@@ -64,22 +64,44 @@ export default {
       dragOverLane: null
     };
   },
-  methods: {
-    getMessagesForLane(laneId) {
-      // Map lane IDs to tag names
+  computed: {
+    lanesWithMessages() {
+      const map = {};
+
+      // Initialize arrays for each lane
+      this.lanes.forEach(lane => {
+        map[lane.id] = [];
+      });
+
+      // Map lane IDs to tag names (as per original logic)
       const tagMap = {
         'todo': 'todo',
         'in-progress': 'in-progress',
         'done': 'done'
       };
-      const tag = tagMap[laneId];
-      if (!tag) return [];
+
+      // Create reverse map for O(1) lookup: tag -> laneId
+      const tagToLaneId = Object.entries(tagMap).reduce((acc, [laneId, tag]) => {
+        acc[tag] = laneId;
+        return acc;
+      }, {});
+
+      for (const msg of this.messages) {
+        const laneId = tagToLaneId[msg.tag];
+        if (laneId && map[laneId]) {
+          map[laneId].push(msg);
+        }
+      }
       
-      // Filter messages that have this tag
-      return this.messages.filter((msg) => msg.tag === tag);
+      return map;
+    }
+  },
+  methods: {
+    getMessagesForLane(laneId) {
+      return this.lanesWithMessages[laneId] || [];
     },
     getLaneCount(laneId) {
-      return this.getMessagesForLane(laneId).length;
+      return (this.lanesWithMessages[laneId] || []).length;
     },
     formatTime(timestamp) {
       return formatRelativeDate(timestamp);
