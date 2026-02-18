@@ -211,6 +211,73 @@ export const DB = {
   },
 
   /**
+   * Get all message counts in one query
+   * @param {D1Database} db
+   */
+  async getCounts(db) {
+    const query = `
+      SELECT
+        'archive' as type,
+        NULL as tag_name,
+        COUNT(*) as count
+      FROM messages
+      WHERE is_archived = 1
+
+      UNION ALL
+
+      SELECT
+        'total_unarchived' as type,
+        NULL as tag_name,
+        COUNT(*) as count
+      FROM messages
+      WHERE (is_archived = 0 OR is_archived IS NULL)
+
+      UNION ALL
+
+      SELECT
+        'tag' as type,
+        t.name as tag_name,
+        COUNT(m.id) as count
+      FROM messages m
+      JOIN message_tags mt ON m.id = mt.message_id
+      JOIN tags t ON mt.tag_id = t.id
+      WHERE (m.is_archived = 0 OR m.is_archived IS NULL)
+      GROUP BY t.name
+    `;
+
+    const { results } = await db.prepare(query).all();
+
+    let archive = 0;
+    let totalUnarchived = 0;
+    const tagCounts = {};
+
+    if (results) {
+      for (const row of results) {
+        if (row.type === 'archive') {
+          archive = row.count;
+        } else if (row.type === 'total_unarchived') {
+          totalUnarchived = row.count;
+        } else if (row.type === 'tag') {
+          tagCounts[row.tag_name] = row.count;
+        }
+      }
+    }
+
+    const spam = tagCounts['Spam'] || 0;
+    const sent = tagCounts['Sent'] || 0;
+    // Inbox = Unarchived - Unarchived Spam
+    const inbox = Math.max(0, totalUnarchived - spam);
+
+    return {
+      inbox,
+      archive,
+      spam,
+      sent,
+      tagCounts
+    };
+  },
+
+  /**
    * Archive a message
    * @param {D1Database} db 
    * @param {string} id 
