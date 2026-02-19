@@ -1,8 +1,13 @@
 <template>
   <div v-if="show" class="modal-overlay">
-    <div class="compose-modal">
+    <div
+      class="compose-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="compose-modal-title"
+    >
       <div class="compose-header">
-        <h2>{{ replyTo ? 'Reply' : forwardFrom ? 'Forward' : 'New Message' }}</h2>
+        <h2 id="compose-modal-title">{{ replyTo ? 'Reply' : forwardFrom ? 'Forward' : 'New Message' }}</h2>
         <button class="close-btn" @click="handleClose" title="Close" aria-label="Close">&times;</button>
       </div>
 
@@ -35,17 +40,30 @@
                 placeholder="recipient@example.com"
                 :disabled="sending"
                 autocomplete="off"
+                aria-haspopup="listbox"
+                :aria-expanded="showSuggestions && suggestions.length > 0"
+                aria-controls="compose-suggestions"
+                :aria-activedescendant="activeSuggestionId"
                 @input="handleToInput"
                 @keydown="handleToKeydown"
                 @focus="handleToFocus"
                 @blur="handleToBlur"
               />
             </div>
-            <ul v-if="showSuggestions && suggestions.length > 0" class="suggestions-dropdown">
+            <ul
+              v-if="showSuggestions && suggestions.length > 0"
+              id="compose-suggestions"
+              class="suggestions-dropdown"
+              role="listbox"
+              aria-label="Contact suggestions"
+            >
               <li
                 v-for="(suggestion, index) in suggestions"
                 :key="suggestion.email"
+                :id="getSuggestionId(index)"
                 :class="{ selected: index === selectedSuggestionIndex }"
+                role="option"
+                :aria-selected="index === selectedSuggestionIndex"
                 @mousedown.prevent="selectSuggestion(suggestion)"
                 @mouseenter="selectedSuggestionIndex = index"
               >
@@ -119,6 +137,12 @@ export default {
   computed: {
     hasRecipients() {
       return this.recipients.length > 0 || this.toInput.trim().length > 0;
+    },
+    activeSuggestionId() {
+      if (this.selectedSuggestionIndex >= 0) {
+        return this.getSuggestionId(this.selectedSuggestionIndex);
+      }
+      return null;
     }
   },
   data() {
@@ -363,6 +387,9 @@ export default {
       if (event.key === 'Escape' && !this.sending) {
         this.handleClose();
       }
+    },
+    getSuggestionId(index) {
+      return `suggestion-${index}`;
     },
     formatDate(timestamp) {
       return new Date(timestamp).toLocaleString('en-US', { 
