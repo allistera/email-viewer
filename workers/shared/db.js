@@ -13,8 +13,8 @@ export const DB = {
       INSERT INTO messages (
         id, received_at, from_addr, to_addr, subject, 
         date_header, snippet, has_attachments, raw_r2_key, 
-        text_body, html_body, headers_json
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        text_body, html_body, headers_json, snoozed_until
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     await db.prepare(query).bind(
@@ -29,7 +29,8 @@ export const DB = {
       message.raw_r2_key,
       message.text_body,
       message.html_body,
-      message.headers_json
+      message.headers_json,
+      message.snoozed_until ?? null
     ).run();
   },
 
@@ -86,7 +87,7 @@ export const DB = {
    * @param {Object} filters { limit, before, tag, excludeTag, archived }
    */
 
-  async listMessages(db, { limit = 50, before = null, tag = null, excludeTag = null, archived = false, search = null } = {}) {
+  async listMessages(db, { limit = 50, before = null, tag = null, excludeTag = null, archived = false, search = null, hideSnoozed = false, snoozed = false } = {}) {
     let query = 'SELECT m.* FROM messages m';
     const params = [];
     const conditions = [];
@@ -122,6 +123,14 @@ export const DB = {
       conditions.push('m.is_archived = 1');
     } else if (archived === false) {
       conditions.push('(m.is_archived = 0 OR m.is_archived IS NULL)');
+    }
+
+    if (snoozed === true) {
+      conditions.push('m.snoozed_until IS NOT NULL AND m.snoozed_until > ?');
+      params.push(Date.now());
+    } else if (hideSnoozed === true) {
+      conditions.push('(m.snoozed_until IS NULL OR m.snoozed_until <= ?)');
+      params.push(Date.now());
     }
 
     if (conditions.length > 0) {
@@ -231,6 +240,7 @@ export const DB = {
         COUNT(*) as count
       FROM messages
       WHERE (is_archived = 0 OR is_archived IS NULL)
+        AND (snoozed_until IS NULL OR snoozed_until <= strftime('%s','now') * 1000)
 
       UNION ALL
 
@@ -242,6 +252,7 @@ export const DB = {
       JOIN message_tags mt ON m.id = mt.message_id
       JOIN tags t ON mt.tag_id = t.id
       WHERE (m.is_archived = 0 OR m.is_archived IS NULL)
+        AND (m.snoozed_until IS NULL OR m.snoozed_until <= strftime('%s','now') * 1000)
       GROUP BY t.name
     `;
 
@@ -293,6 +304,25 @@ export const DB = {
    */
   async unarchiveMessage(db, id) {
     await db.prepare('UPDATE messages SET is_archived = 0 WHERE id = ?').bind(id).run();
+  },
+
+  /**
+   * Snooze a message until a future timestamp
+   * @param {D1Database} db
+   * @param {string} id
+   * @param {number} until
+   */
+  async snoozeMessage(db, id, until) {
+    await db.prepare('UPDATE messages SET snoozed_until = ? WHERE id = ?').bind(until, id).run();
+  },
+
+  /**
+   * Clear snooze on a message
+   * @param {D1Database} db
+   * @param {string} id
+   */
+  async unsnoozeMessage(db, id) {
+    await db.prepare('UPDATE messages SET snoozed_until = NULL WHERE id = ?').bind(id).run();
   },
 
   /**

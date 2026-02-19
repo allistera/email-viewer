@@ -100,9 +100,11 @@ export const ApiRouter = {
         const excludeTag = url.searchParams.get('excludeTag') || null;
         // Parse 'archived'; 'true' -> true, else false
         const archived = url.searchParams.get('archived') === 'true';
+        const hideSnoozed = url.searchParams.get('hideSnoozed') === 'true';
+        const snoozed = url.searchParams.get('snoozed') === 'true';
         const search = url.searchParams.get('q') || url.searchParams.get('search') || null;
 
-        const items = await DB.listMessages(env.DB, { limit, before, tag, excludeTag, archived, search });
+        const items = await DB.listMessages(env.DB, { limit, before, tag, excludeTag, archived, search, hideSnoozed, snoozed });
         const nextBefore = items.length > 0 ? items[items.length - 1].received_at : null;
 
         return jsonResponse({ items, nextBefore });
@@ -186,6 +188,28 @@ export const ApiRouter = {
         // Archive
         if (parts.length === 3 && parts[2] === 'archive' && request.method === 'POST') {
           await DB.archiveMessage(env.DB, id);
+          return jsonResponse({ ok: true });
+        }
+
+        // Snooze
+        if (parts.length === 3 && parts[2] === 'snooze' && request.method === 'POST') {
+          let body = {};
+          try {
+            body = await readJsonBody(request);
+          } catch (error) {
+            return jsonResponse({ error: error.message || 'Invalid JSON body' }, { status: 400 });
+          }
+          const until = Number(body.until);
+          if (!Number.isFinite(until) || until <= Date.now()) {
+            return jsonResponse({ error: 'Snooze time must be a future timestamp (ms).' }, { status: 400 });
+          }
+          await DB.snoozeMessage(env.DB, id, Math.floor(until));
+          return jsonResponse({ ok: true, snoozedUntil: Math.floor(until) });
+        }
+
+        // Unsnooze
+        if (parts.length === 3 && parts[2] === 'unsnooze' && request.method === 'POST') {
+          await DB.unsnoozeMessage(env.DB, id);
           return jsonResponse({ ok: true });
         }
 
