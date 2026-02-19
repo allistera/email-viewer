@@ -28,10 +28,12 @@ describe("Contacts API Union Correctness", () => {
         is_archived INTEGER NOT NULL DEFAULT 0,
         todoist_project_name TEXT,
         todoist_project_url TEXT,
-        is_read INTEGER NOT NULL DEFAULT 0
+        is_read INTEGER NOT NULL DEFAULT 0,
+        snoozed_until INTEGER
       );`,
 
       `CREATE INDEX IF NOT EXISTS idx_messages_received_at ON messages(received_at DESC);`,
+      `CREATE INDEX IF NOT EXISTS idx_messages_snoozed_until ON messages(snoozed_until);`,
       `CREATE INDEX IF NOT EXISTS idx_messages_from_addr_nocase ON messages(from_addr COLLATE NOCASE);`,
       `CREATE INDEX IF NOT EXISTS idx_messages_to_addr_nocase ON messages(to_addr COLLATE NOCASE);`
     ];
