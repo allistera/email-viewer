@@ -2,7 +2,8 @@ import sanitizeHtml from 'sanitize-html';
 
 const CONFIG = {
   allowedTags: sanitizeHtml.defaults.allowedTags.concat([
-    'img', 'style', 'font', 'center', 'u', 's', 'ins', 'del', 'map', 'area', 'base'
+    'img', 'style', 'font', 'center', 'u', 's', 'ins', 'del', 'map', 'area'
+    // 'base' removed for security (prevent base hijacking)
   ]),
   allowedAttributes: {
     '*': ['style', 'class', 'id', 'name', 'width', 'height', 'title', 'lang', 'dir', 'align', 'valign', 'bgcolor', 'color', 'face', 'size'],
@@ -13,13 +14,17 @@ const CONFIG = {
     'td': ['colspan', 'rowspan', 'align', 'valign', 'bgcolor', 'width', 'height', 'background'],
     'th': ['colspan', 'rowspan', 'align', 'valign', 'bgcolor', 'width', 'height', 'background']
   },
-  selfClosing: ['img', 'br', 'hr', 'area', 'base', 'basefont', 'input', 'link', 'meta'],
+  selfClosing: ['img', 'br', 'hr', 'area', 'basefont', 'input', 'link', 'meta'],
   allowedSchemes: ['http', 'https', 'mailto', 'tel'],
   allowedSchemesByTag: {},
   allowedSchemesAppliedToAttributes: ['href', 'src', 'cite'],
   allowProtocolRelative: true,
   enforceHtmlBoundary: false,
-  allowVulnerableTags: true
+  allowVulnerableTags: true,
+  // Enforce rel="noopener noreferrer" on all links to prevent Reverse Tabnabbing
+  transformTags: {
+    'a': sanitizeHtml.simpleTransform('a', { rel: 'noopener noreferrer' })
+  }
 };
 
 self.onmessage = ({ data: { id, html } }) => {
