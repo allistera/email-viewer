@@ -83,6 +83,7 @@
             :error="detailError"
             class="detail-panel"
             @archived="handleMessageArchived"
+            @snoozed="handleMessageSnoozed"
             @back="handleMobileBack"
             @reply="handleReply"
             @forward="handleForward"
@@ -309,6 +310,7 @@ export default {
           // Exclude archived, spam, and sent emails
           params.archived = false;
           params.excludeTag = 'Spam';
+          params.hideSnoozed = true;
         }
         
         if (this.searchQuery) {
@@ -479,6 +481,24 @@ export default {
       }
 
       // Select the next message if available (only on desktop)
+      if (!this.isMobile && this.messages.length > 0 && !this.selectedMessageId) {
+        this.handleSelectMessage(this.messages[0].id);
+      }
+    },
+
+    handleMessageSnoozed(messageId) {
+      this.messages = this.messages.filter(m => m.id !== messageId);
+      this.loadCounts();
+
+      if (this.currentMessage && this.currentMessage.id === messageId) {
+        this.currentMessage = null;
+        this.selectedMessageId = null;
+
+        if (this.isMobile) {
+          this.mobileView = 'list';
+        }
+      }
+
       if (!this.isMobile && this.messages.length > 0 && !this.selectedMessageId) {
         this.handleSelectMessage(this.messages[0].id);
       }

@@ -81,6 +81,8 @@ export async function getMessages(params = {}) {
   if (params.tag) queryParams.set('tag', params.tag);
   if (params.excludeTag) queryParams.set('excludeTag', params.excludeTag);
   if (params.archived !== undefined) queryParams.set('archived', params.archived);
+  if (params.hideSnoozed !== undefined) queryParams.set('hideSnoozed', params.hideSnoozed);
+  if (params.snoozed !== undefined) queryParams.set('snoozed', params.snoozed);
   if (params.search) queryParams.set('search', params.search);
 
   const query = queryParams.toString();
@@ -117,6 +119,20 @@ export async function checkHealth() {
 
 export async function archiveMessage(id) {
   return request(`/messages/${id}/archive`, {
+    method: 'POST'
+  });
+}
+
+export async function snoozeMessage(id, until) {
+  return request(`/messages/${id}/snooze`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ until })
+  });
+}
+
+export async function unsnoozeMessage(id) {
+  return request(`/messages/${id}/unsnooze`, {
     method: 'POST'
   });
 }
@@ -185,6 +201,7 @@ function normalizeMessage(message) {
     todoistProjectUrl: message.todoist_project_url ?? message.todoistProjectUrl,
     textBody: message.text_body ?? message.textBody,
     htmlBody: message.html_body ?? message.htmlBody,
+    snoozedUntil: message.snoozed_until ?? message.snoozedUntil,
     attachments: (message.attachments || []).map(normalizeAttachment)
   };
 }

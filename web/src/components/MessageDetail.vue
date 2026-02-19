@@ -90,6 +90,50 @@
           </button>
 
           <button
+            class="toolbar-btn"
+            type="button"
+            @click="toggleSnoozePicker"
+            :title="isCurrentlySnoozed ? snoozeLabel : 'Snooze until later'"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" class="toolbar-icon">
+              <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.75"/>
+              <path d="M12 8v4l3 2" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span class="toolbar-label">{{ isCurrentlySnoozed ? 'Resnooze' : 'Snooze' }}</span>
+          </button>
+
+          <div v-if="showSnoozePicker" class="snooze-picker" role="group" aria-label="Snooze options">
+            <select v-model="snoozePreset" class="snooze-select">
+              <option value="1h">In 1 hour</option>
+              <option value="tomorrow">Tomorrow at 8:00 AM</option>
+              <option value="nextweek">Next week at 8:00 AM</option>
+              <option value="custom">Custom date &amp; time</option>
+            </select>
+            <input
+              v-if="snoozePreset === 'custom'"
+              v-model="customSnoozeAt"
+              type="datetime-local"
+              class="snooze-input"
+            />
+            <button class="toolbar-btn" type="button" @click="applySnooze">Save</button>
+            <button class="toolbar-btn" type="button" @click="cancelSnoozePicker">Cancel</button>
+          </div>
+
+          <button
+            v-if="isCurrentlySnoozed"
+            class="toolbar-btn"
+            type="button"
+            @click="handleUnsnooze"
+            :title="snoozeLabel"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" class="toolbar-icon">
+              <path d="M6 6l12 12" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+              <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.75"/>
+            </svg>
+            <span class="toolbar-label">Unsnooze</span>
+          </button>
+
+          <button
             v-if="!isArchived"
             class="toolbar-btn done-btn"
             type="button"
@@ -210,7 +254,7 @@
 <script>
 import TagBadge from './TagBadge.vue';
 import { sanitize } from '../services/htmlSanitizer.js';
-import { getAttachmentUrl, addMessageTag, removeMessageTag, getTags, archiveMessage, addTodoistTask } from '../services/api.js';
+import { getAttachmentUrl, addMessageTag, removeMessageTag, getTags, archiveMessage, addTodoistTask, snoozeMessage, unsnoozeMessage } from '../services/api.js';
 import { formatRelativeDate } from '../utils/dateFormat.js';
 
 export default {
@@ -241,10 +285,13 @@ export default {
       addingTodoist: false,
       todoistTaskUrl: '',
       sanitizedHtml: '',
-      isSanitizing: false
+      isSanitizing: false,
+      showSnoozePicker: false,
+      snoozePreset: 'tomorrow',
+      customSnoozeAt: ''
     };
   },
-  emits: ['archived', 'back', 'reply', 'forward'],
+  emits: ['archived', 'snoozed', 'back', 'reply', 'forward'],
   computed: {
     currentTags() {
       if (!this.message) return [];
@@ -309,6 +356,16 @@ export default {
     },
     isArchived() {
       return this.message?.is_archived === 1 || this.message?.isArchived === true;
+    },
+    snoozedUntil() {
+      return this.message?.snoozedUntil ?? this.message?.snoozed_until ?? null;
+    },
+    isCurrentlySnoozed() {
+      return Number(this.snoozedUntil) > Date.now();
+    },
+    snoozeLabel() {
+      if (!this.isCurrentlySnoozed) return 'Snooze';
+      return `Snoozed until ${new Date(Number(this.snoozedUntil)).toLocaleString()}`;
     }
   },
   watch: {
@@ -318,6 +375,7 @@ export default {
         this.cancelAddingTag();
         this.resetTodoistState();
         this.updateSanitizedHtml(newMsg);
+        this.cancelSnoozePicker();
       }
     }
   },
@@ -444,6 +502,68 @@ export default {
         this.archiving = false;
       }
     },
+    toggleSnoozePicker() {
+      this.showSnoozePicker = !this.showSnoozePicker;
+      if (this.showSnoozePicker && this.snoozePreset === 'custom' && !this.customSnoozeAt) {
+        const oneHourLater = new Date(Date.now() + 60 * 60 * 1000);
+        this.customSnoozeAt = oneHourLater.toISOString().slice(0, 16);
+      }
+    },
+    cancelSnoozePicker() {
+      this.showSnoozePicker = false;
+      this.snoozePreset = 'tomorrow';
+      this.customSnoozeAt = '';
+    },
+    resolveSnoozeUntil() {
+      const now = new Date();
+      if (this.snoozePreset === '1h') {
+        return new Date(now.getTime() + 60 * 60 * 1000);
+      }
+      if (this.snoozePreset === 'tomorrow') {
+        const until = new Date(now);
+        until.setDate(until.getDate() + 1);
+        until.setHours(8, 0, 0, 0);
+        return until;
+      }
+      if (this.snoozePreset === 'nextweek') {
+        const until = new Date(now);
+        until.setDate(until.getDate() + 7);
+        until.setHours(8, 0, 0, 0);
+        return until;
+      }
+      if (this.snoozePreset === 'custom' && this.customSnoozeAt) {
+        const parsed = new Date(this.customSnoozeAt);
+        if (!Number.isNaN(parsed.getTime())) return parsed;
+      }
+      return null;
+    },
+    async applySnooze() {
+      if (!this.message) return;
+      const until = this.resolveSnoozeUntil();
+      if (!until || until.getTime() <= Date.now()) {
+        alert('Please choose a future date/time for snooze.');
+        return;
+      }
+
+      try {
+        await snoozeMessage(this.message.id, until.getTime());
+        this.message.snoozedUntil = until.getTime();
+        this.cancelSnoozePicker();
+        this.$emit('snoozed', this.message.id);
+      } catch (e) {
+        alert('Failed to snooze: ' + e.message);
+      }
+    },
+    async handleUnsnooze() {
+      if (!this.message) return;
+      try {
+        await unsnoozeMessage(this.message.id);
+        this.message.snoozedUntil = null;
+        this.cancelSnoozePicker();
+      } catch (e) {
+        alert('Failed to unsnooze: ' + e.message);
+      }
+    },
     async updateSanitizedHtml(message) {
       if (!message || !message.htmlBody) {
         this.sanitizedHtml = '';
@@ -542,6 +662,25 @@ export default {
   max-width: 120px;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+
+.snooze-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface, #fff);
+}
+
+.snooze-select,
+.snooze-input {
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 4px 6px;
+  font-size: 12px;
 }
 
 .tag-display {
