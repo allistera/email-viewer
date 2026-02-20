@@ -25,7 +25,13 @@
     <div
       class="tag-item inbox-item"
       :class="{ active: selectedTag === null && !settingsActive }"
+      role="button"
+      tabindex="0"
+      aria-label="Go to Inbox"
+      :aria-current="(selectedTag === null && !settingsActive) ? 'page' : undefined"
       @click="$emit('select', null)"
+      @keydown.enter.prevent="$emit('select', null)"
+      @keydown.space.prevent="$emit('select', null)"
     >
       <div class="tag-content">
         <div class="tag-info">
@@ -50,7 +56,13 @@
         :key="tag.id" 
         class="tag-item"
         :class="{ active: selectedTag === tag.name && !settingsActive }"
+        role="button"
+        tabindex="0"
+        :aria-label="'Select tag ' + tag.label"
+        :aria-current="(selectedTag === tag.name && !settingsActive) ? 'page' : undefined"
         @click="handleSelectTag(tag.name)"
+        @keydown.enter.prevent="handleSelectTag(tag.name)"
+        @keydown.space.prevent="handleSelectTag(tag.name)"
         draggable="true"
         @dragstart="onDragStart($event, tag)"
         @dragover="onDragOver($event)"
@@ -146,7 +158,13 @@
         <div
           class="tag-item"
           :class="{ active: selectedTag === 'sent' && !settingsActive }"
+          role="button"
+          tabindex="0"
+          aria-label="Sent Messages"
+          :aria-current="(selectedTag === 'sent' && !settingsActive) ? 'page' : undefined"
           @click="$emit('select', 'sent')"
+          @keydown.enter.prevent="$emit('select', 'sent')"
+          @keydown.space.prevent="$emit('select', 'sent')"
         >
           <div class="tag-content">
             <div class="tag-info">
@@ -161,7 +179,13 @@
         <div
           class="tag-item"
           :class="{ active: selectedTag === 'archive' && !settingsActive }"
+          role="button"
+          tabindex="0"
+          aria-label="Archive (Done)"
+          :aria-current="(selectedTag === 'archive' && !settingsActive) ? 'page' : undefined"
           @click="$emit('select', 'archive')"
+          @keydown.enter.prevent="$emit('select', 'archive')"
+          @keydown.space.prevent="$emit('select', 'archive')"
           @dragover="onDragOver($event)"
           @drop="onDropSystem($event, 'archive')"
         >
@@ -179,7 +203,13 @@
         <div
           class="tag-item"
           :class="{ active: selectedTag === 'spam' && !settingsActive }"
+          role="button"
+          tabindex="0"
+          aria-label="Spam Folder"
+          :aria-current="(selectedTag === 'spam' && !settingsActive) ? 'page' : undefined"
           @click="$emit('select', 'spam')"
+          @keydown.enter.prevent="$emit('select', 'spam')"
+          @keydown.space.prevent="$emit('select', 'spam')"
           @dragover="onDragOver($event)"
           @drop="onDropSystem($event, 'spam')"
         >
@@ -195,7 +225,13 @@
       <div
         class="tag-item settings-item"
         :class="{ active: settingsActive }"
+        role="button"
+        tabindex="0"
+        aria-label="Settings"
+        :aria-current="settingsActive ? 'page' : undefined"
         @click="$emit('settings')"
+        @keydown.enter.prevent="$emit('settings')"
+        @keydown.space.prevent="$emit('settings')"
       >
         <div class="tag-content">
           <div class="tag-info">
@@ -727,8 +763,14 @@ export default {
   border-left: 3px solid transparent;
 }
 
-.tag-item:hover {
+.tag-item:hover,
+.tag-item:focus-visible {
   background: var(--color-bg-hover);
+}
+
+.tag-item:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
 }
 
 .tag-item.active {
@@ -796,7 +838,8 @@ export default {
   gap: 4px;
 }
 
-.tag-item:hover .tag-actions {
+.tag-item:hover .tag-actions,
+.tag-item:focus-within .tag-actions {
   display: flex;
 }
 
