@@ -2,8 +2,11 @@ import sanitizeHtml from 'sanitize-html';
 
 const CONFIG = {
   allowedTags: sanitizeHtml.defaults.allowedTags.concat([
-    'img', 'style', 'font', 'center', 'u', 's', 'ins', 'del', 'map', 'area', 'base'
+    'img', 'style', 'font', 'center', 'u', 's', 'ins', 'del', 'map', 'area'
   ]),
+  transformTags: {
+    'a': sanitizeHtml.simpleTransform('a', { rel: 'noopener noreferrer' })
+  },
   allowedAttributes: {
     '*': ['style', 'class', 'id', 'name', 'width', 'height', 'title', 'lang', 'dir', 'align', 'valign', 'bgcolor', 'color', 'face', 'size'],
     'a': ['href', 'name', 'target', 'rel'],
@@ -13,7 +16,7 @@ const CONFIG = {
     'td': ['colspan', 'rowspan', 'align', 'valign', 'bgcolor', 'width', 'height', 'background'],
     'th': ['colspan', 'rowspan', 'align', 'valign', 'bgcolor', 'width', 'height', 'background']
   },
-  selfClosing: ['img', 'br', 'hr', 'area', 'base', 'basefont', 'input', 'link', 'meta'],
+  selfClosing: ['img', 'br', 'hr', 'area', 'basefont', 'input', 'link', 'meta'],
   allowedSchemes: ['http', 'https', 'mailto', 'tel'],
   allowedSchemesByTag: {},
   allowedSchemesAppliedToAttributes: ['href', 'src', 'cite'],
