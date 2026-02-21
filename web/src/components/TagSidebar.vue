@@ -26,6 +26,11 @@
       class="tag-item inbox-item"
       :class="{ active: selectedTag === null && !settingsActive }"
       @click="$emit('select', null)"
+      role="button"
+      tabindex="0"
+      @keydown.enter.prevent="$emit('select', null)"
+      @keydown.space.prevent="$emit('select', null)"
+      :aria-current="selectedTag === null && !settingsActive ? 'page' : null"
     >
       <div class="tag-content">
         <div class="tag-info">
@@ -55,6 +60,11 @@
         @dragstart="onDragStart($event, tag)"
         @dragover="onDragOver($event)"
         @drop="onDrop($event, tag)"
+        role="button"
+        tabindex="0"
+        @keydown.enter.self.prevent="handleSelectTag(tag.name)"
+        @keydown.space.self.prevent="handleSelectTag(tag.name)"
+        :aria-current="selectedTag === tag.name && !settingsActive ? 'page' : null"
       >
         <!-- Editing Mode -->
         <div v-if="editingTagId === tag.id" class="edit-mode" @click.stop>
@@ -113,6 +123,10 @@
             @dragover="onDragOver($event)"
             @drop="onDropTodoist($event, node.project)"
             @click="handleTodoistProjectClick(node)"
+            role="button"
+            tabindex="0"
+            @keydown.enter.self.prevent="handleTodoistProjectClick(node)"
+            @keydown.space.self.prevent="handleTodoistProjectClick(node)"
           >
             <div class="tag-content">
               <div class="tag-info">
@@ -147,6 +161,11 @@
           class="tag-item"
           :class="{ active: selectedTag === 'sent' && !settingsActive }"
           @click="$emit('select', 'sent')"
+          role="button"
+          tabindex="0"
+          @keydown.enter.prevent="$emit('select', 'sent')"
+          @keydown.space.prevent="$emit('select', 'sent')"
+          :aria-current="selectedTag === 'sent' && !settingsActive ? 'page' : null"
         >
           <div class="tag-content">
             <div class="tag-info">
@@ -164,6 +183,11 @@
           @click="$emit('select', 'archive')"
           @dragover="onDragOver($event)"
           @drop="onDropSystem($event, 'archive')"
+          role="button"
+          tabindex="0"
+          @keydown.enter.prevent="$emit('select', 'archive')"
+          @keydown.space.prevent="$emit('select', 'archive')"
+          :aria-current="selectedTag === 'archive' && !settingsActive ? 'page' : null"
         >
           <div class="tag-content">
             <div class="tag-info">
@@ -182,6 +206,11 @@
           @click="$emit('select', 'spam')"
           @dragover="onDragOver($event)"
           @drop="onDropSystem($event, 'spam')"
+          role="button"
+          tabindex="0"
+          @keydown.enter.prevent="$emit('select', 'spam')"
+          @keydown.space.prevent="$emit('select', 'spam')"
+          :aria-current="selectedTag === 'spam' && !settingsActive ? 'page' : null"
         >
           <div class="tag-content">
             <div class="tag-info">
@@ -196,6 +225,11 @@
         class="tag-item settings-item"
         :class="{ active: settingsActive }"
         @click="$emit('settings')"
+        role="button"
+        tabindex="0"
+        @keydown.enter.prevent="$emit('settings')"
+        @keydown.space.prevent="$emit('settings')"
+        :aria-current="settingsActive ? 'page' : null"
       >
         <div class="tag-content">
           <div class="tag-info">
@@ -796,8 +830,14 @@ export default {
   gap: 4px;
 }
 
-.tag-item:hover .tag-actions {
+.tag-item:hover .tag-actions,
+.tag-item:focus-within .tag-actions {
   display: flex;
+}
+
+.tag-item:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
 }
 
 .action-btn {
