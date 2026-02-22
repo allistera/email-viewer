@@ -23,7 +23,7 @@
     </div>
 
     <div v-else-if="messages.length === 0" class="empty">
-      No messages found
+      {{ emptyStateText }}
     </div>
 
     <div v-else class="messages">
@@ -32,6 +32,10 @@
         :key="message.id"
         :class="['message-item', { active: selectedId === message.id, unread: !message.isRead }]"
         draggable="true"
+        role="button"
+        tabindex="0"
+        @keydown.enter.prevent="$emit('select', message.id)"
+        @keydown.space.prevent="$emit('select', message.id)"
         @dragstart="onDragStart($event, message)"
         @click="$emit('select', message.id)"
       >
@@ -118,6 +122,14 @@ export default {
         return `Search in ${this.selectedTag}...`;
       }
       return 'Search all messages...';
+    },
+    emptyStateText() {
+      if (this.searchInput) return `No messages found for "${this.searchInput}"`;
+      if (this.selectedTag === 'archive') return 'No archived messages';
+      if (this.selectedTag === 'spam') return 'Hooray! No spam here.';
+      if (this.selectedTag === 'sent') return 'No sent messages';
+      if (this.selectedTag) return `No messages in ${this.selectedTag}`;
+      return "You're all caught up! 🎉";
     }
   },
   watch: {
@@ -228,6 +240,12 @@ export default {
 
 .message-item:hover {
   background: var(--color-bg-secondary);
+}
+
+.message-item:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+  z-index: 1;
 }
 
 .message-item.active {
