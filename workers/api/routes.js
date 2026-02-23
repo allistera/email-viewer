@@ -94,7 +94,10 @@ export const ApiRouter = {
     try {
       // GET /api/messages
       if (path === 'messages' && request.method === 'GET') {
-        const limit = parseInt(url.searchParams.get('limit')) || 50;
+        // Clamp limit to max 50 to prevent DoS/resource exhaustion
+        const requestedLimit = parseInt(url.searchParams.get('limit')) || 50;
+        const limit = Math.min(Math.max(1, requestedLimit), 50);
+
         const before = parseInt(url.searchParams.get('before')) || null;
         const tag = url.searchParams.get('tag') || null;
         const excludeTag = url.searchParams.get('excludeTag') || null;
