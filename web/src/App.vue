@@ -52,6 +52,7 @@
         </template>
         <template v-else>
           <MessageList
+            v-show="rightRailView !== 'kanban' || isMobile"
             :messages="messages"
             :selected-id="selectedMessageId"
             :selected-tag="selectedTag"
@@ -67,7 +68,7 @@
           />
 
           <div
-            v-if="!isMobile"
+            v-if="!isMobile && rightRailView !== 'kanban'"
             class="resize-handle resize-handle-list"
             aria-label="Resize message list"
             @mousedown.prevent="startResize('list', $event)"
