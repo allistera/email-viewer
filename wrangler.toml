@@ -28,9 +28,7 @@ new_classes = ["RealtimeHub"]
 binding = "TODOIST_WORKER"
 service = "mail-app-todoist"
 
-# Vars (API worker might not need OpenAI anymore if it doesn't classify, but check if it's used elsewhere? 
-# Assuming only email worker uses it for classification. 
-# But let's keep it clean.)
+# Vars
 [vars]
 SEND_FROM_EMAIL = "hello@infinitywave.design"
 TAG_LABELS = "Marketing, Recruitment, Personal, Finance, Support, Other"
@@ -56,7 +54,7 @@ binding = "TODOIST_WORKER"
 service = "mail-app-todoist"
 
 [env.production.vars]
-OPENAI_MODEL = "gpt-4o-mini"
+OPENROUTER_MODEL = "google/gemini-2.0-flash-lite-001"
 SEND_FROM_EMAIL = "hello@infinitywave.design"
 SENTRY_DSN = "https://d29d6d205377084a3fa87aa4ba4d091b@o4510748410576896.ingest.de.sentry.io/4510748412346448"
 
