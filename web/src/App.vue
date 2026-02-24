@@ -16,6 +16,12 @@
 
     <ToastNotification ref="toast" />
 
+    <TodoistSlideout
+      :show="showTodoistSlideout"
+      @close="showTodoistSlideout = false"
+      @todoist-added="handleTodoistAdded"
+    />
+
     <div v-if="!showAuthModal" class="app-layout">
       <div
         class="app-container"
@@ -32,7 +38,6 @@
           @settings="openSettings"
           @close="closeMobileSidebar"
           @compose="openCompose"
-          @todoist-added="handleTodoistAdded"
         />
 
         <div
@@ -93,7 +98,9 @@
         <RightSidebar
           class="right-sidebar-panel"
           :active-view="rightRailView"
+          :todoist-open="showTodoistSlideout"
           @select="rightRailView = $event"
+          @toggle-todoist="showTodoistSlideout = !showTodoistSlideout"
         />
       </div>
     </div>
@@ -110,6 +117,7 @@ import ComposeModal from './components/ComposeModal.vue';
 import ToastNotification from './components/ToastNotification.vue';
 import RightSidebar from './components/RightSidebar.vue';
 import KanbanView from './components/KanbanView.vue';
+import TodoistSlideout from './components/TodoistSlideout.vue';
 import { hasToken, setToken, clearToken } from './services/auth.js';
 import { getMessages, getMessage, getMessageCounts } from './services/api.js';
 import { init as initTheme } from './services/theme.js';
@@ -126,7 +134,8 @@ export default {
     ComposeModal,
     ToastNotification,
     RightSidebar,
-    KanbanView
+    KanbanView,
+    TodoistSlideout
   },
   data() {
     return {
@@ -154,6 +163,7 @@ export default {
       forwardMessage: null,
       messageCounts: null,
       rightRailView: 'email',
+      showTodoistSlideout: false,
       sidebarWidth: 220,
       listWidth: 360,
       rightSidebarWidth: 72,
