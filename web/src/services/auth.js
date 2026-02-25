@@ -1,38 +1,65 @@
-/**
- * Authentication service
- */
+// web/src/services/auth.js
 
-const TOKEN_KEY = 'email_api_token';
-const TODOIST_TOKEN_KEY = 'todoist_api_token';
+const TOKEN_KEY = 'auth_token';
+const USER_KEY = 'auth_user';
 
-export function getToken() {
-  return localStorage.getItem(TOKEN_KEY);
-}
+export const authService = {
+  // Login
+  async login(username, password) {
+    const response = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ username, password })
+    });
 
-export function setToken(token) {
-  localStorage.setItem(TOKEN_KEY, token);
-}
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Login failed');
+    }
 
-export function clearToken() {
-  localStorage.removeItem(TOKEN_KEY);
-}
+    const data = await response.json();
+    this.setToken(data.token);
+    this.setUser(data.user);
+    return data;
+  },
 
-export function hasToken() {
-  return !!getToken();
-}
+  // Logout
+  logout() {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+    // Optional: reload or redirect
+    window.location.href = '/login';
+  },
 
-export function getTodoistToken() {
-  return localStorage.getItem(TODOIST_TOKEN_KEY);
-}
+  // Get Token
+  getToken() {
+    return localStorage.getItem(TOKEN_KEY);
+  },
 
-export function setTodoistToken(token) {
-  localStorage.setItem(TODOIST_TOKEN_KEY, token);
-}
+  // Set Token
+  setToken(token) {
+    localStorage.setItem(TOKEN_KEY, token);
+  },
 
-export function clearTodoistToken() {
-  localStorage.removeItem(TODOIST_TOKEN_KEY);
-}
+  // Get User
+  getUser() {
+    const userStr = localStorage.getItem(USER_KEY);
+    try {
+      return userStr ? JSON.parse(userStr) : null;
+    } catch (e) {
+      return null;
+    }
+  },
 
-export function hasTodoistToken() {
-  return !!getTodoistToken();
-}
+  // Set User
+  setUser(user) {
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+  },
+
+  // Is Authenticated
+  isAuthenticated() {
+    return !!this.getToken();
+  }
+};

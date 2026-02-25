@@ -1,5 +1,6 @@
 import { DB } from '../shared/db.js';
 import { sendNewEmailNotification } from '../shared/notifications.js';
+import { hashPassword, verifyPassword } from '../shared/auth.js';
 
 const MISSING_TABLE_PATTERN = /no such table/i;
 
@@ -92,6 +93,41 @@ export const ApiRouter = {
     const path = url.pathname.replace('/api/', '').replace(/\/$/, '');
 
     try {
+      // POST /api/auth/login
+      if (path === 'auth/login' && request.method === 'POST') {
+        let body;
+        try {
+          body = await readJsonBody(request);
+        } catch (error) {
+          return jsonResponse({ error: 'Invalid JSON' }, { status: 400 });
+        }
+
+        const { username, password } = body;
+        if (!username || !password) {
+          return jsonResponse({ error: 'Username and password are required' }, { status: 400 });
+        }
+
+        const user = await DB.getUserByUsername(env.DB, username);
+        if (!user || !user.password_hash) {
+          // Prevent timing attacks by simulating work if needed, or just return 401
+          // For now, simple return
+          return jsonResponse({ error: 'Invalid credentials' }, { status: 401 });
+        }
+
+        const valid = await verifyPassword(password, user.password_hash);
+        if (!valid) {
+          return jsonResponse({ error: 'Invalid credentials' }, { status: 401 });
+        }
+
+        const { token, expiresAt } = await DB.createApiToken(env.DB, user.id);
+
+        return jsonResponse({
+          token,
+          expiresAt,
+          user: { id: user.id, username: user.username }
+        });
+      }
+
       // GET /api/messages
       if (path === 'messages' && request.method === 'GET') {
         // Clamp limit to max 50 to prevent DoS/resource exhaustion

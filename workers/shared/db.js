@@ -36,6 +36,33 @@ export const DB = {
     `).bind(address).first();
   },
 
+  /**
+   * Get user by username
+   * @param {D1Database} db
+   * @param {string} username
+   */
+  async getUserByUsername(db, username) {
+    return db.prepare('SELECT * FROM users WHERE username = ?').bind(username).first();
+  },
+
+  /**
+   * Create a new API token for user
+   * @param {D1Database} db
+   * @param {string} userId
+   * @param {number} expiresIn - ms, default 30 days
+   */
+  async createApiToken(db, userId, expiresIn = 2592000000) {
+    const token = crypto.randomUUID(); // Simple UUID token for now
+    const now = Date.now();
+    const expiresAt = now + expiresIn;
+
+    await db.prepare('INSERT INTO api_tokens (token, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)')
+      .bind(token, userId, now, expiresAt)
+      .run();
+
+    return { token, expiresAt };
+  },
+
   // ==================
   // Messages
   // ==================
