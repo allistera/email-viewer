@@ -75,7 +75,7 @@ test.describe('Tags CRUD', () => {
         // Currently `App.vue` imports `AuthModal` and conditionally renders it.
         // If I change to router-based, `App.vue` should mainly be the layout shell or just `<router-view>`.
 
-        // Let's pause correcting tests and FIX APP.VUE first.
+    });
 
     test('should display existing tags including Spam', async ({ page }) => {
         await expect(page.locator('.tag-label', { hasText: 'ExistingTag' })).toBeVisible();
