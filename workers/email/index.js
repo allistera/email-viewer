@@ -19,6 +19,13 @@ async function processMessage(messageId, env, message = null) {
         }
         if (!message) return;
 
+        // Ensure user_id is available
+        const userId = message.user_id;
+        if (!userId) {
+             console.error(`Message ${messageId} has no user_id, skipping tagging.`);
+             return;
+        }
+
         // 2. Broadcast received event (Non-blocking)
         const broadcastPromise = hub.fetch('http://do/broadcast', {
             method: 'POST',
@@ -34,7 +41,7 @@ async function processMessage(messageId, env, message = null) {
         // 3. Tag Classification (rules take priority over AI)
         if (shouldClassifyTag) {
             // First, check user-defined tagging rules
-            const ruleMatch = await DB.matchTaggingRules(env.DB, message);
+            const ruleMatch = await DB.matchTaggingRules(env.DB, message, userId);
 
             if (ruleMatch) {
                 // Rule matched - apply the tag
@@ -42,7 +49,7 @@ async function processMessage(messageId, env, message = null) {
                     tag: ruleMatch.tag,
                     confidence: ruleMatch.confidence,
                     reason: ruleMatch.reason
-                });
+                }, userId);
 
                 // Update local message object for notification
                 message.tag = ruleMatch.tag;
@@ -60,7 +67,7 @@ async function processMessage(messageId, env, message = null) {
                 });
             } else {
                 // No rule matched - fall back to AI classification
-                const dbTags = await DB.getTags(env.DB);
+                const dbTags = await DB.getTags(env.DB, userId);
                 const tagLabels = new Set(dbTags.map(t => t.name));
                 // Fallback or auxiliary from env if needed, but primary is DB now
                 if (env.TAG_LABELS) {
@@ -76,7 +83,7 @@ async function processMessage(messageId, env, message = null) {
                 );
 
                 if (result?.tag) {
-                    await DB.updateTagInfo(env.DB, messageId, result.tag);
+                    await DB.updateTagInfo(env.DB, messageId, result.tag, userId);
 
                     if (result.tag.tag) {
                         // Update local message object for notification
@@ -168,8 +175,20 @@ export default Sentry.withSentry(sentryOptions, {
             }
 
             // 4. Insert Message Metadata
+            // Resolve User ID based on envelope recipient
+            const envelopeTo = message.to || '';
+            let userId = 'default-user-id';
+
+            if (env.DB && envelopeTo) {
+               const user = await DB.getUserByAddress(env.DB, envelopeTo.toLowerCase());
+               if (user) {
+                 userId = user.id;
+               }
+            }
+
             const dbMessage = {
                 id: messageId,
+                user_id: userId,
                 received_at: Date.now(),
                 from_addr: parsed.from,
                 to_addr: parsed.to,
@@ -230,6 +249,7 @@ export default Sentry.withSentry(sentryOptions, {
                 
                 const minimalMessage = {
                     id: failedMessageId,
+                    user_id: 'default-user-id', // Fallback
                     received_at: Date.now(),
                     from_addr: message.from || 'unknown',
                     to_addr: message.to || 'unknown',

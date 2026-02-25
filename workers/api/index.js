@@ -39,7 +39,7 @@ export default Sentry.withSentry(sentryOptions, {
       }
 
       // Auth Check
-      const authError = await authenticate(request, env);
+      const { user, userId, error: authError } = await authenticate(request, env);
       if (authError) {
         return withCors(authError);
       }
@@ -48,10 +48,11 @@ export default Sentry.withSentry(sentryOptions, {
       const isWebSocketUpgrade = request.headers.get('Upgrade') === 'websocket';
 
       // Try Stream Router (SSE/WS)
-      let response = await StreamRouter.handle(urlString, request, env);
+      // Pass userId for channel/room separation if needed
+      let response = await StreamRouter.handle(urlString, request, env, userId);
       if (!response) {
         // Try API Router
-        response = await ApiRouter.handle(urlString, request, env);
+        response = await ApiRouter.handle(urlString, request, env, userId);
       }
 
       // Append CORS Headers to final response

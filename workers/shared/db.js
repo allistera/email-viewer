@@ -3,6 +3,43 @@
  */
 
 export const DB = {
+  // ==================
+  // User & Auth
+  // ==================
+
+  /**
+   * Get user by API token
+   * @param {D1Database} db
+   * @param {string} token
+   */
+  async getUserByToken(db, token) {
+    return db.prepare(`
+      SELECT u.*
+      FROM users u
+      JOIN api_tokens t ON u.id = t.user_id
+      WHERE t.token = ?
+      AND (t.expires_at IS NULL OR t.expires_at > ?)
+    `).bind(token, Date.now()).first();
+  },
+
+  /**
+   * Get user by email address
+   * @param {D1Database} db
+   * @param {string} address
+   */
+  async getUserByAddress(db, address) {
+    return db.prepare(`
+      SELECT u.*
+      FROM users u
+      JOIN user_addresses ua ON u.id = ua.user_id
+      WHERE ua.address = ?
+    `).bind(address).first();
+  },
+
+  // ==================
+  // Messages
+  // ==================
+
   /**
    * Insert a new message
    * @param {D1Database} db 
@@ -11,14 +48,15 @@ export const DB = {
   async insertMessage(db, message) {
     const query = `
       INSERT INTO messages (
-        id, received_at, from_addr, to_addr, subject, 
+        id, user_id, received_at, from_addr, to_addr, subject,
         date_header, snippet, has_attachments, raw_r2_key, 
         text_body, html_body, headers_json, snoozed_until
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     await db.prepare(query).bind(
       message.id,
+      message.user_id, // New field
       message.received_at,
       message.from_addr,
       message.to_addr,
@@ -87,21 +125,22 @@ export const DB = {
 
   /**
    * List messages for inbox
-   * @param {D1Database} db 
+   * @param {D1Database} db
+   * @param {Object} params - userId is mandatory
    * @param {Object} filters { limit, before, tag, excludeTag, archived }
    */
+  async listMessages(db, { userId, limit = 50, before = null, tag = null, excludeTag = null, archived = false, search = null, hideSnoozed = false, snoozed = false } = {}) {
+    if (!userId) throw new Error('userId is required');
 
-  async listMessages(db, { limit = 50, before = null, tag = null, excludeTag = null, archived = false, search = null, hideSnoozed = false, snoozed = false } = {}) {
     let query = 'SELECT m.* FROM messages m';
     const params = [];
-    const conditions = [];
+    const conditions = ['m.user_id = ?'];
+    params.push(userId);
 
     // FTS Join
     if (search) {
       query += ' JOIN messages_fts ON m.rowid = messages_fts.rowid';
       conditions.push('messages_fts MATCH ?');
-      // Format search query for FTS5 (phrase or simple)
-      // Escape double quotes in search terms to prevent FTS injection
       const sanitizedSearch = search.replace(/"/g, '');
       const ftsQuery = sanitizedSearch.split(/\s+/).filter(s => s.length > 0).map(s => `"${s}"*`).join(' AND ');
       params.push(ftsQuery);
@@ -137,9 +176,7 @@ export const DB = {
       params.push(Date.now());
     }
 
-    if (conditions.length > 0) {
-      query += ' WHERE ' + conditions.join(' AND ');
-    }
+    query += ' WHERE ' + conditions.join(' AND ');
 
     if (search) {
       query += ' ORDER BY rank, m.received_at DESC LIMIT ?';
@@ -182,12 +219,16 @@ export const DB = {
   /**
    * Count messages with same filters as listMessages (no limit/before)
    * @param {D1Database} db
+   * @param {Object} params - userId is required
    * @param {Object} filters { tag, excludeTag, archived, includeArchived, search }
    */
-  async countMessages(db, { tag = null, excludeTag = null, archived = false, includeArchived = false, search = null } = {}) {
+  async countMessages(db, { userId, tag = null, excludeTag = null, archived = false, includeArchived = false, search = null } = {}) {
+    if (!userId) throw new Error('userId is required');
+
     let query = 'SELECT COUNT(*) as count FROM messages m';
     const params = [];
-    const conditions = [];
+    const conditions = ['m.user_id = ?'];
+    params.push(userId);
 
     if (search) {
       query += ' JOIN messages_fts ON m.rowid = messages_fts.rowid';
@@ -215,9 +256,7 @@ export const DB = {
       }
     }
 
-    if (conditions.length > 0) {
-      query += ' WHERE ' + conditions.join(' AND ');
-    }
+    query += ' WHERE ' + conditions.join(' AND ');
 
     const row = await db.prepare(query).bind(...params).first();
     return row?.count ?? 0;
@@ -226,15 +265,18 @@ export const DB = {
   /**
    * Get all message counts in one query
    * @param {D1Database} db
+   * @param {string} userId
    */
-  async getCounts(db) {
+  async getCounts(db, userId) {
+    if (!userId) throw new Error('userId is required');
+
     const query = `
       SELECT
         'archive' as type,
         NULL as tag_name,
         COUNT(*) as count
       FROM messages
-      WHERE is_archived = 1
+      WHERE user_id = ? AND is_archived = 1
 
       UNION ALL
 
@@ -243,7 +285,8 @@ export const DB = {
         NULL as tag_name,
         COUNT(*) as count
       FROM messages
-      WHERE (is_archived = 0 OR is_archived IS NULL)
+      WHERE user_id = ?
+        AND (is_archived = 0 OR is_archived IS NULL)
         AND (snoozed_until IS NULL OR snoozed_until <= strftime('%s','now') * 1000)
 
       UNION ALL
@@ -255,12 +298,13 @@ export const DB = {
       FROM messages m
       JOIN message_tags mt ON m.id = mt.message_id
       JOIN tags t ON mt.tag_id = t.id
-      WHERE (m.is_archived = 0 OR m.is_archived IS NULL)
+      WHERE m.user_id = ?
+        AND (m.is_archived = 0 OR m.is_archived IS NULL)
         AND (m.snoozed_until IS NULL OR m.snoozed_until <= strftime('%s','now') * 1000)
       GROUP BY t.name
     `;
 
-    const { results } = await db.prepare(query).all();
+    const { results } = await db.prepare(query).bind(userId, userId, userId).all();
 
     let archive = 0;
     let totalUnarchived = 0;
@@ -279,9 +323,11 @@ export const DB = {
     }
 
     const spam = tagCounts['Spam'] || 0;
-    const sent = tagCounts['Sent'] || 0;
     // Inbox = Unarchived - Unarchived Spam
     const inbox = Math.max(0, totalUnarchived - spam);
+    // Sent is usually archived? Or separate?
+    // In original code, sent was just tagCounts['Sent'].
+    const sent = tagCounts['Sent'] || 0;
 
     return {
       inbox,
@@ -296,18 +342,32 @@ export const DB = {
    * Archive a message
    * @param {D1Database} db 
    * @param {string} id 
+   * @param {string} userId - optional check
    */
-  async archiveMessage(db, id) {
-    await db.prepare('UPDATE messages SET is_archived = 1 WHERE id = ?').bind(id).run();
+  async archiveMessage(db, id, userId = null) {
+    let query = 'UPDATE messages SET is_archived = 1 WHERE id = ?';
+    const params = [id];
+    if (userId) {
+      query += ' AND user_id = ?';
+      params.push(userId);
+    }
+    await db.prepare(query).bind(...params).run();
   },
 
   /**
    * Unarchive a message
    * @param {D1Database} db 
    * @param {string} id 
+   * @param {string} userId
    */
-  async unarchiveMessage(db, id) {
-    await db.prepare('UPDATE messages SET is_archived = 0 WHERE id = ?').bind(id).run();
+  async unarchiveMessage(db, id, userId = null) {
+    let query = 'UPDATE messages SET is_archived = 0 WHERE id = ?';
+    const params = [id];
+    if (userId) {
+      query += ' AND user_id = ?';
+      params.push(userId);
+    }
+    await db.prepare(query).bind(...params).run();
   },
 
   /**
@@ -315,27 +375,48 @@ export const DB = {
    * @param {D1Database} db
    * @param {string} id
    * @param {number} until
+   * @param {string} userId
    */
-  async snoozeMessage(db, id, until) {
-    await db.prepare('UPDATE messages SET snoozed_until = ? WHERE id = ?').bind(until, id).run();
+  async snoozeMessage(db, id, until, userId = null) {
+    let query = 'UPDATE messages SET snoozed_until = ? WHERE id = ?';
+    const params = [until, id];
+    if (userId) {
+      query += ' AND user_id = ?';
+      params.push(userId);
+    }
+    await db.prepare(query).bind(...params).run();
   },
 
   /**
    * Clear snooze on a message
    * @param {D1Database} db
    * @param {string} id
+   * @param {string} userId
    */
-  async unsnoozeMessage(db, id) {
-    await db.prepare('UPDATE messages SET snoozed_until = NULL WHERE id = ?').bind(id).run();
+  async unsnoozeMessage(db, id, userId = null) {
+    let query = 'UPDATE messages SET snoozed_until = NULL WHERE id = ?';
+    const params = [id];
+    if (userId) {
+      query += ' AND user_id = ?';
+      params.push(userId);
+    }
+    await db.prepare(query).bind(...params).run();
   },
 
   /**
    * Mark a message as read
    * @param {D1Database} db
    * @param {string} id
+   * @param {string} userId
    */
-  async markRead(db, id) {
-    await db.prepare('UPDATE messages SET is_read = 1 WHERE id = ?').bind(id).run();
+  async markRead(db, id, userId = null) {
+    let query = 'UPDATE messages SET is_read = 1 WHERE id = ?';
+    const params = [id];
+    if (userId) {
+      query += ' AND user_id = ?';
+      params.push(userId);
+    }
+    await db.prepare(query).bind(...params).run();
   },
 
   /**
@@ -343,28 +424,39 @@ export const DB = {
    * @param {D1Database} db
    * @param {string} id
    * @param {Object} info
+   * @param {string} userId
    */
-  async updateTodoistInfo(db, id, { projectName = null, projectUrl = null } = {}) {
-    await db.prepare(`
+  async updateTodoistInfo(db, id, { projectName = null, projectUrl = null } = {}, userId = null) {
+    let query = `
       UPDATE messages
       SET todoist_project_name = ?, todoist_project_url = ?
       WHERE id = ?
-    `).bind(
-      projectName,
-      projectUrl,
-      id
-    ).run();
+    `;
+    const params = [projectName, projectUrl, id];
+    if (userId) {
+      query += ' AND user_id = ?';
+      params.push(userId);
+    }
+    await db.prepare(query).bind(...params).run();
   },
 
   /**
    * Get full message detail
    * @param {D1Database} db 
    * @param {string} id 
+   * @param {string} userId
    */
-  async getMessage(db, id) {
+  async getMessage(db, id, userId = null) {
     if (!id) return null;
     
-    const msg = await db.prepare('SELECT * FROM messages WHERE id = ?').bind(id).first();
+    let query = 'SELECT * FROM messages WHERE id = ?';
+    const params = [id];
+    if (userId) {
+      query += ' AND user_id = ?';
+      params.push(userId);
+    }
+
+    const msg = await db.prepare(query).bind(...params).first();
     if (!msg) return null;
 
     const { results: attachments } = await db.prepare('SELECT * FROM attachments WHERE message_id = ?')
@@ -388,22 +480,29 @@ export const DB = {
     };
   },
 
+  // ==================
+  // Tags
+  // ==================
+
   /**
    * Add a tag to a message
    * @param {D1Database} db
    * @param {string} messageId
    * @param {string} tagName
+   * @param {string} userId
    */
-  async addMessageTag(db, messageId, tagName) {
-    // Ensure tag exists
-    let tag = await db.prepare('SELECT id FROM tags WHERE name = ?').bind(tagName).first();
+  async addMessageTag(db, messageId, tagName, userId) {
+    if (!userId) throw new Error('userId is required for tags');
+
+    // Ensure tag exists for this user
+    let tag = await db.prepare('SELECT id FROM tags WHERE name = ? AND user_id = ?').bind(tagName, userId).first();
     if (!tag) {
-      tag = await this.createTag(db, tagName);
+      tag = await this.createTag(db, tagName, userId);
     }
 
     await db.prepare('INSERT OR IGNORE INTO message_tags (message_id, tag_id) VALUES (?, ?)').bind(messageId, tag.id).run();
 
-    // Update legacy field for now (though we are moving away)
+    // Update legacy field
     await db.prepare('UPDATE messages SET tag = ? WHERE id = ?').bind(tagName, messageId).run();
   },
 
@@ -412,14 +511,17 @@ export const DB = {
    * @param {D1Database} db
    * @param {string} messageId
    * @param {string} tagName
+   * @param {string} userId
    */
-  async removeMessageTag(db, messageId, tagName) {
-    const tag = await db.prepare('SELECT id FROM tags WHERE name = ?').bind(tagName).first();
+  async removeMessageTag(db, messageId, tagName, userId) {
+    if (!userId) throw new Error('userId is required for tags');
+
+    const tag = await db.prepare('SELECT id FROM tags WHERE name = ? AND user_id = ?').bind(tagName, userId).first();
     if (!tag) return;
 
     await db.prepare('DELETE FROM message_tags WHERE message_id = ? AND tag_id = ?').bind(messageId, tag.id).run();
 
-    // Legacy cleanup: if we deleted the tag that is in messages.tag, grab another one
+    // Legacy cleanup
     const remainingTag = await db.prepare(`
         SELECT t.name FROM message_tags mt JOIN tags t ON mt.tag_id = t.id 
         WHERE mt.message_id = ? LIMIT 1
@@ -433,8 +535,11 @@ export const DB = {
    * @param {D1Database} db
    * @param {string} messageId
    * @param {string[]} tags
+   * @param {string} userId
    */
-  async setMessageTags(db, messageId, tags) {
+  async setMessageTags(db, messageId, tags, userId) {
+    if (!userId) throw new Error('userId is required for tags');
+
     // Clear existing
     await db.prepare('DELETE FROM message_tags WHERE message_id = ?').bind(messageId).run();
 
@@ -445,10 +550,10 @@ export const DB = {
       return;
     }
 
-    // 1. Resolve Tag IDs
+    // 1. Resolve Tag IDs for User
     const placeholders = uniqueTags.map(() => '?').join(',');
-    const { results: existing } = await db.prepare(`SELECT id, name FROM tags WHERE name IN (${placeholders})`)
-      .bind(...uniqueTags)
+    const { results: existing } = await db.prepare(`SELECT id, name FROM tags WHERE user_id = ? AND name IN (${placeholders})`)
+      .bind(userId, ...uniqueTags)
       .all();
 
     const existingMap = new Map((existing || []).map(t => [t.name, t.id]));
@@ -456,16 +561,16 @@ export const DB = {
 
     // Create missing tags
     if (missingNames.length > 0) {
-      const createStmt = db.prepare('INSERT OR IGNORE INTO tags (id, name, created_at) VALUES (?, ?, ?)');
+      const createStmt = db.prepare('INSERT OR IGNORE INTO tags (id, user_id, name, created_at) VALUES (?, ?, ?, ?)');
       const now = Date.now();
       await db.batch(missingNames.map(name =>
-        createStmt.bind(crypto.randomUUID(), name, now)
+        createStmt.bind(crypto.randomUUID(), userId, name, now)
       ));
 
-      // Fetch IDs for the newly created tags
+      // Fetch IDs
       const missingPlaceholders = missingNames.map(() => '?').join(',');
-      const { results: newTags } = await db.prepare(`SELECT id, name FROM tags WHERE name IN (${missingPlaceholders})`)
-        .bind(...missingNames)
+      const { results: newTags } = await db.prepare(`SELECT id, name FROM tags WHERE user_id = ? AND name IN (${missingPlaceholders})`)
+        .bind(userId, ...missingNames)
         .all();
 
       if (newTags) {
@@ -499,16 +604,15 @@ export const DB = {
    * @param {D1Database} db
    * @param {string} id
    * @param {Object} tagInfo
+   * @param {string} userId - required for setting tags
    */
-  async updateTagInfo(db, id, { tag, confidence, reason }) {
-    // Treat as "Set this tag" (and remove others? Or add?)
-    // "Tag the highlighted email" usually implies adding or setting primary.
-    // The previous behavior was "replace".
+  async updateTagInfo(db, id, { tag, confidence, reason }, userId) {
     if (tag) {
-      await this.setMessageTags(db, id, [tag]);
+      // Must have userId to set tags
+      if (!userId) throw new Error('userId is required to update tag');
+      await this.setMessageTags(db, id, [tag], userId);
     }
 
-    // Update metadata if needed (confidence/reason still on messages table? Yes)
     await db.prepare(`
       UPDATE messages
       SET tag_confidence = ?, tag_reason = ?, tag_checked_at = ?
@@ -522,31 +626,34 @@ export const DB = {
   },
 
   /**
-   * Get all tags
+   * Get all tags for user
    * @param {D1Database} db
+   * @param {string} userId
    */
-  async getTags(db) {
-    const { results } = await db.prepare('SELECT * FROM tags ORDER BY created_at DESC').all();
+  async getTags(db, userId) {
+    if (!userId) throw new Error('userId is required');
+
+    const { results } = await db.prepare('SELECT * FROM tags WHERE user_id = ? ORDER BY created_at DESC').bind(userId).all();
     let finalResults = results || [];
 
-    // Ensure 'Spam' tag always exists
+    // Ensure 'Spam' tag always exists for this user
     const spamTag = finalResults.find(t => t.name === 'Spam');
     if (!spamTag) {
       const id = crypto.randomUUID();
-      await db.prepare('INSERT INTO tags (id, name, created_at) VALUES (?, ?, ?)')
-        .bind(id, 'Spam', 0)
+      await db.prepare('INSERT INTO tags (id, user_id, name, created_at) VALUES (?, ?, ?, ?)')
+        .bind(id, userId, 'Spam', 0)
         .run();
-      finalResults = [...finalResults, { id, name: 'Spam', created_at: 0 }];
+      finalResults = [...finalResults, { id, user_id: userId, name: 'Spam', created_at: 0 }];
     }
 
     // Ensure 'Sent' tag always exists
     const sentTag = finalResults.find(t => t.name === 'Sent');
     if (!sentTag) {
       const id = crypto.randomUUID();
-      await db.prepare('INSERT INTO tags (id, name, created_at) VALUES (?, ?, ?)')
-        .bind(id, 'Sent', 0)
+      await db.prepare('INSERT INTO tags (id, user_id, name, created_at) VALUES (?, ?, ?, ?)')
+        .bind(id, userId, 'Sent', 0)
         .run();
-      finalResults = [...finalResults, { id, name: 'Sent', created_at: 0 }];
+      finalResults = [...finalResults, { id, user_id: userId, name: 'Sent', created_at: 0 }];
     }
 
     return finalResults;
@@ -556,15 +663,18 @@ export const DB = {
    * Create a new tag
    * @param {D1Database} db
    * @param {string} name
+   * @param {string} userId
    */
-  async createTag(db, name) {
+  async createTag(db, name, userId) {
+    if (!userId) throw new Error('userId is required');
+
     if (name.toLowerCase() === 'spam') {
-      const existing = await db.prepare('SELECT * FROM tags WHERE name = ?').bind('Spam').first();
+      const existing = await db.prepare('SELECT * FROM tags WHERE name = ? AND user_id = ?').bind('Spam', userId).first();
       if (existing) return existing;
     }
     const id = crypto.randomUUID();
-    await db.prepare('INSERT INTO tags (id, name, created_at) VALUES (?, ?, ?)')
-      .bind(id, name, Date.now())
+    await db.prepare('INSERT INTO tags (id, user_id, name, created_at) VALUES (?, ?, ?, ?)')
+      .bind(id, userId, name, Date.now())
       .run();
     return { id, name };
   },
@@ -574,16 +684,19 @@ export const DB = {
    * @param {D1Database} db
    * @param {string} id
    * @param {string} newName
+   * @param {string} userId
    */
-  async updateTag(db, id, newName) {
-    const oldTag = await db.prepare('SELECT name FROM tags WHERE id = ?').bind(id).first();
+  async updateTag(db, id, newName, userId) {
+    if (!userId) throw new Error('userId is required');
+
+    const oldTag = await db.prepare('SELECT name FROM tags WHERE id = ? AND user_id = ?').bind(id, userId).first();
     if (!oldTag) throw new Error('Tag not found');
     const oldName = oldTag.name;
 
     if (oldName === newName) return;
 
     // Check collision
-    const existing = await db.prepare('SELECT id FROM tags WHERE name = ? AND id != ?').bind(newName, id).first();
+    const existing = await db.prepare('SELECT id FROM tags WHERE name = ? AND id != ? AND user_id = ?').bind(newName, id, userId).first();
     if (existing) throw new Error('Tag name already exists');
 
     // Update Tag Name
@@ -593,29 +706,32 @@ export const DB = {
     await db.prepare(`
       UPDATE tags 
       SET name = ? || SUBSTR(name, LENGTH(?) + 1) 
-      WHERE name LIKE ? || '/%'
-    `).bind(newName, oldName, oldName).run();
+      WHERE user_id = ? AND name LIKE ? || '/%'
+    `).bind(newName, oldName, userId, oldName).run();
 
     // Update Messages (Exact match)
-    await db.prepare('UPDATE messages SET tag = ? WHERE tag = ?').bind(newName, oldName).run();
+    // Legacy: update string tag on messages. But messages should check user_id.
+    // Since we know these tags belong to userId, and messages linked to these tags belong to userId (mostly),
+    // but message.tag is a string.
+    await db.prepare('UPDATE messages SET tag = ? WHERE user_id = ? AND tag = ?').bind(newName, userId, oldName).run();
 
     // Update Messages (Children / Hierarchy)
-    // Replace prefix match
     await db.prepare(`
       UPDATE messages 
       SET tag = ? || SUBSTR(tag, LENGTH(?) + 1) 
-      WHERE tag LIKE ? || '/%'
-    `).bind(newName, oldName, oldName).run();
+      WHERE user_id = ? AND tag LIKE ? || '/%'
+    `).bind(newName, oldName, userId, oldName).run();
   },
 
   /**
    * Delete a tag
    * @param {D1Database} db
    * @param {string} id
+   * @param {string} userId
    */
-  async deleteTag(db, id) {
+  async deleteTag(db, id, userId) {
     // Prevent deleting system tags (Spam, Sent)
-    const tag = await db.prepare('SELECT name FROM tags WHERE id = ?').bind(id).first();
+    const tag = await db.prepare('SELECT name FROM tags WHERE id = ? AND user_id = ?').bind(id, userId).first();
     if (tag && (tag.name === 'Spam' || tag.name === 'Sent')) {
       throw new Error(`Cannot delete system tag: ${tag.name}`);
     }
@@ -629,22 +745,26 @@ export const DB = {
   /**
    * Get all tagging rules ordered by priority
    * @param {D1Database} db
+   * @param {string} userId
    */
-  async getTaggingRules(db) {
+  async getTaggingRules(db, userId) {
+    if (!userId) throw new Error('userId is required');
     const { results } = await db.prepare(
-      'SELECT * FROM tagging_rules ORDER BY priority DESC, created_at ASC'
-    ).all();
+      'SELECT * FROM tagging_rules WHERE user_id = ? ORDER BY priority DESC, created_at ASC'
+    ).bind(userId).all();
     return results || [];
   },
 
   /**
    * Get enabled tagging rules (for matching)
    * @param {D1Database} db
+   * @param {string} userId
    */
-  async getEnabledTaggingRules(db) {
+  async getEnabledTaggingRules(db, userId) {
+    if (!userId) throw new Error('userId is required');
     const { results } = await db.prepare(
-      'SELECT * FROM tagging_rules WHERE is_enabled = 1 ORDER BY priority DESC, created_at ASC'
-    ).all();
+      'SELECT * FROM tagging_rules WHERE user_id = ? AND is_enabled = 1 ORDER BY priority DESC, created_at ASC'
+    ).bind(userId).all();
     return results || [];
   },
 
@@ -652,27 +772,38 @@ export const DB = {
    * Get a tagging rule by ID
    * @param {D1Database} db
    * @param {string} id
+   * @param {string} userId
    */
-  async getTaggingRule(db, id) {
-    return db.prepare('SELECT * FROM tagging_rules WHERE id = ?').bind(id).first();
+  async getTaggingRule(db, id, userId) {
+    let query = 'SELECT * FROM tagging_rules WHERE id = ?';
+    const params = [id];
+    if (userId) {
+      query += ' AND user_id = ?';
+      params.push(userId);
+    }
+    return db.prepare(query).bind(...params).first();
   },
 
   /**
    * Create a new tagging rule
    * @param {D1Database} db
    * @param {Object} rule
+   * @param {string} userId
    */
-  async createTaggingRule(db, rule) {
+  async createTaggingRule(db, rule, userId) {
+    if (!userId) throw new Error('userId is required');
+
     const id = crypto.randomUUID();
     const now = Date.now();
 
     await db.prepare(`
       INSERT INTO tagging_rules (
-        id, name, match_from, match_to, match_subject, match_body,
+        id, user_id, name, match_from, match_to, match_subject, match_body,
         tag_name, priority, is_enabled, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       id,
+      userId,
       rule.name,
       rule.matchFrom || null,
       rule.matchTo || null,
@@ -693,9 +824,10 @@ export const DB = {
    * @param {D1Database} db
    * @param {string} id
    * @param {Object} updates
+   * @param {string} userId
    */
-  async updateTaggingRule(db, id, updates) {
-    const existing = await this.getTaggingRule(db, id);
+  async updateTaggingRule(db, id, updates, userId) {
+    const existing = await this.getTaggingRule(db, id, userId);
     if (!existing) throw new Error('Tagging rule not found');
 
     const now = Date.now();
@@ -730,9 +862,16 @@ export const DB = {
    * Delete a tagging rule
    * @param {D1Database} db
    * @param {string} id
+   * @param {string} userId
    */
-  async deleteTaggingRule(db, id) {
-    await db.prepare('DELETE FROM tagging_rules WHERE id = ?').bind(id).run();
+  async deleteTaggingRule(db, id, userId) {
+    let query = 'DELETE FROM tagging_rules WHERE id = ?';
+    const params = [id];
+    if (userId) {
+      query += ' AND user_id = ?';
+      params.push(userId);
+    }
+    await db.prepare(query).bind(...params).run();
   },
 
   /**
@@ -740,9 +879,12 @@ export const DB = {
    * Returns the first matching rule's tag, or null if no match
    * @param {D1Database} db
    * @param {Object} message - Message with from_addr, to_addr, subject, text_body, html_body
+   * @param {string} userId
    */
-  async matchTaggingRules(db, message) {
-    const rules = await this.getEnabledTaggingRules(db);
+  async matchTaggingRules(db, message, userId) {
+    if (!userId) throw new Error('userId is required');
+
+    const rules = await this.getEnabledTaggingRules(db, userId);
 
     // Pre-calculate lowercased values once for performance
     const normalizedMessage = {

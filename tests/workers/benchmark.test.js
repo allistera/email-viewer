@@ -11,6 +11,7 @@ describe("Benchmark FTS", () => {
 
       `CREATE TABLE IF NOT EXISTS messages (
         id TEXT PRIMARY KEY,
+        user_id TEXT,
         received_at INTEGER NOT NULL,
         from_addr TEXT NOT NULL,
         to_addr TEXT NOT NULL,
@@ -35,6 +36,7 @@ describe("Benchmark FTS", () => {
 
       `CREATE INDEX IF NOT EXISTS idx_messages_received_at ON messages(received_at DESC);`,
       `CREATE INDEX IF NOT EXISTS idx_messages_is_archived ON messages(is_archived);`,
+      `CREATE INDEX IF NOT EXISTS idx_messages_user_id ON messages(user_id);`,
 
       `CREATE TABLE IF NOT EXISTS attachments (
         id TEXT PRIMARY KEY,
@@ -56,7 +58,8 @@ describe("Benchmark FTS", () => {
 
       `CREATE TABLE IF NOT EXISTS tags (
         id TEXT PRIMARY KEY,
-        name TEXT NOT NULL UNIQUE,
+        user_id TEXT,
+        name TEXT NOT NULL,
         created_at INTEGER
       );`,
 
@@ -101,6 +104,7 @@ describe("Benchmark FTS", () => {
 
       `CREATE TABLE IF NOT EXISTS tagging_rules (
         id TEXT PRIMARY KEY,
+        user_id TEXT,
         name TEXT NOT NULL,
         match_from TEXT,
         match_to TEXT,
@@ -114,7 +118,8 @@ describe("Benchmark FTS", () => {
       );`,
 
       `CREATE INDEX IF NOT EXISTS idx_tagging_rules_enabled_priority
-      ON tagging_rules (is_enabled, priority DESC);`
+      ON tagging_rules (is_enabled, priority DESC);`,
+      `CREATE INDEX IF NOT EXISTS idx_tagging_rules_user_id ON tagging_rules(user_id);`
     ];
 
     for (const stmt of statements) {
@@ -157,6 +162,7 @@ describe("Benchmark FTS", () => {
 
         messages.push({
             id,
+            user_id: 'test-user',
             received_at: Date.now() - i * 1000,
             from_addr: sender,
             to_addr: "me@example.com",
@@ -184,7 +190,7 @@ describe("Benchmark FTS", () => {
     const iterations = 20;
 
     for (let i = 0; i < iterations; i++) {
-      const results = await DB.listMessages(env.DB, { search: searchTerm, limit: 20 });
+      const results = await DB.listMessages(env.DB, { userId: 'test-user', search: searchTerm, limit: 20 });
       expect(results.length).toBeGreaterThan(0);
     }
 
@@ -193,15 +199,15 @@ describe("Benchmark FTS", () => {
     console.log(`Average execution time for search "${searchTerm}": ${avgTime.toFixed(2)}ms`);
 
     // Log count for verification
-    const results = await DB.listMessages(env.DB, { search: searchTerm, limit: 1000 });
+    const results = await DB.listMessages(env.DB, { userId: 'test-user', search: searchTerm, limit: 1000 });
     console.log(`Number of results for search "${searchTerm}": ${results.length}`);
     expect(results.length).toBe(100);
 
     // Verify negative match (partial match shouldn't be returned)
-    const resultsUrgentUpdate = await DB.listMessages(env.DB, { search: "Urgent Update", limit: 1000 });
+    const resultsUrgentUpdate = await DB.listMessages(env.DB, { userId: 'test-user', search: "Urgent Update", limit: 1000 });
     expect(resultsUrgentUpdate.length).toBe(100);
 
-    const resultsTeamMeeting = await DB.listMessages(env.DB, { search: "Team Meeting", limit: 1000 });
+    const resultsTeamMeeting = await DB.listMessages(env.DB, { userId: 'test-user', search: "Team Meeting", limit: 1000 });
     expect(resultsTeamMeeting.length).toBe(100);
   });
 });

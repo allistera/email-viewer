@@ -1,3 +1,5 @@
+import { DB } from './db.js';
+
 /**
  * Bearer Token Authentication Middleware
  * 
@@ -5,13 +7,13 @@
  * 
  * @param {Request} request 
  * @param {Object} env 
- * @returns {Promise<Response|null>} Returns a 401 Response if auth fails, or null if it succeeds.
+ * @returns {Promise<Object>} Returns { user, userId, error: Response|null }
  */
 export async function authenticate(request, env) {
   // Allow health check without auth
   const url = new URL(request.url);
   if (url.pathname === '/api/health') {
-    return null;
+    return { user: null, userId: null, error: null };
   }
 
   let token = null;
@@ -29,22 +31,45 @@ export async function authenticate(request, env) {
   }
 
   if (!token) {
-    return new Response(JSON.stringify({ error: 'Missing or invalid Authorization header' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    return {
+      user: null,
+      userId: null,
+      error: new Response(JSON.stringify({ error: 'Missing or invalid Authorization header' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    };
   }
 
-  // Constant-time comparison to prevent timing attacks
-  const isValid = await constantTimeCompare(token, env.API_TOKEN);
-  if (!isValid) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' }
-    });
+  // 1. Check DB for token
+  // We need DB binding in env
+  if (env.DB) {
+    const user = await DB.getUserByToken(env.DB, token);
+    if (user) {
+      return { user, userId: user.id, error: null };
+    }
   }
 
-  return null;
+  // 2. Fallback: Check env.API_TOKEN
+  if (env.API_TOKEN) {
+    const isValid = await constantTimeCompare(token, env.API_TOKEN);
+    if (isValid) {
+      return {
+        user: { id: 'default-user-id', username: 'admin' },
+        userId: 'default-user-id',
+        error: null
+      };
+    }
+  }
+
+  return {
+    user: null,
+    userId: null,
+    error: new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' }
+    })
+  };
 }
 
 /**

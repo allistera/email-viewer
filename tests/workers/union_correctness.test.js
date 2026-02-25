@@ -10,6 +10,7 @@ describe("Contacts API Union Correctness", () => {
 
       `CREATE TABLE IF NOT EXISTS messages (
         id TEXT PRIMARY KEY,
+        user_id TEXT,
         received_at INTEGER NOT NULL,
         from_addr TEXT NOT NULL,
         to_addr TEXT NOT NULL,
@@ -33,7 +34,8 @@ describe("Contacts API Union Correctness", () => {
 
       `CREATE INDEX IF NOT EXISTS idx_messages_received_at ON messages(received_at DESC);`,
       `CREATE INDEX IF NOT EXISTS idx_messages_from_addr_nocase ON messages(from_addr COLLATE NOCASE);`,
-      `CREATE INDEX IF NOT EXISTS idx_messages_to_addr_nocase ON messages(to_addr COLLATE NOCASE);`
+      `CREATE INDEX IF NOT EXISTS idx_messages_to_addr_nocase ON messages(to_addr COLLATE NOCASE);`,
+      `CREATE INDEX IF NOT EXISTS idx_messages_user_id ON messages(user_id);`
     ];
 
     for (const stmt of statements) {
@@ -44,35 +46,37 @@ describe("Contacts API Union Correctness", () => {
     const now = Date.now();
     const oneDayAgo = now - 86400000;
     const twoDaysAgo = now - 172800000;
+    const userId = 'test-user';
 
     // 1. Message FROM alice (older)
     await env.DB.prepare(`
-      INSERT INTO messages (id, received_at, from_addr, to_addr, raw_r2_key)
-      VALUES (?, ?, ?, ?, ?)
-    `).bind('msg-1', twoDaysAgo, 'alice@example.com', 'me@myinbox.com', 'raw/1').run();
+      INSERT INTO messages (id, user_id, received_at, from_addr, to_addr, raw_r2_key)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).bind('msg-1', userId, twoDaysAgo, 'alice@example.com', 'me@myinbox.com', 'raw/1').run();
 
     // 2. Message TO alice (newer)
     await env.DB.prepare(`
-      INSERT INTO messages (id, received_at, from_addr, to_addr, raw_r2_key)
-      VALUES (?, ?, ?, ?, ?)
-    `).bind('msg-2', oneDayAgo, 'me@myinbox.com', 'alice@example.com', 'raw/2').run();
+      INSERT INTO messages (id, user_id, received_at, from_addr, to_addr, raw_r2_key)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).bind('msg-2', userId, oneDayAgo, 'me@myinbox.com', 'alice@example.com', 'raw/2').run();
 
     // 3. Message FROM bob (irrelevant)
     await env.DB.prepare(`
-      INSERT INTO messages (id, received_at, from_addr, to_addr, raw_r2_key)
-      VALUES (?, ?, ?, ?, ?)
-    `).bind('msg-3', now, 'bob@example.com', 'me@myinbox.com', 'raw/3').run();
+      INSERT INTO messages (id, user_id, received_at, from_addr, to_addr, raw_r2_key)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).bind('msg-3', userId, now, 'bob@example.com', 'me@myinbox.com', 'raw/3').run();
   });
 
   it("merges duplicate contacts and picks the latest timestamp", async () => {
     // We expect 'alice@example.com' to appear once, with 'last_used' = oneDayAgo (not twoDaysAgo)
+    const userId = 'test-user';
 
     // Construct request
     const request = new Request("https://example.com/api/contacts?q=ali&limit=10", {
       method: "GET",
     });
 
-    const response = await ApiRouter.handle(request.url, request, env);
+    const response = await ApiRouter.handle(request.url, request, env, userId);
     expect(response.status).toBe(200);
 
     const body = await response.json();

@@ -1,5 +1,5 @@
 export const StreamRouter = {
-  async handle(urlString, request, env) {
+  async handle(urlString, request, env, userId) {
     const url = new URL(urlString);
     const path = url.pathname.replace('/api/', '');
 
@@ -21,7 +21,12 @@ export const StreamRouter = {
         const doUrl = new URL(request.url);
         doUrl.pathname = path === 'stream' ? '/connect/sse' : '/connect/ws';
 
+        // Create new request to forward, preserving original properties but adding User ID
         const newRequest = new Request(doUrl.toString(), request);
+        if (userId) {
+          newRequest.headers.set('X-User-Id', userId);
+        }
+
         return stub.fetch(newRequest);
       } catch (error) {
         console.error('StreamRouter error:', error.message, error.stack);

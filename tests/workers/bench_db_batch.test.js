@@ -1,4 +1,3 @@
-
 import { describe, it, expect, beforeAll } from "vitest";
 import { env } from "cloudflare:test";
 import { DB } from "../../workers/shared/db.js";
@@ -9,6 +8,7 @@ describe("DB Batch Limits", () => {
     const statements = [
       `CREATE TABLE IF NOT EXISTS messages (
         id TEXT PRIMARY KEY,
+        user_id TEXT,
         received_at INTEGER NOT NULL,
         from_addr TEXT NOT NULL,
         to_addr TEXT NOT NULL,
@@ -52,6 +52,7 @@ describe("DB Batch Limits", () => {
     const messageId = "msg_batch_test";
     await DB.insertMessage(env.DB, {
         id: messageId,
+        user_id: 'test-user',
         received_at: Date.now(),
         from_addr: "test@example.com",
         to_addr: "me@example.com",

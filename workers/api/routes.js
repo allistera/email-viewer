@@ -87,7 +87,7 @@ const clampStatus = (status) => {
 
 
 export const ApiRouter = {
-  async handle(urlString, request, env) {
+  async handle(urlString, request, env, userId) {
     const url = new URL(urlString);
     const path = url.pathname.replace('/api/', '').replace(/\/$/, '');
 
@@ -107,7 +107,7 @@ export const ApiRouter = {
         const snoozed = url.searchParams.get('snoozed') === 'true';
         const search = url.searchParams.get('q') || url.searchParams.get('search') || null;
 
-        const items = await DB.listMessages(env.DB, { limit, before, tag, excludeTag, archived, search, hideSnoozed, snoozed });
+        const items = await DB.listMessages(env.DB, { userId, limit, before, tag, excludeTag, archived, search, hideSnoozed, snoozed });
         const nextBefore = items.length > 0 ? items[items.length - 1].received_at : null;
 
         return jsonResponse({ items, nextBefore });
@@ -115,12 +115,12 @@ export const ApiRouter = {
 
       // GET /api/messages/counts - returns counts for inbox, archive, spam, sent, and each tag
       if (path === 'messages/counts' && request.method === 'GET') {
-        const tags = await DB.getTags(env.DB);
+        const tags = await DB.getTags(env.DB, userId);
         const userTagNames = tags
           .filter(t => t.name !== 'Spam' && t.name !== 'Sent')
           .map(t => t.name);
 
-        const counts = await DB.getCounts(env.DB);
+        const counts = await DB.getCounts(env.DB, userId);
 
         const tagCountMap = {};
         userTagNames.forEach((name) => {
@@ -182,15 +182,15 @@ export const ApiRouter = {
 
         // Detail
         if (parts.length === 2 && request.method === 'GET') {
-          const msg = await DB.getMessage(env.DB, id);
+          const msg = await DB.getMessage(env.DB, id, userId);
           if (!msg) return new Response('Not Found', { status: 404 });
-          await DB.markRead(env.DB, id);
+          await DB.markRead(env.DB, id, userId);
           return jsonResponse({ ...msg, is_read: 1 });
         }
 
         // Archive
         if (parts.length === 3 && parts[2] === 'archive' && request.method === 'POST') {
-          await DB.archiveMessage(env.DB, id);
+          await DB.archiveMessage(env.DB, id, userId);
           return jsonResponse({ ok: true });
         }
 
@@ -206,13 +206,13 @@ export const ApiRouter = {
           if (!Number.isFinite(until) || until <= Date.now()) {
             return jsonResponse({ error: 'Snooze time must be a future timestamp (ms).' }, { status: 400 });
           }
-          await DB.snoozeMessage(env.DB, id, Math.floor(until));
+          await DB.snoozeMessage(env.DB, id, Math.floor(until), userId);
           return jsonResponse({ ok: true, snoozedUntil: Math.floor(until) });
         }
 
         // Unsnooze
         if (parts.length === 3 && parts[2] === 'unsnooze' && request.method === 'POST') {
-          await DB.unsnoozeMessage(env.DB, id);
+          await DB.unsnoozeMessage(env.DB, id, userId);
           return jsonResponse({ ok: true });
         }
 
@@ -272,7 +272,7 @@ export const ApiRouter = {
             return jsonResponse({ error: 'Invalid attachment ID format' }, { status: 400 });
           }
           
-          const msg = await DB.getMessage(env.DB, id);
+          const msg = await DB.getMessage(env.DB, id, userId);
           if (!msg) return new Response('Message Not Found', { status: 404 });
 
           const att = msg.attachments.find(a => a.id === attId);
@@ -302,16 +302,16 @@ export const ApiRouter = {
         if (parts.length === 2 && request.method === 'PATCH') {
           const body = await request.json();
           // Verify message exists
-          const msg = await DB.getMessage(env.DB, id);
+          const msg = await DB.getMessage(env.DB, id, userId);
           if (!msg) return new Response('Message Not Found', { status: 404 });
 
           if (body.addTag) {
-            await DB.addMessageTag(env.DB, id, body.addTag);
+            await DB.addMessageTag(env.DB, id, body.addTag, userId);
           } else if (body.removeTag) {
-            await DB.removeMessageTag(env.DB, id, body.removeTag);
+            await DB.removeMessageTag(env.DB, id, body.removeTag, userId);
           } else if (body.tag !== undefined) {
             // Legacy/Single mode: Replace
-            await DB.updateTagInfo(env.DB, id, { tag: body.tag, confidence: 1.0, reason: 'Manual update' });
+            await DB.updateTagInfo(env.DB, id, { tag: body.tag, confidence: 1.0, reason: 'Manual update' }, userId);
           }
 
           return jsonResponse({ ok: true });
@@ -320,7 +320,7 @@ export const ApiRouter = {
 
       // GET /api/tags
       if (path === 'tags' && request.method === 'GET') {
-        const tags = await DB.getTags(env.DB);
+        const tags = await DB.getTags(env.DB, userId);
         return jsonResponse(tags);
       }
 
@@ -336,7 +336,7 @@ export const ApiRouter = {
         }
 
         try {
-          const tag = await DB.createTag(env.DB, name);
+          const tag = await DB.createTag(env.DB, name, userId);
           return jsonResponse(tag, { status: 201 });
         } catch (e) {
           // Unique constraint
@@ -363,7 +363,7 @@ export const ApiRouter = {
         }
 
         try {
-          await DB.updateTag(env.DB, id, name);
+          await DB.updateTag(env.DB, id, name, userId);
           return jsonResponse({ ok: true });
         } catch (e) {
           if (e.message && e.message.includes('already exists')) {
@@ -383,7 +383,7 @@ export const ApiRouter = {
         }
 
         try {
-          await DB.deleteTag(env.DB, id);
+          await DB.deleteTag(env.DB, id, userId);
           return jsonResponse({ ok: true });
         } catch (e) {
           if (e.message && e.message.includes('system tag')) {
@@ -399,7 +399,7 @@ export const ApiRouter = {
 
       // GET /api/tagging-rules
       if (path === 'tagging-rules' && request.method === 'GET') {
-        const rules = await DB.getTaggingRules(env.DB);
+        const rules = await DB.getTaggingRules(env.DB, userId);
         return jsonResponse(rules);
       }
 
@@ -436,7 +436,7 @@ export const ApiRouter = {
           return jsonResponse({ error: 'Priority must be an integer between 0 and 100' }, { status: 400 });
         }
 
-        const tags = await DB.getTags(env.DB);
+        const tags = await DB.getTags(env.DB, userId);
         const tagExists = tags.some(t => (t.name || '').toLowerCase() === String(tagName).toLowerCase());
         if (!tagExists) {
           return jsonResponse({ error: 'Tag does not exist. Create the tag first.' }, { status: 400 });
@@ -451,7 +451,7 @@ export const ApiRouter = {
           tagName,
           priority: priority ?? 0,
           isEnabled: isEnabled !== false
-        });
+        }, userId);
 
         return jsonResponse(rule, { status: 201 });
       }
@@ -471,7 +471,7 @@ export const ApiRouter = {
           return jsonResponse({ error: error.message || 'Invalid JSON body' }, { status: 400 });
         }
 
-        const existing = await DB.getTaggingRule(env.DB, id);
+        const existing = await DB.getTaggingRule(env.DB, id, userId);
         if (!existing) {
           return jsonResponse({ error: 'Tagging rule not found' }, { status: 404 });
         }
@@ -502,7 +502,7 @@ export const ApiRouter = {
         }
 
         if (newTagName) {
-          const tags = await DB.getTags(env.DB);
+          const tags = await DB.getTags(env.DB, userId);
           const tagExists = tags.some(t => (t.name || '').toLowerCase() === String(newTagName).toLowerCase());
           if (!tagExists) {
             return jsonResponse({ error: 'Tag does not exist. Create the tag first.' }, { status: 400 });
@@ -518,7 +518,7 @@ export const ApiRouter = {
           tagName,
           priority,
           isEnabled
-        });
+        }, userId);
 
         return jsonResponse({ ok: true });
       }
@@ -531,16 +531,16 @@ export const ApiRouter = {
           return jsonResponse({ error: 'Invalid rule ID format' }, { status: 400 });
         }
 
-        const existing = await DB.getTaggingRule(env.DB, id);
+        const existing = await DB.getTaggingRule(env.DB, id, userId);
         if (!existing) {
           return jsonResponse({ error: 'Tagging rule not found' }, { status: 404 });
         }
 
-        await DB.deleteTaggingRule(env.DB, id);
+        await DB.deleteTaggingRule(env.DB, id, userId);
         return jsonResponse({ ok: true });
       }
 
-      // GET /api/notifications/status - check ntfy notification configuration
+      // GET /api/notifications/status
       if (path === 'notifications/status' && request.method === 'GET') {
         const topic = (env.NTFY_TOPIC || '').trim();
         const configured = Boolean(topic);
@@ -560,7 +560,7 @@ export const ApiRouter = {
         return jsonResponse(status);
       }
 
-      // POST /api/notifications/test - send a test notification via ntfy
+      // POST /api/notifications/test
       if (path === 'notifications/test' && request.method === 'POST') {
         const topic = (env.NTFY_TOPIC || '').trim();
         if (!topic) {
@@ -611,15 +611,15 @@ export const ApiRouter = {
         }
 
         // Get unique email addresses from both from_addr and to_addr, ordered by most recent use
-        // Note: this query does not filter by a specific user address; it relies solely on the search pattern and timestamps
+        // Filter by user_id
         const sql = `
           SELECT DISTINCT email, MAX(last_used) as last_used FROM (
             SELECT from_addr as email, MAX(received_at) as last_used FROM messages
-            WHERE from_addr LIKE ?
+            WHERE user_id = ? AND from_addr LIKE ?
             GROUP BY from_addr
             UNION ALL
             SELECT to_addr as email, MAX(received_at) as last_used FROM messages
-            WHERE to_addr LIKE ?
+            WHERE user_id = ? AND to_addr LIKE ?
             GROUP BY to_addr
           )
           GROUP BY email
@@ -629,7 +629,7 @@ export const ApiRouter = {
 
         const searchPattern = `${query}%`;
         const result = await env.DB.prepare(sql)
-          .bind(searchPattern, searchPattern, limit)
+          .bind(userId, searchPattern, userId, searchPattern, limit)
           .all();
 
         const contacts = (result.results || []).map(row => ({
@@ -727,6 +727,7 @@ export const ApiRouter = {
 
             await DB.insertMessage(env.DB, {
               id: messageId,
+              user_id: userId,
               received_at: now,
               from_addr: fromEmail,
               to_addr: toHeader,
@@ -747,7 +748,7 @@ export const ApiRouter = {
             });
 
             // Tag with 'Sent'
-            await DB.addMessageTag(env.DB, messageId, 'Sent');
+            await DB.addMessageTag(env.DB, messageId, 'Sent', userId);
 
             return jsonResponse({ ok: true, messageId: result.id });
           }

@@ -2,15 +2,18 @@ import { describe, it, expect, beforeAll } from "vitest";
 import { env } from "cloudflare:test";
 import { DB } from "../../workers/shared/db.js";
 
-describe("Benchmark Counts", () => {
-  let userTagNames = ['Work', 'Personal', 'Finance', 'Travel', 'Shopping'];
+const userTagNames = ['Work', 'Personal', 'Finance', 'Travel', 'Urgent'];
+const tagIds = {};
 
+describe("Benchmark Counts", () => {
   beforeAll(async () => {
     // Initialize Database Schema
     const statements = [
       `PRAGMA foreign_keys = ON;`,
+
       `CREATE TABLE IF NOT EXISTS messages (
         id TEXT PRIMARY KEY,
+        user_id TEXT,
         received_at INTEGER NOT NULL,
         from_addr TEXT NOT NULL,
         to_addr TEXT NOT NULL,
@@ -32,13 +35,18 @@ describe("Benchmark Counts", () => {
         is_read INTEGER NOT NULL DEFAULT 0,
         snoozed_until INTEGER
       );`,
+
       `CREATE INDEX IF NOT EXISTS idx_messages_received_at ON messages(received_at DESC);`,
       `CREATE INDEX IF NOT EXISTS idx_messages_is_archived ON messages(is_archived);`,
+      `CREATE INDEX IF NOT EXISTS idx_messages_user_id ON messages(user_id);`,
+
       `CREATE TABLE IF NOT EXISTS tags (
         id TEXT PRIMARY KEY,
-        name TEXT NOT NULL UNIQUE,
+        user_id TEXT,
+        name TEXT NOT NULL,
         created_at INTEGER
       );`,
+
       `CREATE TABLE IF NOT EXISTS message_tags (
         message_id TEXT NOT NULL,
         tag_id TEXT NOT NULL,
@@ -47,38 +55,37 @@ describe("Benchmark Counts", () => {
         FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE,
         FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
       );`,
+
       `CREATE INDEX IF NOT EXISTS idx_message_tags_tag_id ON message_tags(tag_id);`,
-      `CREATE INDEX IF NOT EXISTS idx_message_tags_message_id ON message_tags(message_id);`,
-       `CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts USING fts5(
-        subject,
-        text_body,
-        from_addr,
-        to_addr,
-        tags,
-        content='messages',
-        content_rowid='rowid'
-      );`
+      `CREATE INDEX IF NOT EXISTS idx_message_tags_message_id ON message_tags(message_id);`
     ];
 
     for (const stmt of statements) {
       await env.DB.prepare(stmt).run();
     }
 
-    // Create Tags
-    const tags = ['Spam', 'Sent', ...userTagNames];
-    const tagIds = {};
-    for (const name of tags) {
-      const id = crypto.randomUUID();
-      await env.DB.prepare('INSERT INTO tags (id, name, created_at) VALUES (?, ?, ?)').bind(id, name, Date.now()).run();
-      tagIds[name] = id;
+    // Seed Tags
+    const tagsToCreate = ['Spam', 'Sent', ...userTagNames];
+    for (const name of tagsToCreate) {
+        const id = crypto.randomUUID();
+        await env.DB.prepare('INSERT INTO tags (id, user_id, name, created_at) VALUES (?, ?, ?, ?)').bind(id, 'test-user', name, Date.now()).run();
+        tagIds[name] = id;
     }
 
-    // Seed Data: 2000 messages
+    // Seed Messages
+    // Distribution:
     // 20% Archived
-    // 5% Spam (Unarchived)
-    // 5% Sent (Unarchived)
-    // 50% tagged with random user tags (Unarchived)
-    // 20% Untagged (Unarchived) - Inbox
+    //    Of Archived:
+    //      25% Spam
+    //      25% Sent
+    //      25% User Tag
+    //      25% Untagged
+    // 80% Unarchived
+    //    Of Unarchived:
+    //      ~6% Spam (100)
+    //      ~6% Sent (100)
+    //      ~62% User Tags (1000)
+    //      ~25% Untagged (400) - Inbox
 
     const messages = [];
     const messageTags = [];
@@ -125,6 +132,7 @@ describe("Benchmark Counts", () => {
 
         messages.push({
             id,
+            user_id: 'test-user',
             received_at: Date.now() - i * 1000,
             from_addr: "sender@example.com",
             to_addr: "me@example.com",
@@ -152,11 +160,11 @@ describe("Benchmark Counts", () => {
     for (let i = 0; i < messages.length; i += batchSize) {
         const batch = messages.slice(i, i + batchSize);
         const stmt = env.DB.prepare(`
-            INSERT INTO messages (id, received_at, from_addr, to_addr, subject, date_header, snippet, has_attachments, raw_r2_key, text_body, html_body, headers_json, is_archived)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO messages (id, user_id, received_at, from_addr, to_addr, subject, date_header, snippet, has_attachments, raw_r2_key, text_body, html_body, headers_json, is_archived)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
         await env.DB.batch(batch.map(m => stmt.bind(
-            m.id, m.received_at, m.from_addr, m.to_addr, m.subject, m.date_header, m.snippet, m.has_attachments, m.raw_r2_key, m.text_body, m.html_body, m.headers_json, m.is_archived
+            m.id, m.user_id, m.received_at, m.from_addr, m.to_addr, m.subject, m.date_header, m.snippet, m.has_attachments, m.raw_r2_key, m.text_body, m.html_body, m.headers_json, m.is_archived
         )));
     }
 
@@ -172,15 +180,16 @@ describe("Benchmark Counts", () => {
   it("benchmarks legacy count performance", async () => {
     const start = performance.now();
     const iterations = 10;
+    const userId = 'test-user';
 
     for (let i = 0; i < iterations; i++) {
         const [inboxCount, archiveCount, spamCount, sentCount, ...tagCounts] = await Promise.all([
-          DB.countMessages(env.DB, { archived: false, excludeTag: 'Spam' }),
-          DB.countMessages(env.DB, { archived: true }),
-          DB.countMessages(env.DB, { tag: 'Spam' }),
-          DB.countMessages(env.DB, { tag: 'Sent' }),
+          DB.countMessages(env.DB, { userId, archived: false, excludeTag: 'Spam' }),
+          DB.countMessages(env.DB, { userId, archived: true }),
+          DB.countMessages(env.DB, { userId, tag: 'Spam' }),
+          DB.countMessages(env.DB, { userId, tag: 'Sent' }),
           ...userTagNames.map(tagName =>
-            DB.countMessages(env.DB, { tag: tagName, archived: false })
+            DB.countMessages(env.DB, { userId, tag: tagName, archived: false })
           )
         ]);
     }
@@ -193,9 +202,10 @@ describe("Benchmark Counts", () => {
   it("benchmarks optimized count performance", async () => {
     const start = performance.now();
     const iterations = 10;
+    const userId = 'test-user';
 
     for (let i = 0; i < iterations; i++) {
-        await DB.getCounts(env.DB);
+        await DB.getCounts(env.DB, userId);
     }
 
     const end = performance.now();
@@ -204,23 +214,24 @@ describe("Benchmark Counts", () => {
   });
 
   it("verifies correctness of counts", async () => {
+      const userId = 'test-user';
       // Legacy behavior note:
       // Legacy code implicitly excludes archived messages from spam, sent, and tag counts
       // because DB.countMessages defaults archived=false if not specified.
       // Our test data includes archived spam/sent/tags, so this test confirms that behavior.
       const [inboxCount, archiveCount, spamCount, sentCount, ...tagCounts] = await Promise.all([
-          DB.countMessages(env.DB, { archived: false, excludeTag: 'Spam' }),
-          DB.countMessages(env.DB, { archived: true }),
-          DB.countMessages(env.DB, { tag: 'Spam' }),
-          DB.countMessages(env.DB, { tag: 'Sent' }),
+          DB.countMessages(env.DB, { userId, archived: false, excludeTag: 'Spam' }),
+          DB.countMessages(env.DB, { userId, archived: true }),
+          DB.countMessages(env.DB, { userId, tag: 'Spam' }),
+          DB.countMessages(env.DB, { userId, tag: 'Sent' }),
           ...userTagNames.map(tagName =>
-            DB.countMessages(env.DB, { tag: tagName, archived: false })
+            DB.countMessages(env.DB, { userId, tag: tagName, archived: false })
           )
       ]);
 
       console.log('Legacy Results:', { inboxCount, archiveCount, spamCount, sentCount });
 
-      const newCounts = await DB.getCounts(env.DB);
+      const newCounts = await DB.getCounts(env.DB, userId);
       console.log('New Results:', newCounts);
 
       expect(newCounts.archive).toBe(archiveCount);

@@ -11,8 +11,10 @@ vi.mock("../../workers/shared/db.js", () => ({
     checkDedupe: vi.fn(async () => true),
     insertMessage: vi.fn(async () => {}),
     insertAttachments: vi.fn(async () => {}),
+    getUserByAddress: vi.fn(async () => ({ id: 'test-user' })),
     getMessage: vi.fn(async (db, messageId) => ({
       id: messageId,
+      user_id: 'test-user',
       received_at: Date.now(),
       tag_checked_at: null,
       from_addr: "sender@example.com",

@@ -10,6 +10,7 @@ describe("Message List API Security", () => {
 
       `CREATE TABLE IF NOT EXISTS messages (
         id TEXT PRIMARY KEY,
+        user_id TEXT,
         received_at INTEGER NOT NULL,
         from_addr TEXT NOT NULL,
         to_addr TEXT NOT NULL,
@@ -69,14 +70,15 @@ describe("Message List API Security", () => {
     for (let i = 0; i < totalMessages; i += batchSize) {
       const batch = [];
       const stmt = env.DB.prepare(`
-        INSERT INTO messages (id, received_at, from_addr, to_addr, raw_r2_key, subject)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO messages (id, user_id, received_at, from_addr, to_addr, raw_r2_key, subject)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
       `);
 
       for (let j = 0; j < batchSize; j++) {
         const id = `msg-${i + j}`;
         batch.push(stmt.bind(
           id,
+          'test-user',
           Date.now() - (i + j) * 1000,
           'sender@example.com',
           'me@example.com',
@@ -96,7 +98,7 @@ describe("Message List API Security", () => {
       method: "GET",
     });
 
-    const response = await ApiRouter.handle(request.url, request, env);
+    const response = await ApiRouter.handle(request.url, request, env, 'test-user');
     expect(response.status).toBe(200);
 
     const body = await response.json();
