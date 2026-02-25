@@ -136,14 +136,13 @@ export default {
   },
   watch: {
     selectedId(newId) {
-      // Scroll selected message into view when it changes
       if (newId) {
-        this.$nextTick(() => {
-          const index = this.messages.findIndex(m => m.id === newId);
-          if (index !== -1 && this.$refs.virtualList) {
-             this.$refs.virtualList.scrollToIndex(index);
-          }
-        });
+        this.scrollToSelected();
+      }
+    },
+    loading(isLoading) {
+      if (!isLoading && this.selectedId) {
+        this.scrollToSelected();
       }
     },
     selectedTag() {
@@ -168,6 +167,15 @@ export default {
       // We'll use 'application/x-message-id' to be safe, or just check format in drop target
       event.dataTransfer.setData('application/x-message-id', message.id);
       event.dataTransfer.setData('text/plain', message.subject); // Fallback
+    },
+
+    scrollToSelected() {
+      this.$nextTick(() => {
+        const index = this.messages.findIndex(m => m.id === this.selectedId);
+        if (index !== -1 && this.$refs.virtualList) {
+          this.$refs.virtualList.scrollToIndex(index);
+        }
+      });
     }
   }
 };
