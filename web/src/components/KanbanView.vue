@@ -47,7 +47,7 @@
 
 <script>
 import { formatRelativeDate } from '../utils/dateFormat.js';
-import { updateMessageTag } from '../services/api.js';
+import { addMessageTag, removeMessageTag } from '../services/api.js';
 
 export default {
   name: 'KanbanView',
@@ -57,7 +57,7 @@ export default {
       default: () => []
     }
   },
-  emits: ['message-dropped', 'select-message'],
+  emits: ['message-dropped', 'select-message', 'drop-error'],
   data() {
     return {
       lanes: [
@@ -77,21 +77,15 @@ export default {
         map[lane.id] = [];
       });
 
-      // Map lane IDs to tag names (as per original logic)
-      const tagMap = {
+      const tagToLaneId = {
         'todo': 'todo',
         'in-progress': 'in-progress',
         'done': 'done'
       };
 
-      // Create reverse map for O(1) lookup: tag -> laneId
-      const tagToLaneId = Object.entries(tagMap).reduce((acc, [laneId, tag]) => {
-        acc[tag] = laneId;
-        return acc;
-      }, {});
-
       for (const msg of this.messages) {
-        const laneId = tagToLaneId[msg.tag];
+        const laneTag = this.getLaneTag(msg);
+        const laneId = laneTag ? tagToLaneId[laneTag] : null;
         if (laneId && map[laneId]) {
           map[laneId].push(msg);
         }
@@ -101,6 +95,33 @@ export default {
     }
   },
   methods: {
+    normalizeLaneTag(tag) {
+      const raw = String(tag || '').trim().toLowerCase();
+      if (!raw) return null;
+      if (raw === 'todo' || raw === 'to-do') return 'todo';
+      if (raw === 'in-progress' || raw === 'in progress' || raw === 'inprogress') return 'in-progress';
+      if (raw === 'done') return 'done';
+      return null;
+    },
+    getLaneTagBindings(message) {
+      const rawTags = [];
+      if (Array.isArray(message?.tags)) rawTags.push(...message.tags);
+      if (message?.tag) rawTags.push(message.tag);
+
+      const bindings = [];
+      for (const rawTag of rawTags) {
+        const canonical = this.normalizeLaneTag(rawTag);
+        if (!canonical) continue;
+        bindings.push({ raw: rawTag, canonical });
+      }
+      return bindings;
+    },
+    getLaneTag(message) {
+      const bindings = this.getLaneTagBindings(message);
+      if (bindings.length === 0) return null;
+      // Prefer most recently-added lane tag if multiple exist.
+      return bindings[bindings.length - 1].canonical;
+    },
     getMessagesForLane(laneId) {
       return this.lanesWithMessages[laneId] || [];
     },
@@ -133,13 +154,17 @@ export default {
       // Get the message ID from the drag data
       const messageId = event.dataTransfer.getData('application/x-message-id');
       if (!messageId) {
-        // Fallback: try text/plain if custom format not available
-        const textData = event.dataTransfer.getData('text/plain');
+        // Fallback: try text/plain. New drags use message ID; old drags may use subject.
+        const textData = (event.dataTransfer.getData('text/plain') || '').trim();
         if (textData) {
-          // Try to find message by subject
-          const message = this.messages.find(m => m.subject === textData);
-          if (message) {
-            await this.handleMessageDrop(message.id, laneId);
+          const byId = this.messages.find((m) => m.id === textData);
+          if (byId) {
+            await this.handleMessageDrop(byId.id, laneId);
+            return;
+          }
+          const bySubject = this.messages.find((m) => m.subject === textData);
+          if (bySubject) {
+            await this.handleMessageDrop(bySubject.id, laneId);
           }
         }
         return;
@@ -162,14 +187,25 @@ export default {
       }
       
       try {
-        // Update the message tag via API
-        await updateMessageTag(messageId, newTag);
+        // Remove existing lane tags so each message appears in one swimlane.
+        const message = this.messages.find((m) => m.id === messageId);
+        const laneTagBindings = this.getLaneTagBindings(message);
+        const tagsToRemove = [...new Set(
+          laneTagBindings
+            .filter(({ canonical }) => canonical !== newTag)
+            .map(({ raw }) => raw)
+        )];
+        if (tagsToRemove.length > 0) {
+          await Promise.all(tagsToRemove.map((tag) => removeMessageTag(messageId, tag)));
+        }
+
+        // Add lane tag without removing non-kanban tags so the email stays in Inbox context.
+        await addMessageTag(messageId, newTag);
         
         // Emit event to parent to refresh messages
         this.$emit('message-dropped', { messageId, newTag });
       } catch (error) {
         console.error('Failed to update message tag:', error);
-        // Could emit an error event here for toast notification
         this.$emit('drop-error', { messageId, error });
       }
     }

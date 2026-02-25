@@ -169,10 +169,9 @@ export default {
 
     onDragStart(event, message) {
       event.dataTransfer.effectAllowed = 'copy';
-      // Use a custom format or JSON to indicate this is a message, not a tag
-      // We'll use 'application/x-message-id' to be safe, or just check format in drop target
+      // Use custom MIME and text/plain fallback for broader browser compatibility.
       event.dataTransfer.setData('application/x-message-id', message.id);
-      event.dataTransfer.setData('text/plain', message.subject); // Fallback
+      event.dataTransfer.setData('text/plain', message.id);
     },
 
     scrollToSelected() {

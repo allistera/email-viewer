@@ -311,6 +311,34 @@ export default {
     }
   },
   methods: {
+    normalizeKanbanLaneTag(tag) {
+      const raw = String(tag || '').trim().toLowerCase();
+      if (!raw) return null;
+      if (raw === 'todo' || raw === 'to-do') return 'todo';
+      if (raw === 'in-progress' || raw === 'in progress' || raw === 'inprogress') return 'in-progress';
+      if (raw === 'done') return 'done';
+      return null;
+    },
+
+    isKanbanLaneTag(tag) {
+      return this.normalizeKanbanLaneTag(tag) !== null;
+    },
+
+    applyKanbanLane(message, newTag) {
+      const canonicalNewTag = this.normalizeKanbanLaneTag(newTag);
+      if (!message || !canonicalNewTag) return;
+
+      const existingTags = Array.isArray(message.tags) ? message.tags.filter(Boolean) : [];
+      const nonLaneTags = existingTags.filter((tag) => !this.isKanbanLaneTag(tag));
+      message.tags = [...new Set([...nonLaneTags, canonicalNewTag])];
+
+      // Keep existing non-kanban primary tag. If the primary tag is a lane tag, switch it.
+      if (!message.tag || this.isKanbanLaneTag(message.tag)) {
+        const primaryNonLane = nonLaneTags.find((tag) => !this.isKanbanLaneTag(tag)) || null;
+        message.tag = primaryNonLane || canonicalNewTag;
+      }
+    },
+
     async init() {
       await Promise.all([this.loadMessages(), this.loadCounts()]);
       this.connectRealtime();
@@ -570,18 +598,15 @@ export default {
     },
 
     async handleMessageDropped({ messageId, newTag }) {
-      // Update the message tag in the local state
       const messageInList = this.messages.find(m => m.id === messageId);
       if (messageInList) {
-        messageInList.tag = newTag;
+        this.applyKanbanLane(messageInList, newTag);
       }
 
-      // Update current message if it's the one being moved
       if (this.currentMessage && this.currentMessage.id === messageId) {
-        this.currentMessage.tag = newTag;
+        this.applyKanbanLane(this.currentMessage, newTag);
       }
 
-      // Refresh message counts to reflect the change
       await this.loadCounts();
     },
 
