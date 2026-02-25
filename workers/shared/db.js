@@ -49,17 +49,21 @@ export const DB = {
       ) VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
 
-    const batch = attachments.map(att => stmt.bind(
-      att.id,
-      att.message_id,
-      att.filename,
-      att.content_type,
-      att.size_bytes,
-      att.sha256,
-      att.r2_key
-    ));
+    const BATCH_SIZE = 100;
+    for (let i = 0; i < attachments.length; i += BATCH_SIZE) {
+      const chunk = attachments.slice(i, i + BATCH_SIZE);
+      const batch = chunk.map(att => stmt.bind(
+        att.id,
+        att.message_id,
+        att.filename,
+        att.content_type,
+        att.size_bytes,
+        att.sha256,
+        att.r2_key
+      ));
 
-    await db.batch(batch);
+      await db.batch(batch);
+    }
   },
 
   /**
