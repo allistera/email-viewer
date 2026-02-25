@@ -12,6 +12,7 @@
           :placeholder="searchPlaceholder"
           class="search-input"
           @input="handleInput"
+          aria-label="Search messages"
         />
       </div>
     </div>
@@ -22,8 +23,11 @@
       {{ error }}
     </div>
 
-    <div v-else-if="messages.length === 0" class="empty">
-      No messages found
+    <div v-else-if="messages.length === 0" class="empty-state">
+      <div class="empty-icon">{{ emptyState.icon }}</div>
+      <h3>{{ emptyState.title }}</h3>
+      <p>{{ emptyState.description }}</p>
+      <button v-if="searchInput" @click="clearSearch" class="btn-link">Clear search</button>
     </div>
 
     <div v-else class="messages">
@@ -122,6 +126,48 @@ export default {
         return `Search in ${this.selectedTag}...`;
       }
       return 'Search all messages...';
+    },
+    emptyState() {
+      if (this.searchInput) {
+        return {
+          icon: '🔍',
+          title: 'No matches found',
+          description: `We couldn't find anything for "${this.searchInput}".`
+        };
+      }
+      if (this.selectedTag === 'archive') {
+        return {
+          icon: '📦',
+          title: 'Archive is empty',
+          description: 'Archived messages will appear here.'
+        };
+      }
+      if (this.selectedTag === 'spam') {
+        return {
+          icon: '🛡️',
+          title: 'No spam',
+          description: "You're safe! No spam messages found."
+        };
+      }
+      if (this.selectedTag === 'sent') {
+        return {
+          icon: '📤',
+          title: 'No sent messages',
+          description: 'Messages you send will appear here.'
+        };
+      }
+      if (this.selectedTag) {
+        return {
+          icon: '🏷️',
+          title: 'No messages',
+          description: `There are no messages tagged "${this.selectedTag}".`
+        };
+      }
+      return {
+        icon: '🎉',
+        title: "You're all caught up",
+        description: 'No new messages in your inbox.'
+      };
     }
   },
   watch: {
@@ -158,6 +204,11 @@ export default {
       // We'll use 'application/x-message-id' to be safe, or just check format in drop target
       event.dataTransfer.setData('application/x-message-id', message.id);
       event.dataTransfer.setData('text/plain', message.subject); // Fallback
+    },
+
+    clearSearch() {
+      this.searchInput = '';
+      this.$emit('search', '');
     }
   }
 };
@@ -207,11 +258,55 @@ export default {
 }
 
 .loading,
-.empty,
+.empty-state,
 .error-message {
   padding: 32px;
   text-align: center;
   color: var(--color-text-secondary);
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 48px 24px;
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  line-height: 1;
+}
+
+.empty-state h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 8px;
+}
+
+.empty-state p {
+  font-size: 14px;
+  max-width: 280px;
+  margin: 0 auto;
+  line-height: 1.5;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  font-weight: 500;
+  cursor: pointer;
+  margin-top: 16px;
+  padding: 8px;
+  font-size: 14px;
+}
+
+.btn-link:hover {
+  text-decoration: underline;
 }
 
 .error-message {
