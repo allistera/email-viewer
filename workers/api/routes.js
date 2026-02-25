@@ -646,7 +646,7 @@ export const ApiRouter = {
           return jsonResponse({ error: error.message || 'Invalid JSON body' }, { status: 400 });
         }
 
-        const { to, subject, body: emailBody } = body;
+        const { to, subject, body: emailBody, replyToId } = body;
 
         const rawRecipients = Array.isArray(to)
           ? to
@@ -682,19 +682,86 @@ export const ApiRouter = {
         }
 
         // Check if email sending is configured
-        if (!env.RESEND_API_KEY && !env.SENDGRID_API_KEY && !env.MAILGUN_API_KEY) {
+        const isConfigured = env.RESEND_API_KEY ||
+                           env.MAILCHANNELS === 'true' ||
+                           env.AWS_SES_ACCESS_KEY_ID ||
+                           env.SENDGRID_API_KEY ||
+                           env.MAILGUN_API_KEY;
+
+        if (!isConfigured) {
           return jsonResponse({
-            error: 'Email sending is not configured. Please set up an email provider (RESEND_API_KEY, SENDGRID_API_KEY, or MAILGUN_API_KEY) in your environment.'
+            error: 'Email sending is not configured. Please set up an email provider (RESEND_API_KEY, MAILCHANNELS, or AWS_SES_ACCESS_KEY_ID) in your environment.'
           }, { status: 501 });
         }
 
         try {
-          // Use Resend if configured (recommended for Cloudflare Workers)
-          if (env.RESEND_API_KEY) {
-            const fromEmail = env.SEND_FROM_EMAIL || 'hello@infinitywave.design';
-            const emailSubject = subject || '(No Subject)';
-            const emailText = emailBody || '';
-            const toHeader = recipients.join(', ');
+          const fromEmail = env.SEND_FROM_EMAIL || 'hello@infinitywave.design';
+          const emailSubject = subject || '(No Subject)';
+          const emailText = emailBody || '';
+          const toHeader = recipients.join(', ');
+
+          // Handle Threading/Replying
+          let inReplyTo = null;
+          let references = null;
+          if (replyToId) {
+            const originalMsg = await DB.getMessage(env.DB, replyToId);
+            if (originalMsg && originalMsg.headers_json) {
+              try {
+                const headers = JSON.parse(originalMsg.headers_json);
+                inReplyTo = headers['message-id'] || null;
+                const originalRefs = headers['references'] || '';
+                references = originalRefs ? `${originalRefs} ${inReplyTo}` : inReplyTo;
+              } catch (e) {
+                console.error('Failed to parse original headers', e);
+              }
+            }
+          }
+
+          let resultId = null;
+
+          // 1. MailChannels (Native to Cloudflare Workers)
+          if (env.MAILCHANNELS === 'true') {
+            const mcPayload = {
+              personalizations: [{ to: recipients.map(email => ({ email })) }],
+              from: { email: fromEmail },
+              subject: emailSubject,
+              content: [{ type: 'text/plain', value: emailText }]
+            };
+
+            if (inReplyTo) {
+              mcPayload.headers = {
+                'In-Reply-To': inReplyTo,
+                'References': references
+              };
+            }
+
+            const response = await fetch('https://api.mailchannels.net/tx/v1/send', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(mcPayload)
+            });
+
+            if (!response.ok) {
+              const errorText = await response.text();
+              throw new Error(`MailChannels error: ${errorText}`);
+            }
+            resultId = `mc-${crypto.randomUUID()}`;
+          }
+          // 2. Resend
+          else if (env.RESEND_API_KEY) {
+            const resendPayload = {
+              from: fromEmail,
+              to: recipients,
+              subject: emailSubject,
+              text: emailText
+            };
+
+            if (inReplyTo) {
+              resendPayload.headers = {
+                'In-Reply-To': inReplyTo,
+                'References': references
+              };
+            }
 
             const response = await fetch('https://api.resend.com/emails', {
               method: 'POST',
@@ -702,55 +769,60 @@ export const ApiRouter = {
                 'Authorization': `Bearer ${env.RESEND_API_KEY}`,
                 'Content-Type': 'application/json'
               },
-              body: JSON.stringify({
-                from: fromEmail,
-                to: recipients,
-                subject: emailSubject,
-                text: emailText
-              })
+              body: JSON.stringify(resendPayload)
             });
 
             if (!response.ok) {
               const errorData = await response.json().catch(() => ({}));
-              throw new Error(errorData.message || 'Failed to send email');
+              throw new Error(errorData.message || 'Failed to send email via Resend');
             }
 
-            const result = await response.json();
-
-            // Save sent email to database with 'Sent' tag
-            const messageId = crypto.randomUUID();
-            const now = Date.now();
-            const snippet = emailText.substring(0, 150).replace(/\n/g, ' ');
-
-            await DB.insertMessage(env.DB, {
-              id: messageId,
-              received_at: now,
-              from_addr: fromEmail,
-              to_addr: toHeader,
-              subject: emailSubject,
-              date_header: new Date(now).toISOString(),
-              snippet: snippet,
-              has_attachments: false,
-              raw_r2_key: null,
-              text_body: emailText,
-              html_body: null,
-              headers_json: JSON.stringify({
-                'Message-ID': result.id,
-                'From': fromEmail,
-                'To': toHeader,
-                'Subject': emailSubject,
-                'Date': new Date(now).toISOString()
-              })
-            });
-
-            // Tag with 'Sent'
-            await DB.addMessageTag(env.DB, messageId, 'Sent');
-
-            return jsonResponse({ ok: true, messageId: result.id });
+            const data = await response.json();
+            resultId = data.id;
+          }
+          // 3. AWS SES (Placeholder for API call)
+          else if (env.AWS_SES_ACCESS_KEY_ID) {
+             // Note: Full AWS SigV4 implementation omitted for brevity,
+             // but this is where the SES Fetch call would go.
+             // See: https://docs.aws.amazon.com/ses/latest/APIReference/API_SendEmail.html
+             throw new Error('AWS SES integration is configured but SigV4 signing is not yet implemented.');
+          }
+          else {
+            throw new Error('No email provider configured correctly');
           }
 
-          // Fallback error if no provider matched
-          return jsonResponse({ error: 'No email provider configured correctly' }, { status: 501 });
+          // Save sent email to database with 'Sent' tag
+          const messageId = crypto.randomUUID();
+          const now = Date.now();
+          const snippet = emailText.substring(0, 150).replace(/\n/g, ' ');
+
+          await DB.insertMessage(env.DB, {
+            id: messageId,
+            received_at: now,
+            from_addr: fromEmail,
+            to_addr: toHeader,
+            subject: emailSubject,
+            date_header: new Date(now).toISOString(),
+            snippet: snippet,
+            has_attachments: false,
+            raw_r2_key: null,
+            text_body: emailText,
+            html_body: null,
+            headers_json: JSON.stringify({
+              'Message-ID': resultId,
+              'From': fromEmail,
+              'To': toHeader,
+              'Subject': emailSubject,
+              'Date': new Date(now).toISOString(),
+              'In-Reply-To': inReplyTo,
+              'References': references
+            })
+          });
+
+          // Tag with 'Sent'
+          await DB.addMessageTag(env.DB, messageId, 'Sent');
+
+          return jsonResponse({ ok: true, messageId: resultId });
         } catch (error) {
           console.error('Email send error:', error);
           return jsonResponse({ error: error.message || 'Failed to send email' }, { status: 500 });
