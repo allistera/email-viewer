@@ -26,54 +26,63 @@
       No messages found
     </div>
 
-    <div v-else class="messages">
-      <div
-        v-for="message in messages"
-        :key="message.id"
-        :class="['message-item', { active: selectedId === message.id, unread: !message.isRead }]"
-        draggable="true"
-        @dragstart="onDragStart($event, message)"
-        @click="$emit('select', message.id)"
-        role="button"
-        tabindex="0"
-        @keydown.enter.prevent="$emit('select', message.id)"
-        @keydown.space.prevent="$emit('select', message.id)"
-      >
-        <div class="message-header">
-          <span class="from">{{ message.from }}</span>
-          <span class="time">{{ formatTime(message.receivedAt) }}</span>
-        </div>
-        <div class="message-subject">
-          {{ message.subject }}
-        </div>
-        <div class="message-footer">
-          <span class="snippet">{{ message.snippet }}</span>
-          <div class="badges">
-            <TagBadge :tag="message.tag" />
-            <span v-if="message.hasAttachments" class="attachment-icon" title="Has attachments">
-              📎
-            </span>
+    <VirtualList
+      v-else
+      class="messages"
+      :items="messages"
+      :item-height="itemHeight"
+      ref="virtualList"
+    >
+      <template #default="{ item: message }">
+        <div
+          :class="['message-item', { active: selectedId === message.id, unread: !message.isRead }]"
+          draggable="true"
+          @dragstart="onDragStart($event, message)"
+          @click="$emit('select', message.id)"
+          role="button"
+          tabindex="0"
+          @keydown.enter.prevent="$emit('select', message.id)"
+          @keydown.space.prevent="$emit('select', message.id)"
+        >
+          <div class="message-header">
+            <span class="from">{{ message.from }}</span>
+            <span class="time">{{ formatTime(message.receivedAt) }}</span>
+          </div>
+          <div class="message-subject" :title="message.subject">
+            {{ message.subject }}
+          </div>
+          <div class="message-footer">
+            <span class="snippet" :title="message.snippet">{{ message.snippet }}</span>
+            <div class="badges">
+              <TagBadge :tag="message.tag" />
+              <span v-if="message.hasAttachments" class="attachment-icon" title="Has attachments">
+                📎
+              </span>
+            </div>
           </div>
         </div>
-      </div>
-
-      <div v-if="hasMore" class="load-more">
-        <button @click="$emit('load-more')" class="btn-secondary" :disabled="loadingMore">
-          {{ loadingMore ? 'Loading...' : 'Load More' }}
-        </button>
-      </div>
-    </div>
+      </template>
+      <template #footer>
+        <div v-if="hasMore" class="load-more">
+          <button @click="$emit('load-more')" class="btn-secondary" :disabled="loadingMore">
+            {{ loadingMore ? 'Loading...' : 'Load More' }}
+          </button>
+        </div>
+      </template>
+    </VirtualList>
   </div>
 </template>
 
 <script>
 import TagBadge from './TagBadge.vue';
+import VirtualList from './VirtualList.vue';
 import { formatRelativeDate } from '../utils/dateFormat.js';
 
 export default {
   name: 'MessageList',
   components: {
-    TagBadge
+    TagBadge,
+    VirtualList
   },
   props: {
     messages: {
@@ -109,7 +118,8 @@ export default {
   data() {
     return {
       searchInput: '',
-      searchTimeout: null
+      searchTimeout: null,
+      itemHeight: 100 // Default fixed height
     };
   },
   computed: {
@@ -126,14 +136,13 @@ export default {
   },
   watch: {
     selectedId(newId) {
-      // Scroll selected message into view when it changes
       if (newId) {
-        this.$nextTick(() => {
-          const selectedEl = this.$el.querySelector('.message-item.active');
-          if (selectedEl) {
-            selectedEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-          }
-        });
+        this.scrollToSelected();
+      }
+    },
+    loading(isLoading) {
+      if (!isLoading && this.selectedId) {
+        this.scrollToSelected();
       }
     },
     selectedTag() {
@@ -158,6 +167,15 @@ export default {
       // We'll use 'application/x-message-id' to be safe, or just check format in drop target
       event.dataTransfer.setData('application/x-message-id', message.id);
       event.dataTransfer.setData('text/plain', message.subject); // Fallback
+    },
+
+    scrollToSelected() {
+      this.$nextTick(() => {
+        const index = this.messages.findIndex(m => m.id === this.selectedId);
+        if (index !== -1 && this.$refs.virtualList) {
+          this.$refs.virtualList.scrollToIndex(index);
+        }
+      });
     }
   }
 };
@@ -220,7 +238,7 @@ export default {
 
 .messages {
   flex: 1;
-  overflow-y: auto;
+  /* Overflow handled by VirtualList */
 }
 
 .message-item {
@@ -228,6 +246,12 @@ export default {
   border-bottom: 1px solid var(--color-border);
   cursor: pointer;
   transition: background 0.15s;
+  height: 100px; /* Enforce fixed height */
+  box-sizing: border-box;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .message-item:hover {
@@ -279,6 +303,9 @@ export default {
   color: var(--color-text);
   margin-bottom: 4px;
   font-weight: 500;
+  white-space: nowrap; /* Force single line */
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .message-footer {
@@ -370,6 +397,7 @@ export default {
     padding: 10px 12px;
   }
 
+  /* Note: height is enforced to 90px by main rule, check if this fits */
   .message-item {
     padding: 14px;
   }
