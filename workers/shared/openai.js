@@ -1,5 +1,5 @@
 /**
- * OpenAI Tag Classifier Client
+ * OpenRouter Tag Classifier Client
  */
 
 // Limit HTML body to 100KB before processing to prevent DoS/ReDoS
@@ -51,16 +51,18 @@ export const MessageClassifier = {
    * @param {string} apiKey
    * @param {string} model
    */
-  async classify(message, tags, apiKey, model = 'gpt-4o-mini') {
+  async classify(message, tags, apiKey, model = 'google/gemini-2.0-flash-lite-001') {
     const safeTags = Array.isArray(tags) ? tags.filter(Boolean) : [];
     const input = buildInput(message);
 
     try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
+          'Authorization': `Bearer ${apiKey}`,
+          'HTTP-Referer': 'https://email-viewer.local',
+          'X-Title': 'Email Viewer'
         },
         body: JSON.stringify({
           model: model,
@@ -89,7 +91,7 @@ export const MessageClassifier = {
       });
 
       if (!response.ok) {
-        console.error('OpenAI Error:', await response.text());
+        console.error('OpenRouter Error:', await response.text());
         return null;
       }
 
@@ -97,7 +99,7 @@ export const MessageClassifier = {
       
       // Validate response structure
       if (!data?.choices?.[0]?.message?.content) {
-        console.error('Invalid OpenAI response structure:', data);
+        console.error('Invalid OpenRouter response structure:', data);
         return null;
       }
       
@@ -133,7 +135,7 @@ export const TodoistProjectSelector = {
    * @param {string} apiKey
    * @param {string} model
    */
-  async selectProject(message, projects, apiKey, model = 'gpt-4o-mini') {
+  async selectProject(message, projects, apiKey, model = 'google/gemini-2.0-flash-lite-001') {
     const safeProjects = Array.isArray(projects)
       ? projects
         .filter(project => project?.id && project?.name)
@@ -152,11 +154,13 @@ export const TodoistProjectSelector = {
     const input = buildTodoistInput(message);
 
     try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
+          'Authorization': `Bearer ${apiKey}`,
+          'HTTP-Referer': 'https://email-viewer.local',
+          'X-Title': 'Email Viewer'
         },
         body: JSON.stringify({
           model: model,
@@ -184,15 +188,15 @@ Return JSON in this schema:
       });
 
       if (!response.ok) {
-        console.error('OpenAI Todoist selector error:', await response.text());
-        return { projectId: null, projectName: null, reason: 'OpenAI request failed.' };
+        console.error('OpenRouter Todoist selector error:', await response.text());
+        return { projectId: null, projectName: null, reason: 'OpenRouter request failed.' };
       }
 
       const data = await response.json();
 
       if (!data?.choices?.[0]?.message?.content) {
-        console.error('Invalid OpenAI response structure:', data);
-        return { projectId: null, projectName: null, reason: 'Invalid OpenAI response.' };
+        console.error('Invalid OpenRouter response structure:', data);
+        return { projectId: null, projectName: null, reason: 'Invalid OpenRouter response.' };
       }
 
       const content = data.choices[0].message.content;

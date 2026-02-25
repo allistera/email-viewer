@@ -243,6 +243,7 @@ export default {
 }
 
 .message-item:focus-visible {
+  background: var(--color-bg-secondary);
   outline: 2px solid var(--color-primary);
   outline-offset: -2px;
   z-index: 1;

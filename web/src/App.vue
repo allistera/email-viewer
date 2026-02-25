@@ -16,6 +16,12 @@
 
     <ToastNotification ref="toast" />
 
+    <TodoistSlideout
+      :show="showTodoistSlideout"
+      @close="showTodoistSlideout = false"
+      @todoist-added="handleTodoistAdded"
+    />
+
     <div v-if="!showAuthModal" class="app-layout">
       <div
         class="app-container"
@@ -32,7 +38,6 @@
           @settings="openSettings"
           @close="closeMobileSidebar"
           @compose="openCompose"
-          @todoist-added="handleTodoistAdded"
         />
 
         <div
@@ -47,6 +52,7 @@
         </template>
         <template v-else>
           <MessageList
+            v-show="rightRailView !== 'calendar' || isMobile"
             :messages="messages"
             :selected-id="selectedMessageId"
             :selected-tag="selectedTag"
@@ -62,7 +68,7 @@
           />
 
           <div
-            v-if="!isMobile"
+            v-if="!isMobile && rightRailView !== 'calendar'"
             class="resize-handle resize-handle-list"
             aria-label="Resize message list"
             @mousedown.prevent="startResize('list', $event)"
@@ -93,7 +99,9 @@
         <RightSidebar
           class="right-sidebar-panel"
           :active-view="rightRailView"
+          :todoist-open="showTodoistSlideout"
           @select="rightRailView = $event"
+          @toggle-todoist="showTodoistSlideout = !showTodoistSlideout"
         />
       </div>
     </div>
@@ -110,10 +118,12 @@ import ComposeModal from './components/ComposeModal.vue';
 import ToastNotification from './components/ToastNotification.vue';
 import RightSidebar from './components/RightSidebar.vue';
 import KanbanView from './components/KanbanView.vue';
+import TodoistSlideout from './components/TodoistSlideout.vue';
 import { hasToken, setToken, clearToken } from './services/auth.js';
 import { getMessages, getMessage, getMessageCounts } from './services/api.js';
 import { init as initTheme } from './services/theme.js';
 import { realtimeClient } from './services/realtime.js';
+import { debounce } from './utils/debounce.js';
 
 export default {
   name: 'App',
@@ -126,7 +136,8 @@ export default {
     ComposeModal,
     ToastNotification,
     RightSidebar,
-    KanbanView
+    KanbanView,
+    TodoistSlideout
   },
   data() {
     return {
@@ -154,6 +165,7 @@ export default {
       forwardMessage: null,
       messageCounts: null,
       rightRailView: 'email',
+      showTodoistSlideout: false,
       sidebarWidth: 220,
       listWidth: 360,
       rightSidebarWidth: 72,
@@ -170,7 +182,7 @@ export default {
           gridTemplateColumns: `${this.sidebarWidth}px 1fr 4px ${this.rightSidebarWidth}px`
         };
       }
-      if (this.rightRailView === 'kanban' || this.rightRailView === 'calendar') {
+      if (this.rightRailView === 'calendar') {
         return {
           gridTemplateColumns: `${this.sidebarWidth}px 4px 1fr ${this.rightSidebarWidth}px`
         };
@@ -216,6 +228,12 @@ export default {
       },
       immediate: true
     }
+  },
+  created() {
+    this.debouncedRefresh = debounce(() => {
+      this.handleRefresh();
+      this.loadCounts();
+    }, 300);
   },
   mounted() {
     initTheme();
@@ -445,8 +463,7 @@ export default {
 
     handleMessageReceived(event) {
       console.log('New message received:', event);
-      this.handleRefresh();
-      this.loadCounts();
+      this.debouncedRefresh();
     },
 
     handleMessageTagged(event) {

@@ -70,7 +70,20 @@ export default Sentry.withSentry(sentryOptions, {
 
     // 2. Static Assets (SPA Fallback)
     if (env.ASSETS) {
-      return env.ASSETS.fetch(request);
+      const response = await env.ASSETS.fetch(request);
+      const newHeaders = new Headers(response.headers);
+
+      // Add Security Headers
+      newHeaders.set('X-Content-Type-Options', 'nosniff');
+      newHeaders.set('X-Frame-Options', 'DENY');
+      newHeaders.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+      newHeaders.set('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:; connect-src 'self' https:; font-src 'self' https:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none';");
+
+      return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: newHeaders
+      });
     } else {
       console.warn('env.ASSETS is not defined. Available bindings:', Object.keys(env));
       // Fallback for when assets are not available (e.g. dev without assets, or misconfig)
