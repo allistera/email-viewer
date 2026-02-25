@@ -121,8 +121,8 @@ export default Sentry.withSentry(sentryOptions, {
         const selection = await TodoistProjectSelector.selectProject(
           message,
           projects,
-          env.OPENAI_API_KEY,
-          env.OPENAI_MODEL
+          env.OPENROUTER_API_KEY || env.OPENAI_API_KEY,
+          env.OPENROUTER_MODEL || env.OPENAI_MODEL
         );
         const inboxProject = findInboxProject(projects);
         selectedProject = selectProject(projects, selection) || inboxProject || null;

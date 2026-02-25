@@ -1,4 +1,4 @@
-## 2024-05-22 - Missing Security Headers on Static Assets
-**Vulnerability:** Static assets served via `env.ASSETS` in Cloudflare Workers do not include security headers by default (CSP, HSTS, X-Frame-Options, etc.).
-**Learning:** Cloudflare Workers `env.ASSETS` binding returns the raw response from the asset store. Unlike traditional web servers or Cloudflare Pages functions which might add headers automatically, Workers require manual header injection.
-**Prevention:** Wrap `env.ASSETS.fetch(request)` calls and add necessary security headers before returning the response. Use `new Response(response.body, response)` to clone and modify.
+## 2024-10-23 - Cloudflare Workers env.ASSETS Security Headers
+**Vulnerability:** Static assets served via `env.ASSETS` in Cloudflare Workers lacked security headers (CSP, HSTS, X-Frame-Options), leaving the frontend vulnerable to XSS and Clickjacking.
+**Learning:** The `env.ASSETS` binding returns a standard Response object that must be intercepted and wrapped to add custom headers. It does not inherit headers from the Worker configuration automatically.
+**Prevention:** Always intercept `env.ASSETS.fetch()` calls in the Worker entry point and manually inject a `Content-Security-Policy` and other hardening headers before returning the response.

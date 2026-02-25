@@ -244,11 +244,11 @@ export async function deleteTag(id) {
   });
 }
 
-export async function sendEmail({ to, subject, body }) {
+export async function sendEmail({ to, subject, body, replyToId }) {
   return request('/send', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ to, subject, body })
+    body: JSON.stringify({ to, subject, body, replyToId })
   });
 }
 
