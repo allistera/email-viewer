@@ -803,6 +803,34 @@ export const DB = {
   },
 
   // ==================
+  // Settings Helpers
+  // ==================
+
+  /**
+   * Get a setting value
+   * @param {D1Database} db
+   * @param {string} key
+   * @returns {Promise<string|null>}
+   */
+  async getSetting(db, key) {
+    const row = await db.prepare('SELECT value FROM settings WHERE key = ?').bind(key).first();
+    return row ? row.value : null;
+  },
+
+  /**
+   * Set a setting value
+   * @param {D1Database} db
+   * @param {string} key
+   * @param {string} value
+   */
+  async setSetting(db, key, value) {
+    await db.prepare(`
+      INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)
+      ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+    `).bind(key, value, Date.now()).run();
+  },
+
+  // ==================
   // Retention Helpers
   // ==================
 

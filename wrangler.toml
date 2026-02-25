@@ -36,7 +36,7 @@ service = "mail-app-todoist"
 [vars]
 SEND_FROM_EMAIL = "hello@infinitywave.design"
 TAG_LABELS = "Marketing, Recruitment, Personal, Finance, Support, Other"
-RETENTION_DAYS = "30"
+# RETENTION_DAYS = "0" # Default disabled, configure in Settings
 # Push notifications via ntfy (https://ntfy.sh)
 # NTFY_TOPIC = "my-email-inbox"
 # NOTIFY_APP_URL = "https://mail.infinitywave.design"

@@ -59,6 +59,11 @@ describe("Retention Policy", () => {
         PRIMARY KEY (message_id, tag_id),
         FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE,
         FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+      );`,
+      `CREATE TABLE IF NOT EXISTS settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at INTEGER NOT NULL
       );`
     ];
 
@@ -68,19 +73,14 @@ describe("Retention Policy", () => {
   });
 
   it("should delete messages older than retention period", async () => {
-    // Set retention to 30 days
+    // Set retention to 30 days via DB setting
     const RETENTION_DAYS = 30;
-    // We need to mutate the env object or pass a modified one.
-    // The env object from cloudflare:test is the bindings.
-    // Variables are also on it.
-    // Note: In some environments, assignments to env might not persist or might be read-only.
-    // But handleRetention takes `env` as an argument. I can pass a proxy or a modified object.
+    await DB.setSetting(env.DB, 'retention_days', RETENTION_DAYS.toString());
 
+    // We pass env directly, handleRetention will read from DB
     const testEnv = {
       ...env,
-      RETENTION_DAYS: RETENTION_DAYS.toString(),
-      DB: env.DB,
-      MAILSTORE: env.MAILSTORE
+      // RETENTION_DAYS: '0', // Ensure env var doesn't override if logic is correct (logic prioritizes DB)
     };
 
     const cutoff = Date.now() - (RETENTION_DAYS * 24 * 60 * 60 * 1000);

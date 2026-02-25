@@ -31,6 +31,29 @@
       </div>
     </div>
 
+    <!-- Retention Policy Section -->
+    <div class="settings-card">
+      <h3>Retention Policy</h3>
+      <label class="field-label">Delete emails older than (days)</label>
+      <div class="input-row">
+        <input
+          v-model.number="retentionDays"
+          type="number"
+          min="0"
+          placeholder="0 (Disabled)"
+          :disabled="loadingRetention || savingRetention"
+        />
+        <button class="btn-primary" type="button" :disabled="loadingRetention || savingRetention" @click="saveRetention">
+          {{ savingRetention ? 'Saving...' : 'Save' }}
+        </button>
+      </div>
+      <p class="field-help">
+        Set to 0 to disable automatic deletion. Attachments are also deleted.
+      </p>
+      <p v-if="retentionSuccess" class="status">{{ retentionSuccess }}</p>
+      <p v-if="retentionError" class="status error">{{ retentionError }}</p>
+    </div>
+
     <!-- Tagging Rules Section -->
     <div class="settings-card">
       <div class="card-header">
@@ -298,7 +321,7 @@
 
 <script>
 import { getTodoistToken, setTodoistToken, clearTodoistToken } from '../services/auth.js';
-import { getTaggingRules, createTaggingRule, updateTaggingRule, deleteTaggingRule, getTags, getNotificationStatus, sendTestNotification } from '../services/api.js';
+import { getTaggingRules, createTaggingRule, updateTaggingRule, deleteTaggingRule, getTags, getNotificationStatus, sendTestNotification, getSettings, updateSettings } from '../services/api.js';
 import { getPreference, setPreference } from '../services/theme.js';
 
 export default {
@@ -307,6 +330,13 @@ export default {
   data() {
     return {
       themePreference: getPreference(),
+      // Retention Policy
+      retentionDays: 0,
+      loadingRetention: false,
+      savingRetention: false,
+      retentionError: '',
+      retentionSuccess: '',
+
       // Todoist
       todoistToken: '',
       showToken: false,
@@ -361,11 +391,39 @@ export default {
     this.loadRules();
     this.loadTags();
     this.loadNotificationStatus();
+    this.loadRetention();
   },
   methods: {
     handleThemeChange() {
       setPreference(this.themePreference);
     },
+    // Retention methods
+    async loadRetention() {
+      this.loadingRetention = true;
+      try {
+        const settings = await getSettings();
+        this.retentionDays = settings.retention_days || 0;
+      } catch (e) {
+        console.error('Failed to load retention settings:', e);
+        // Fallback to 0 if failed
+      } finally {
+        this.loadingRetention = false;
+      }
+    },
+    async saveRetention() {
+      this.savingRetention = true;
+      this.retentionError = '';
+      this.retentionSuccess = '';
+      try {
+        await updateSettings({ retention_days: this.retentionDays });
+        this.retentionSuccess = 'Retention policy updated.';
+      } catch (e) {
+        this.retentionError = e.message || 'Failed to update retention policy.';
+      } finally {
+        this.savingRetention = false;
+      }
+    },
+
     // Notification methods
     async loadNotificationStatus() {
       this.notifyLoading = true;

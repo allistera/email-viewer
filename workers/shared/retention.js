@@ -6,9 +6,23 @@ import { DB } from './db.js';
  */
 export async function handleRetention(env) {
   // 1. Check configuration
-  const retentionDays = parseInt(env.RETENTION_DAYS || '0', 10);
-  if (retentionDays <= 0) {
-    console.log('Retention policy disabled (RETENTION_DAYS not set or <= 0)');
+  // Allow override via DB setting, fallback to env var
+  let retentionDays = 0;
+
+  try {
+    const dbSetting = await DB.getSetting(env.DB, 'retention_days');
+    if (dbSetting) {
+      retentionDays = parseInt(dbSetting, 10);
+    } else {
+      retentionDays = parseInt(env.RETENTION_DAYS || '0', 10);
+    }
+  } catch (e) {
+    console.warn('Failed to read retention setting from DB, falling back to env:', e);
+    retentionDays = parseInt(env.RETENTION_DAYS || '0', 10);
+  }
+
+  if (isNaN(retentionDays) || retentionDays <= 0) {
+    console.log('Retention policy disabled (retention_days <= 0)');
     return;
   }
 
