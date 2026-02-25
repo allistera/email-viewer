@@ -800,5 +800,68 @@ export const DB = {
     }
 
     return true;
+  },
+
+  // ==================
+  // Retention Helpers
+  // ==================
+
+  /**
+   * Get messages older than a specific timestamp for retention policy
+   * @param {D1Database} db
+   * @param {number} cutoffTimestamp
+   * @param {number} limit
+   */
+  async getMessagesForRetention(db, cutoffTimestamp, limit = 50) {
+    const { results } = await db.prepare(
+      'SELECT id, raw_r2_key FROM messages WHERE received_at < ? ORDER BY received_at ASC LIMIT ?'
+    ).bind(cutoffTimestamp, limit).all();
+    return results || [];
+  },
+
+  /**
+   * Get attachments for a list of message IDs
+   * @param {D1Database} db
+   * @param {string[]} messageIds
+   */
+  async getAttachmentsForMessages(db, messageIds) {
+    if (!messageIds || messageIds.length === 0) return [];
+
+    // SQLite limits variables, so we might need to batch if messageIds is huge.
+    // Assuming limit=50 from getMessagesForRetention, it's fine.
+    const placeholders = messageIds.map(() => '?').join(',');
+    const { results } = await db.prepare(
+      `SELECT r2_key FROM attachments WHERE message_id IN (${placeholders})`
+    ).bind(...messageIds).all();
+
+    return results ? results.map(r => r.r2_key) : [];
+  },
+
+  /**
+   * Delete messages by ID (and cascading attachments)
+   * @param {D1Database} db
+   * @param {string[]} messageIds
+   */
+  async deleteMessages(db, messageIds) {
+    if (!messageIds || messageIds.length === 0) return;
+
+    const placeholders = messageIds.map(() => '?').join(',');
+    await db.prepare(
+      `DELETE FROM messages WHERE id IN (${placeholders})`
+    ).bind(...messageIds).run();
+  },
+
+  /**
+   * Delete dedupe entries for message IDs
+   * @param {D1Database} db
+   * @param {string[]} messageIds
+   */
+  async deleteDedupeForMessages(db, messageIds) {
+    if (!messageIds || messageIds.length === 0) return;
+
+    const placeholders = messageIds.map(() => '?').join(',');
+    await db.prepare(
+      `DELETE FROM dedupe WHERE message_id IN (${placeholders})`
+    ).bind(...messageIds).run();
   }
 };
