@@ -39,7 +39,7 @@ export default Sentry.withSentry(sentryOptions, {
       }
 
       // Auth Check
-      const { user, userId, error: authError } = await authenticate(request, env);
+      const { userId, error: authError } = await authenticate(request, env);
       if (authError) {
         return withCors(authError);
       }
