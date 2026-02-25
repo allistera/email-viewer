@@ -29,6 +29,12 @@ export function withCors(response) {
         newHeaders.set(key, value);
     });
 
+    // Security Headers (Defense in Depth)
+    newHeaders.set('X-Content-Type-Options', 'nosniff');
+    newHeaders.set('X-Frame-Options', 'DENY');
+    newHeaders.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+    newHeaders.set('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none';");
+
     // Cloudflare Workers only accepts status 200-599
     const status = response.status;
     const safeStatus = (Number.isFinite(status) && status >= 200 && status <= 599)
