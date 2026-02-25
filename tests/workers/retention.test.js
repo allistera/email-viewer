@@ -195,5 +195,9 @@ describe("Retention Policy", () => {
 
     const dedupeNew = await env.DB.prepare("SELECT * FROM dedupe WHERE message_id = ?").bind(newMessageId).first();
     expect(dedupeNew).not.toBeNull();
+
+    // Workaround for Isolated storage failed in vitest-pool-workers
+    // Add a small delay to allow potential pending IO/cleanup to finish
+    await new Promise(resolve => setTimeout(resolve, 500));
   });
 });
