@@ -44,4 +44,13 @@ describe("security headers", () => {
     expect(await response.text()).toBe("Original Content");
     expect(response.headers.get("Content-Type")).toBe("text/plain");
   });
+
+  it("adds security headers to API responses", async () => {
+    const request = new Request("https://example.com/api/health");
+    const response = await worker.fetch(request, env);
+
+    expect(response.headers.get("X-Content-Type-Options")).toBe("nosniff");
+    expect(response.headers.get("X-Frame-Options")).toBe("DENY");
+    expect(response.headers.get("Content-Security-Policy")).toContain("frame-ancestors 'none'");
+  });
 });
