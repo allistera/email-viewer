@@ -289,7 +289,8 @@ export const ApiRouter = {
           return new Response(object.body, {
             headers: {
               'Content-Type': att.content_type || 'application/octet-stream',
-              'Content-Disposition': `attachment; filename="${safeFilename}"`
+              'Content-Disposition': `attachment; filename="${safeFilename}"`,
+              'Cache-Control': 'public, max-age=31536000, immutable'
             }
           });
         }
