@@ -1,6 +1,6 @@
 import { DB } from '../shared/db.js';
 import { sendNewEmailNotification } from '../shared/notifications.js';
-import { hashPassword, verifyPassword } from '../shared/auth.js';
+import { verifyPassword } from '../shared/auth.js';
 
 const MISSING_TABLE_PATTERN = /no such table/i;
 

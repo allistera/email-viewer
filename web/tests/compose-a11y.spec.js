@@ -12,9 +12,23 @@ test.describe('Compose Modal - Accessibility', () => {
             await route.fulfill({ status: 200, body: JSON.stringify([]) });
         });
 
+        // Mock Login
+        await page.route('**/api/auth/login', async route => {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({
+                    token: 'dummy-token',
+                    user: { id: 'user-id', username: 'admin' }
+                })
+            });
+        });
+
         await page.goto('/');
-        await page.fill('input[type="password"]', 'dummy-token');
+        await page.fill('#username', 'admin');
+        await page.fill('#password', 'password');
         await page.click('button[type="submit"]');
+
         await page.getByRole('button', { name: 'Compose' }).click();
         await expect(page.locator('.compose-modal')).toBeVisible();
     });

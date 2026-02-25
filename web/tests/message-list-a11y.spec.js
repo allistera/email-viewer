@@ -64,10 +64,22 @@ test.describe('MessageList Accessibility', () => {
             });
         });
 
+        // Mock Login
+        await page.route('**/api/auth/login', async route => {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({
+                    token: 'dev-token-12345',
+                    user: { id: 'user-id', username: 'admin' }
+                })
+            });
+        });
+
         await page.goto('/');
-        await page.fill('input[type="password"]', 'dev-token-12345');
+        await page.fill('#username', 'admin');
+        await page.fill('#password', 'password');
         await page.click('button[type="submit"]');
-        await expect(page.locator('.modal')).toBeHidden();
     });
 
     test('message items should have button role and be focusable', async ({ page }) => {

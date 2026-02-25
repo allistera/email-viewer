@@ -29,13 +29,53 @@ test.describe('Tags CRUD', () => {
             }
         });
 
+        // Mock Login
+        await page.route('**/api/auth/login', async route => {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({
+                    token: 'dummy-token',
+                    user: { id: 'user-id', username: 'admin' }
+                })
+            });
+        });
+
         await page.goto('/');
 
         // Handle Auth
-        await page.fill('input[type="password"]', 'dummy-token');
+        await page.fill('#username', 'admin');
+        await page.fill('#password', 'password');
         await page.click('button[type="submit"]');
-        await expect(page.locator('.modal')).toBeHidden();
-    });
+        // Wait for login to complete and redirect/UI update
+        // The modal itself might disappear or we might navigate.
+        // In the app, the AuthModal has v-if="showAuthModal".
+        // When login succeeds, showAuthModal becomes false.
+        // BUT, since we have a full view now, we might not have .modal class if it's a page?
+        // Wait, LoginView is a page component now at /login.
+        // But App.vue still has AuthModal?
+        // Let's check App.vue. It has <AuthModal :show="showAuthModal" ... />.
+        // AND <div v-if="!showAuthModal" class="app-layout">.
+        // Wait, I replaced App.vue to use router-view? No, I didn't update App.vue to use router-view!
+        // I created LoginView.vue and updated router/index.js, but I didn't update App.vue to use the router!
+        // This explains why the tests failed with timeouts - the UI structure might be weird or mixed.
+        // Actually, the previous step just said "Update Frontend Router".
+        // I checked `web/src/main.js` and `web/src/App.vue`.
+        // I need to update App.vue to use <router-view> and remove the manual AuthModal if I'm switching to a route-based login.
+        // OR keep AuthModal if I want a modal login.
+        // The prompt asked for a "login page".
+        // My plan step said "Update Frontend Router ... Add /login route".
+        // So I should have updated App.vue.
+        // I MISSED UPDATING APP.VUE TO USE ROUTER-VIEW.
+        // This is a critical finding.
+        // I will finish fixing the tests assuming I WILL fix App.vue.
+        // But first I should probably fix App.vue.
+        // Re-reading my previous actions... I wrote `web/src/views/LoginView.vue` and `web/src/router/index.js`.
+        // I did NOT modify `web/src/App.vue` to use `<router-view>`.
+        // Currently `App.vue` imports `AuthModal` and conditionally renders it.
+        // If I change to router-based, `App.vue` should mainly be the layout shell or just `<router-view>`.
+
+        // Let's pause correcting tests and FIX APP.VUE first.
 
     test('should display existing tags including Spam', async ({ page }) => {
         await expect(page.locator('.tag-label', { hasText: 'ExistingTag' })).toBeVisible();

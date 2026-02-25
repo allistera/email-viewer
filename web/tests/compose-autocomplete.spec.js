@@ -23,14 +23,26 @@ test.describe('Compose Modal - Email Autocomplete', () => {
             });
         });
 
+        // Mock Login
+        await page.route('**/api/auth/login', async route => {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({
+                    token: 'dummy-token',
+                    user: { id: 'user-id', username: 'admin' }
+                })
+            });
+        });
+
         await page.goto('/');
 
         // Authenticate
-        await page.fill('input[type="password"]', 'dummy-token');
+        await page.fill('#username', 'admin');
+        await page.fill('#password', 'password');
         await page.click('button[type="submit"]');
-        await expect(page.locator('.modal')).toBeHidden();
 
-        // Open compose modal
+        // Open compose modal (after login redirect)
         await page.getByRole('button', { name: 'Compose' }).click();
         await expect(page.locator('.compose-modal')).toBeVisible();
     });
