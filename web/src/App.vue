@@ -598,16 +598,14 @@ export default {
     },
 
     async handleMessageDropped({ messageId, newTag }) {
-      const messageInList = this.messages.find(m => m.id === messageId);
-      if (messageInList) {
-        this.applyKanbanLane(messageInList, newTag);
-      }
-
-      if (this.currentMessage && this.currentMessage.id === messageId) {
-        this.applyKanbanLane(this.currentMessage, newTag);
-      }
-
+      // Reload messages to get updated tags from database
+      await this.loadMessages();
       await this.loadCounts();
+
+      // If the dropped message is currently selected, reload it to show updated tags
+      if (this.currentMessage && this.currentMessage.id === messageId) {
+        await this.loadMessage(messageId);
+      }
     },
 
     handleDropError({ messageId, error }) {
