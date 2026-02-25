@@ -52,7 +52,7 @@
         </template>
         <template v-else>
           <MessageList
-            v-show="rightRailView !== 'kanban' || isMobile"
+            v-show="rightRailView !== 'calendar' || isMobile"
             :messages="messages"
             :selected-id="selectedMessageId"
             :selected-tag="selectedTag"
@@ -68,7 +68,7 @@
           />
 
           <div
-            v-if="!isMobile && rightRailView !== 'kanban'"
+            v-if="!isMobile && rightRailView !== 'calendar'"
             class="resize-handle resize-handle-list"
             aria-label="Resize message list"
             @mousedown.prevent="startResize('list', $event)"
@@ -181,7 +181,7 @@ export default {
           gridTemplateColumns: `${this.sidebarWidth}px 1fr 4px ${this.rightSidebarWidth}px`
         };
       }
-      if (this.rightRailView === 'kanban' || this.rightRailView === 'calendar') {
+      if (this.rightRailView === 'calendar') {
         return {
           gridTemplateColumns: `${this.sidebarWidth}px 4px 1fr ${this.rightSidebarWidth}px`
         };
