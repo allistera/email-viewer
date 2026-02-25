@@ -2,6 +2,11 @@
  * D1 Database Helper
  */
 
+// Cache for tags to reduce DB reads
+let tagsCache = null;
+let tagsCacheTime = 0;
+const TAGS_CACHE_TTL = 60 * 1000; // 60 seconds
+
 export const DB = {
   /**
    * Insert a new message
@@ -462,6 +467,9 @@ export const DB = {
         createStmt.bind(crypto.randomUUID(), name, now)
       ));
 
+      // Invalidate cache
+      tagsCache = null;
+
       // Fetch IDs for the newly created tags
       const missingPlaceholders = missingNames.map(() => '?').join(',');
       const { results: newTags } = await db.prepare(`SELECT id, name FROM tags WHERE name IN (${missingPlaceholders})`)
@@ -526,6 +534,11 @@ export const DB = {
    * @param {D1Database} db
    */
   async getTags(db) {
+    const now = Date.now();
+    if (tagsCache && (now - tagsCacheTime < TAGS_CACHE_TTL)) {
+      return tagsCache;
+    }
+
     const { results } = await db.prepare('SELECT * FROM tags ORDER BY created_at DESC').all();
     let finalResults = results || [];
 
@@ -549,6 +562,10 @@ export const DB = {
       finalResults = [...finalResults, { id, name: 'Sent', created_at: 0 }];
     }
 
+    // Update cache
+    tagsCache = finalResults;
+    tagsCacheTime = now;
+
     return finalResults;
   },
 
@@ -566,6 +583,10 @@ export const DB = {
     await db.prepare('INSERT INTO tags (id, name, created_at) VALUES (?, ?, ?)')
       .bind(id, name, Date.now())
       .run();
+
+    // Invalidate cache
+    tagsCache = null;
+
     return { id, name };
   },
 
@@ -606,6 +627,9 @@ export const DB = {
       SET tag = ? || SUBSTR(tag, LENGTH(?) + 1) 
       WHERE tag LIKE ? || '/%'
     `).bind(newName, oldName, oldName).run();
+
+    // Invalidate cache
+    tagsCache = null;
   },
 
   /**
@@ -620,6 +644,9 @@ export const DB = {
       throw new Error(`Cannot delete system tag: ${tag.name}`);
     }
     await db.prepare('DELETE FROM tags WHERE id = ?').bind(id).run();
+
+    // Invalidate cache
+    tagsCache = null;
   },
 
   // ==================
