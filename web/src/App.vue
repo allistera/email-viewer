@@ -123,6 +123,7 @@ import { hasToken, setToken, clearToken } from './services/auth.js';
 import { getMessages, getMessage, getMessageCounts } from './services/api.js';
 import { init as initTheme } from './services/theme.js';
 import { realtimeClient } from './services/realtime.js';
+import { debounce } from './utils/debounce.js';
 
 export default {
   name: 'App',
@@ -227,6 +228,12 @@ export default {
       },
       immediate: true
     }
+  },
+  created() {
+    this.debouncedRefresh = debounce(() => {
+      this.handleRefresh();
+      this.loadCounts();
+    }, 300);
   },
   mounted() {
     initTheme();
@@ -456,8 +463,7 @@ export default {
 
     handleMessageReceived(event) {
       console.log('New message received:', event);
-      this.handleRefresh();
-      this.loadCounts();
+      this.debouncedRefresh();
     },
 
     handleMessageTagged(event) {
