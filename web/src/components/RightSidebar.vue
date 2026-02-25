@@ -28,20 +28,45 @@
           <rect x="15" y="3" width="6" height="18" rx="1" fill="none" stroke="currentColor" stroke-width="1.7" />
         </svg>
       </button>
+      <button
+        v-if="hasTodoist"
+        class="rail-app"
+        type="button"
+        title="Todoist"
+        aria-label="Todoist projects"
+        :data-active="todoistOpen"
+        @click="$emit('toggle-todoist')"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.7"/>
+          <path d="M7 12l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
     </nav>
   </aside>
 </template>
 
 <script>
+import { hasTodoistToken } from '../services/auth.js';
+
 export default {
   name: 'RightSidebar',
   props: {
     activeView: {
       type: String,
       default: 'email'
+    },
+    todoistOpen: {
+      type: Boolean,
+      default: false
     }
   },
-  emits: ['select']
+  emits: ['select', 'toggle-todoist'],
+  computed: {
+    hasTodoist() {
+      return hasTodoistToken();
+    }
+  }
 };
 </script>
 
@@ -96,5 +121,4 @@ export default {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
-
 </style>

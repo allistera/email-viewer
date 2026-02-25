@@ -18,7 +18,7 @@ export const MimeParser = {
     const headers = {};
     if (email.headers) {
       for (const h of email.headers) {
-        if (['message-id', 'date', 'subject', 'from', 'to'].includes(h.key)) {
+        if (['message-id', 'date', 'subject', 'from', 'to', 'in-reply-to', 'references'].includes(h.key)) {
           headers[h.key] = h.value;
         }
       }

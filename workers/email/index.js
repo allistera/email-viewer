@@ -71,8 +71,8 @@ async function processMessage(messageId, env, message = null) {
                 const result = await MessageClassifier.classify(
                     message,
                     Array.from(tagLabels),
-                    env.OPENAI_API_KEY,
-                    env.OPENAI_MODEL
+                    env.OPENROUTER_API_KEY || env.OPENAI_API_KEY,
+                    env.OPENROUTER_MODEL || env.OPENAI_MODEL
                 );
 
                 if (result?.tag) {

@@ -34,6 +34,10 @@
         draggable="true"
         @dragstart="onDragStart($event, message)"
         @click="$emit('select', message.id)"
+        role="button"
+        tabindex="0"
+        @keydown.enter.prevent="$emit('select', message.id)"
+        @keydown.space.prevent="$emit('select', message.id)"
       >
         <div class="message-header">
           <span class="from">{{ message.from }}</span>
@@ -228,6 +232,12 @@ export default {
 
 .message-item:hover {
   background: var(--color-bg-secondary);
+}
+
+.message-item:focus-visible {
+  background: var(--color-bg-secondary);
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
 }
 
 .message-item.active {

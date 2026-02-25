@@ -1,8 +1,13 @@
 <template>
   <div v-if="show" class="modal-overlay">
-    <div class="compose-modal">
+    <div
+      class="compose-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="compose-title"
+    >
       <div class="compose-header">
-        <h2>{{ replyTo ? 'Reply' : forwardFrom ? 'Forward' : 'New Message' }}</h2>
+        <h2 id="compose-title">{{ replyTo ? 'Reply' : forwardFrom ? 'Forward' : 'New Message' }}</h2>
         <button class="close-btn" @click="handleClose" title="Close" aria-label="Close">&times;</button>
       </div>
 
@@ -39,12 +44,25 @@
                 @keydown="handleToKeydown"
                 @focus="handleToFocus"
                 @blur="handleToBlur"
+                role="combobox"
+                aria-autocomplete="list"
+                :aria-expanded="showSuggestions && suggestions.length > 0"
+                aria-controls="suggestions-listbox"
+                :aria-activedescendant="selectedSuggestionIndex >= 0 ? `suggestion-${selectedSuggestionIndex}` : null"
               />
             </div>
-            <ul v-if="showSuggestions && suggestions.length > 0" class="suggestions-dropdown">
+            <ul
+              v-if="showSuggestions && suggestions.length > 0"
+              class="suggestions-dropdown"
+              id="suggestions-listbox"
+              role="listbox"
+            >
               <li
                 v-for="(suggestion, index) in suggestions"
                 :key="suggestion.email"
+                :id="`suggestion-${index}`"
+                role="option"
+                :aria-selected="index === selectedSuggestionIndex"
                 :class="{ selected: index === selectedSuggestionIndex }"
                 @mousedown.prevent="selectSuggestion(suggestion)"
                 @mouseenter="selectedSuggestionIndex = index"
@@ -391,7 +409,8 @@ export default {
         await sendEmail({
           to: this.recipients,
           subject: this.subject,
-          body: this.body
+          body: this.body,
+          replyToId: this.replyTo?.id
         });
         this.$emit('sent');
         this.$emit('close');
