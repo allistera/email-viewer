@@ -409,7 +409,8 @@ export default {
         await sendEmail({
           to: this.recipients,
           subject: this.subject,
-          body: this.body
+          body: this.body,
+          replyToId: this.replyTo?.id
         });
         this.$emit('sent');
         this.$emit('close');

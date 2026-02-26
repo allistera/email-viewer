@@ -1,9 +1,21 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Message List Empty States', () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page, context }) => {
+    // Force clear cookies/storage
+    await context.clearCookies();
+
+    // Disable Service Worker registration request
+    await page.route('**/sw.js', route => route.abort());
+
+    // Mock SSE to prevent background updates and keep tests stable
+    await page.route('**/api/stream*', async route => {
+        await route.fulfill({ status: 200, contentType: 'text/event-stream', body: '' });
+    });
+
     // Mock API responses
-    await page.route('**/api/messages*', async route => {
+    // Use regex to ensure query parameters are matched robustly
+    await page.route(/\/api\/messages.*/, async route => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -19,8 +31,20 @@ test.describe('Message List Empty States', () => {
       });
     });
 
-    // Login
+    // Navigate to app
     await page.goto('/');
+
+    // Explicitly unregister any existing Service Workers to ensure network mocking works
+    await page.evaluate(async () => {
+        if ('serviceWorker' in navigator) {
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            for (const registration of registrations) {
+                await registration.unregister();
+            }
+        }
+    });
+
+    // Login
     await page.fill('input[type="password"]', 'dev-token-12345');
     await page.click('button[type="submit"]');
     await expect(page.locator('.auth-modal')).toBeHidden();
