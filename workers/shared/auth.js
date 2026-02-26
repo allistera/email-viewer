@@ -64,29 +64,16 @@ async function constantTimeCompare(a, b) {
   const aBytes = encoder.encode(a);
   const bBytes = encoder.encode(b);
   
-  // If lengths differ, still do a comparison to maintain constant time
-  // but use the longer array padded
-  const maxLength = Math.max(aBytes.length, bBytes.length);
-  const aPadded = new Uint8Array(maxLength);
-  const bPadded = new Uint8Array(maxLength);
-  
-  aPadded.set(aBytes);
-  bPadded.set(bBytes);
-  
-  // Use crypto.subtle to hash both values and compare
-  // This ensures constant-time comparison
-  const aHash = await crypto.subtle.digest('SHA-256', aPadded);
-  const bHash = await crypto.subtle.digest('SHA-256', bPadded);
+  // Hash both inputs independently to prevent timing attacks based on length.
+  // The time taken is T(len(a)) + T(len(b)), where T(len(b)) is constant for the secret.
+  // This avoids the inflection point that reveals the secret length in padding-based approaches.
+  const aHash = await crypto.subtle.digest('SHA-256', aBytes);
+  const bHash = await crypto.subtle.digest('SHA-256', bBytes);
   
   const aHashArray = new Uint8Array(aHash);
   const bHashArray = new Uint8Array(bHash);
   
-  // Length check must still happen to prevent length oracle
-  if (aBytes.length !== bBytes.length) {
-    return false;
-  }
-  
-  // Compare hashes (both are same length, 32 bytes)
+  // Compare hashes in constant time
   let result = 0;
   for (let i = 0; i < aHashArray.length; i++) {
     result |= aHashArray[i] ^ bHashArray[i];
