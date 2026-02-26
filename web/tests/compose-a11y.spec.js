@@ -13,7 +13,7 @@ test.describe('Compose Modal - Accessibility', () => {
         });
 
         await page.goto('/');
-        await page.fill('input[type="password"]', 'dummy-token');
+        await page.fill('input[type="password"]', 'dev-token-12345');
         await page.click('button[type="submit"]');
         await page.getByRole('button', { name: 'Compose' }).click();
         await expect(page.locator('.compose-modal')).toBeVisible();
