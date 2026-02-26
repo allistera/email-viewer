@@ -149,4 +149,13 @@ export default {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
+
+@keyframes gear-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.rail-settings:hover svg {
+  animation: gear-spin 0.6s ease;
+}
 </style>

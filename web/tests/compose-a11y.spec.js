@@ -4,17 +4,24 @@ const DEBOUNCE_WAIT = 200;
 
 test.describe('Compose Modal - Accessibility', () => {
     test.beforeEach(async ({ page }) => {
+        // Pre-set auth token to bypass auth modal
+        await page.addInitScript(() => {
+            localStorage.setItem('email_api_token', 'test-token');
+        });
+
         // Mock API endpoints
-        await page.route('**/api/messages*', async route => {
-            await route.fulfill({ status: 200, body: JSON.stringify({ items: [] }) });
+        await page.route('**/api/messages?*', async route => {
+            await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [], nextBefore: null }) });
+        });
+        await page.route('**/api/messages/counts', async route => {
+            await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ inbox: 0, archive: 0, spam: 0, tags: {} }) });
         });
         await page.route('**/api/tags', async route => {
-            await route.fulfill({ status: 200, body: JSON.stringify([]) });
+            await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) });
         });
 
         await page.goto('/');
-        await page.fill('input[type="password"]', 'dummy-token');
-        await page.click('button[type="submit"]');
+        await expect(page.locator('.tag-sidebar')).toBeVisible({ timeout: 10000 });
         await page.getByRole('button', { name: 'Compose' }).click();
         await expect(page.locator('.compose-modal')).toBeVisible();
     });

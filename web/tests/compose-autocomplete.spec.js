@@ -6,12 +6,25 @@ const BLUR_WAIT = 300; // 200ms blur delay + 100ms buffer
 
 test.describe('Compose Modal - Email Autocomplete', () => {
     test.beforeEach(async ({ page }) => {
+        // Pre-set auth token to bypass auth modal
+        await page.addInitScript(() => {
+            localStorage.setItem('email_api_token', 'test-token');
+        });
+
         // Mock API endpoints
-        await page.route('**/api/messages*', async route => {
+        await page.route('**/api/messages?*', async route => {
             await route.fulfill({
                 status: 200,
                 contentType: 'application/json',
-                body: JSON.stringify({ items: [] })
+                body: JSON.stringify({ items: [], nextBefore: null })
+            });
+        });
+
+        await page.route('**/api/messages/counts', async route => {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({ inbox: 0, archive: 0, spam: 0, tags: {} })
             });
         });
 
@@ -24,11 +37,7 @@ test.describe('Compose Modal - Email Autocomplete', () => {
         });
 
         await page.goto('/');
-
-        // Authenticate
-        await page.fill('input[type="password"]', 'dummy-token');
-        await page.click('button[type="submit"]');
-        await expect(page.locator('.modal')).toBeHidden();
+        await expect(page.locator('.tag-sidebar')).toBeVisible({ timeout: 10000 });
 
         // Open compose modal
         await page.getByRole('button', { name: 'Compose' }).click();

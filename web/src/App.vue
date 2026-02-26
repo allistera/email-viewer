@@ -121,12 +121,12 @@ import TagSidebar from './components/TagSidebar.vue';
 import MessageList from './components/MessageList.vue';
 import MessageDetail from './components/MessageDetail.vue';
 import SettingsView from './components/SettingsView.vue';
-import SettingsModal from './components/SettingsModal.vue';
 import ComposeModal from './components/ComposeModal.vue';
 import ToastNotification from './components/ToastNotification.vue';
 import RightSidebar from './components/RightSidebar.vue';
 import KanbanView from './components/KanbanView.vue';
 import TodoistSlideout from './components/TodoistSlideout.vue';
+import SettingsModal from './components/SettingsModal.vue';
 import { hasToken, setToken, clearToken } from './services/auth.js';
 import { getMessages, getMessage, getMessageCounts } from './services/api.js';
 import { init as initTheme } from './services/theme.js';
@@ -141,12 +141,12 @@ export default {
     MessageList,
     MessageDetail,
     SettingsView,
-    SettingsModal,
     ComposeModal,
     ToastNotification,
     RightSidebar,
     KanbanView,
-    TodoistSlideout
+    TodoistSlideout,
+    SettingsModal
   },
   data() {
     return {
@@ -560,7 +560,7 @@ export default {
     },
 
     closeSettings() {
-      this.showSettingsModal = false;
+      this.currentView = 'inbox';
     },
 
     openCompose() {

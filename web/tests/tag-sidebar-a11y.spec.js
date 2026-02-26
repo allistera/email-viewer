@@ -2,12 +2,16 @@ import { test, expect } from '@playwright/test';
 
 test.describe('TagSidebar - Accessibility', () => {
     test.beforeEach(async ({ page }) => {
-        // Mock initial data
-        await page.route('**/api/messages*', async route => {
-             await route.fulfill({
+        // Pre-set auth token to bypass auth modal
+        await page.addInitScript(() => {
+            localStorage.setItem('email_api_token', 'test-token');
+        });
+
+        await page.route('**/api/messages?*', async route => {
+            await route.fulfill({
                 status: 200,
                 contentType: 'application/json',
-                body: JSON.stringify({ items: [] })
+                body: JSON.stringify({ items: [], nextBefore: null })
             });
         });
 
@@ -23,7 +27,7 @@ test.describe('TagSidebar - Accessibility', () => {
         });
 
         await page.route('**/api/messages/counts', async route => {
-             await route.fulfill({
+            await route.fulfill({
                 status: 200,
                 contentType: 'application/json',
                 body: JSON.stringify({ inbox: 5, archive: 10, spam: 2, tags: { 'Work': 3, 'Personal': 1 } })
@@ -31,9 +35,7 @@ test.describe('TagSidebar - Accessibility', () => {
         });
 
         await page.goto('/');
-        await page.fill('input[type="password"]', 'dev-token-12345');
-        await page.click('button[type="submit"]');
-        await expect(page.locator('.modal')).toBeHidden();
+        await expect(page.locator('.tag-sidebar')).toBeVisible({ timeout: 10000 });
     });
 
     test('should have accessible tags with role button', async ({ page }) => {

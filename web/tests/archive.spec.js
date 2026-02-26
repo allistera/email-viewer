@@ -2,6 +2,11 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Done Message', () => {
     test.beforeEach(async ({ page }) => {
+        // Pre-set auth token to bypass auth modal
+        await page.addInitScript(() => {
+            localStorage.setItem('email_api_token', 'test-token');
+        });
+
         // Mock all API endpoints before navigation
         await page.route('**/api/messages/**', async route => {
             const url = route.request().url();
@@ -55,12 +60,16 @@ test.describe('Done Message', () => {
             });
         });
 
-        await page.goto('/');
+        await page.route('**/api/messages/counts', async route => {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({ inbox: 1, archive: 0, spam: 0, tags: {} })
+            });
+        });
 
-        // Authenticate
-        await page.fill('input[type="password"]', 'dummy-token');
-        await page.click('button[type="submit"]');
-        await expect(page.locator('.modal')).toBeHidden({ timeout: 5000 });
+        await page.goto('/');
+        await expect(page.locator('.tag-sidebar')).toBeVisible({ timeout: 10000 });
     });
 
     test('should display Done button in toolbar', async ({ page }) => {

@@ -2,14 +2,25 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Tags CRUD', () => {
     test.beforeEach(async ({ page }) => {
-        // Mock API endpoints to bypass backend/auth and test UI logic directly
+        // Pre-set auth token to bypass the auth modal
+        await page.addInitScript(() => {
+            localStorage.setItem('email_api_token', 'test-token');
+        });
 
-        // Mock Messages (needed for auth check pass)
-        await page.route('**/api/messages*', async route => {
+        // Mock Messages
+        await page.route('**/api/messages?*', async route => {
             await route.fulfill({
                 status: 200,
                 contentType: 'application/json',
-                body: JSON.stringify({ items: [] })
+                body: JSON.stringify({ items: [], nextBefore: null })
+            });
+        });
+
+        await page.route('**/api/messages/counts', async route => {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({ inbox: 0, archive: 0, spam: 0, sent: 0, tags: {} })
             });
         });
 
@@ -30,11 +41,7 @@ test.describe('Tags CRUD', () => {
         });
 
         await page.goto('/');
-
-        // Handle Auth
-        await page.fill('input[type="password"]', 'dummy-token');
-        await page.click('button[type="submit"]');
-        await expect(page.locator('.modal')).toBeHidden();
+        await expect(page.locator('.tag-sidebar')).toBeVisible({ timeout: 10000 });
     });
 
     test('should display existing tags including Spam', async ({ page }) => {
@@ -55,7 +62,7 @@ test.describe('Tags CRUD', () => {
     });
 
     test('should add a new tag', async ({ page }) => {
-        // Mock POST /api/tags - must pass through GET so beforeEach's handler can serve initial tags
+        // Mock POST /api/tags
         const postRequestPromise = page.waitForRequest(
             (req) => req.url().includes('/api/tags') && req.method() === 'POST',
             { timeout: 5000 }
@@ -105,7 +112,7 @@ test.describe('Tags CRUD', () => {
         // Handle confirm dialog
         page.on('dialog', dialog => dialog.accept());
 
-        // Hover over tag to see delete button (if CSS requires hover, otherwise force click)
+        // Hover over tag to see delete button
         const tagItem = page.locator('.tag-item', { hasText: 'ExistingTag' });
         await tagItem.hover();
 
@@ -122,11 +129,23 @@ test.describe('Tags CRUD', () => {
 
 test.describe('Spam tag fallback', () => {
     test.beforeEach(async ({ page }) => {
-        await page.route('**/api/messages*', async route => {
+        await page.addInitScript(() => {
+            localStorage.setItem('email_api_token', 'test-token');
+        });
+
+        await page.route('**/api/messages?*', async route => {
             await route.fulfill({
                 status: 200,
                 contentType: 'application/json',
-                body: JSON.stringify({ items: [] })
+                body: JSON.stringify({ items: [], nextBefore: null })
+            });
+        });
+
+        await page.route('**/api/messages/counts', async route => {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({ inbox: 0, archive: 0, spam: 0, sent: 0, tags: {} })
             });
         });
 
@@ -143,10 +162,7 @@ test.describe('Spam tag fallback', () => {
         });
 
         await page.goto('/');
-
-        await page.fill('input[type="password"]', 'dummy-token');
-        await page.click('button[type="submit"]');
-        await expect(page.locator('.modal')).toBeHidden();
+        await expect(page.locator('.tag-sidebar')).toBeVisible({ timeout: 10000 });
     });
 
     test('should always display Spam tag even when missing from API', async ({ page }) => {
