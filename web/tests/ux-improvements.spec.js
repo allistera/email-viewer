@@ -16,7 +16,7 @@ test.describe('Compose Modal - UX Improvements', () => {
         });
 
         await page.goto('/');
-        await page.fill('input[type="password"]', 'dummy-token');
+        await page.fill('input[type="password"]', 'dev-token-12345');
         await page.click('button[type="submit"]');
         await expect(page.locator('.modal')).toBeHidden();
 

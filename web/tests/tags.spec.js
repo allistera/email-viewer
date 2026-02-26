@@ -32,7 +32,7 @@ test.describe('Tags CRUD', () => {
         await page.goto('/');
 
         // Handle Auth
-        await page.fill('input[type="password"]', 'dummy-token');
+        await page.fill('input[type="password"]', 'dev-token-12345');
         await page.click('button[type="submit"]');
         await expect(page.locator('.modal')).toBeHidden();
     });
@@ -144,7 +144,7 @@ test.describe('Spam tag fallback', () => {
 
         await page.goto('/');
 
-        await page.fill('input[type="password"]', 'dummy-token');
+        await page.fill('input[type="password"]', 'dev-token-12345');
         await page.click('button[type="submit"]');
         await expect(page.locator('.modal')).toBeHidden();
     });
