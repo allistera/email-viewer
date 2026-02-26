@@ -11,14 +11,14 @@ database_id = "8f96a820-872b-42e9-bf7d-a5ae41aa4b7c"
 
 # Environment Variables
 [vars]
-OPENAI_MODEL = "gpt-4o-mini"
+OPENROUTER_MODEL = "google/gemini-2.0-flash-lite-001"
 
 # Development
 [env.dev]
 name = "mail-app-todoist-dev"
 
 [env.dev.vars]
-OPENAI_MODEL = "gpt-4o-mini"
+OPENROUTER_MODEL = "google/gemini-2.0-flash-lite-001"
 
 [[env.dev.d1_databases]]
 binding = "DB"
@@ -30,7 +30,7 @@ database_id = "placeholder-dev"
 name = "mail-app-todoist"
 
 [env.production.vars]
-OPENAI_MODEL = "gpt-4o-mini"
+OPENROUTER_MODEL = "google/gemini-2.0-flash-lite-001"
 SENTRY_DSN = "https://d29d6d205377084a3fa87aa4ba4d091b@o4510748410576896.ingest.de.sentry.io/4510748412346448"
 
 [[env.production.d1_databases]]

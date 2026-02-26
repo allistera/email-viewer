@@ -1,0 +1,3 @@
+## 2025-02-18 - Keyboard Accessibility & Contextual Feedback
+**Learning:** Interactive lists (e.g., message lists) often miss keyboard support. Adding `role="button"`, `tabindex="0"`, and `keydown` handlers is a high-impact fix. Additionally, replacing generic "No results" with contextual messages (e.g., "Hooray! No spam here") delights users and clarifies system status. Playwright tests for these interactions require API mocking.
+**Action:** Audit `v-for` lists for interactivity and add keyboard support. Replace generic empty states with context-aware messaging. Use `page.route` in Playwright for backend mocking.

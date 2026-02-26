@@ -1,6 +1,6 @@
 # Cloudflare Email Inbox
 
-A self-hosted, single-user email inbox built on Cloudflare Workers. It uses **Email Routing** to ingest emails, **OpenAI** for tag classification (including a mandatory `spam` tag), and **Durable Objects** for real-time updates.
+A self-hosted, single-user email inbox built on Cloudflare Workers. It uses **Email Routing** to ingest emails, **OpenRouter** for tag classification (including a mandatory `spam` tag), and **Durable Objects** for real-time updates.
 
 ## Features
 
@@ -8,7 +8,7 @@ A self-hosted, single-user email inbox built on Cloudflare Workers. It uses **Em
 - **Storage**:
     - **D1**: Stores email metadata (Sender, Subject, Date, etc.) searchable via SQL.
     - **R2**: Stores the raw `.eml` file and extracted attachments.
-- **Tagging**: Uses OpenAI (`gpt-4o-mini`) to classify emails asynchronously, including a `spam` tag (background task via `ctx.waitUntil`).
+- **Tagging**: Uses OpenRouter (`google/gemini-2.0-flash-lite-001`) to classify emails asynchronously, including a `spam` tag (background task via `ctx.waitUntil`).
 - **Realtime**: Pushes new emails and tag updates to the UI via SSE/WebSockets.
 - **UI**: A clean, "Todoist-inspired" single-page application built with Vue.js.
 - **Compose**: Create new emails, reply to, or forward existing messages.
@@ -61,7 +61,7 @@ A self-hosted, single-user email inbox built on Cloudflare Workers. It uses **Em
 ### 1. Prerequisites
 - **Cloudflare Account** with Workers Paid (Required for Durable Objects/R2/D1 usage beyond free tier limits).
 - **Node.js** installed.
-- **OpenAI API Key**.
+- **OpenRouter API Key**.
 - **Resend Account** for sending emails ([resend.com](https://resend.com)).
 
 ### 2. Create Resources
@@ -83,11 +83,11 @@ npx wrangler r2 bucket create mailstore
 # Set your API token (choose any secure password/token)
 npx wrangler secret put API_TOKEN
 
-# Set your OpenAI Key (email tagging worker)
-npx wrangler secret put OPENAI_API_KEY -c wrangler-email.toml
+# Set your OpenRouter key (email tagging worker)
+npx wrangler secret put OPENROUTER_API_KEY -c wrangler-email.toml
 
-# Set your OpenAI Key (Todoist project selection worker)
-npx wrangler secret put OPENAI_API_KEY -c wrangler-todoist.toml
+# Set your OpenRouter key (Todoist project selection worker)
+npx wrangler secret put OPENROUTER_API_KEY -c wrangler-todoist.toml
 
 # Set your Resend API Key (for sending emails)
 npx wrangler secret put RESEND_API_KEY
