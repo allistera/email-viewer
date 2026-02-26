@@ -3,6 +3,24 @@ import { env } from "cloudflare:test";
 import { DB } from "../../workers/shared/db.js";
 import { handleRetention } from "../../workers/shared/retention.js";
 
+// Mock R2 Bucket
+class MockR2Bucket {
+  constructor() {
+    this.storage = new Map();
+  }
+  async get(key) {
+    const val = this.storage.get(key);
+    return val ? { body: val } : null;
+  }
+  async put(key, val) {
+    this.storage.set(key, val);
+  }
+  async delete(keys) {
+    const keyArray = Array.isArray(keys) ? keys : [keys];
+    keyArray.forEach(k => this.storage.delete(k));
+  }
+}
+
 describe("Retention Policy", () => {
   beforeAll(async () => {
     // Initialize Database Schema
@@ -77,10 +95,13 @@ describe("Retention Policy", () => {
     const RETENTION_DAYS = 30;
     await DB.setSetting(env.DB, 'retention_days', RETENTION_DAYS.toString());
 
+    // Mock R2
+    const mockR2 = new MockR2Bucket();
+
     // We pass env directly, handleRetention will read from DB
     const testEnv = {
       ...env,
-      // RETENTION_DAYS: '0', // Ensure env var doesn't override if logic is correct (logic prioritizes DB)
+      MAILSTORE: mockR2
     };
 
     const cutoff = Date.now() - (RETENTION_DAYS * 24 * 60 * 60 * 1000);
@@ -156,14 +177,14 @@ describe("Retention Policy", () => {
     await DB.checkDedupe(env.DB, "dedupe-old-1", oldMessageId);
     await DB.checkDedupe(env.DB, "dedupe-new-1", newMessageId);
 
-    // Insert R2 Objects
-    await env.MAILSTORE.put(`raw/${oldMessageId}`, "old content");
-    await env.MAILSTORE.put(`raw/${oldMessageId2}`, "old content 2");
-    await env.MAILSTORE.put(`att/${oldMessageId}/${attId}/test.txt`, "attachment content");
-    await env.MAILSTORE.put(`raw/${newMessageId}`, "new content");
+    // Insert R2 Objects (into Mock)
+    await mockR2.put(`raw/${oldMessageId}`, "old content");
+    await mockR2.put(`raw/${oldMessageId2}`, "old content 2");
+    await mockR2.put(`att/${oldMessageId}/${attId}/test.txt`, "attachment content");
+    await mockR2.put(`raw/${newMessageId}`, "new content");
 
     // Verify Setup
-    expect(await env.MAILSTORE.get(`raw/${oldMessageId}`)).not.toBeNull();
+    expect(await mockR2.get(`raw/${oldMessageId}`)).not.toBeNull();
 
     // 2. Run Retention
     await handleRetention(testEnv);
@@ -179,14 +200,14 @@ describe("Retention Policy", () => {
     const newMsgCheck = await DB.getMessage(env.DB, newMessageId);
     expect(newMsgCheck).not.toBeNull();
 
-    // Check R2
-    const oldRawR2 = await env.MAILSTORE.get(`raw/${oldMessageId}`);
+    // Check R2 (Mock)
+    const oldRawR2 = await mockR2.get(`raw/${oldMessageId}`);
     expect(oldRawR2).toBeNull();
 
-    const oldAttR2 = await env.MAILSTORE.get(`att/${oldMessageId}/${attId}/test.txt`);
+    const oldAttR2 = await mockR2.get(`att/${oldMessageId}/${attId}/test.txt`);
     expect(oldAttR2).toBeNull();
 
-    const newRawR2 = await env.MAILSTORE.get(`raw/${newMessageId}`);
+    const newRawR2 = await mockR2.get(`raw/${newMessageId}`);
     expect(newRawR2).not.toBeNull();
 
     // Check Dedupe
@@ -195,9 +216,5 @@ describe("Retention Policy", () => {
 
     const dedupeNew = await env.DB.prepare("SELECT * FROM dedupe WHERE message_id = ?").bind(newMessageId).first();
     expect(dedupeNew).not.toBeNull();
-
-    // Workaround for Isolated storage failed in vitest-pool-workers
-    // Add a small delay to allow potential pending IO/cleanup to finish
-    await new Promise(resolve => setTimeout(resolve, 500));
   });
 });
