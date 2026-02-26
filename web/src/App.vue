@@ -22,6 +22,11 @@
       @todoist-added="handleTodoistAdded"
     />
 
+    <SettingsModal
+      :show="showSettingsModal"
+      @close="showSettingsModal = false"
+    />
+
     <div v-if="!showAuthModal" class="app-layout">
       <div
         class="app-container"
@@ -32,7 +37,7 @@
           ref="sidebar"
           :selected-tag="selectedTag"
           :message-counts="messageCounts"
-          :settings-active="currentView === 'settings'"
+          :settings-active="showSettingsModal"
           class="sidebar-panel"
           @select="handleTagSelect"
           @settings="openSettings"
@@ -100,8 +105,10 @@
           class="right-sidebar-panel"
           :active-view="rightRailView"
           :todoist-open="showTodoistSlideout"
+          :settings-open="showSettingsModal"
           @select="rightRailView = $event"
           @toggle-todoist="showTodoistSlideout = !showTodoistSlideout"
+          @toggle-settings="showSettingsModal = !showSettingsModal"
         />
       </div>
     </div>
@@ -114,6 +121,7 @@ import TagSidebar from './components/TagSidebar.vue';
 import MessageList from './components/MessageList.vue';
 import MessageDetail from './components/MessageDetail.vue';
 import SettingsView from './components/SettingsView.vue';
+import SettingsModal from './components/SettingsModal.vue';
 import ComposeModal from './components/ComposeModal.vue';
 import ToastNotification from './components/ToastNotification.vue';
 import RightSidebar from './components/RightSidebar.vue';
@@ -133,6 +141,7 @@ export default {
     MessageList,
     MessageDetail,
     SettingsView,
+    SettingsModal,
     ComposeModal,
     ToastNotification,
     RightSidebar,
@@ -166,6 +175,7 @@ export default {
       messageCounts: null,
       rightRailView: 'email',
       showTodoistSlideout: false,
+      showSettingsModal: false,
       sidebarWidth: 220,
       listWidth: 360,
       rightSidebarWidth: 72,
@@ -546,15 +556,11 @@ export default {
     },
 
     openSettings() {
-      this.currentView = 'settings';
-      // On mobile, switch to list view to show settings (which takes list+detail space)
-      if (this.isMobile) {
-        this.mobileView = 'list';
-      }
+      this.showSettingsModal = true;
     },
 
     closeSettings() {
-      this.currentView = 'inbox';
+      this.showSettingsModal = false;
     },
 
     openCompose() {
