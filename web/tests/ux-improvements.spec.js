@@ -61,7 +61,7 @@ test.describe('Compose Modal - UX Improvements', () => {
 
     test('should show spinner and aria-busy when sending', async ({ page }) => {
         // Mock send API with delay
-        await page.route('**/api/send', async route => {
+        await page.route('**/api/send**', async route => {
             if (route.request().method() === 'POST') {
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 await route.fulfill({
@@ -75,19 +75,19 @@ test.describe('Compose Modal - UX Improvements', () => {
 
         // Fill form
         await page.locator('#compose-to').fill('recipient@example.com');
-        await page.locator('#compose-to').press('Enter');
         await page.locator('#compose-subject').fill('Test Subject');
         await page.locator('#compose-body').fill('Test Body');
 
         // Click send
         const sendBtn = page.locator('button[type="submit"]');
-        await sendBtn.click();
+        const sendPromise = sendBtn.click();
 
         // Verify loading state
         await expect(sendBtn).toHaveAttribute('aria-busy', 'true');
         await expect(sendBtn).toHaveText(/Sending.../);
         const spinner = sendBtn.locator('.spinner');
         await expect(spinner).toBeVisible();
+        await sendPromise;
 
         // Wait for completion
         await expect(page.locator('.compose-modal')).toBeHidden();

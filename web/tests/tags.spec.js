@@ -25,7 +25,7 @@ test.describe('Tags CRUD', () => {
         });
 
         // Mock initial Tags with Spam and a User tag
-        await page.route('**/api/tags', async route => {
+        await page.route('**/api/tags**', async route => {
             if (route.request().method() === 'GET') {
                 await route.fulfill({
                     status: 200,
@@ -42,6 +42,7 @@ test.describe('Tags CRUD', () => {
 
         await page.goto('/');
         await expect(page.locator('.tag-sidebar')).toBeVisible({ timeout: 10000 });
+        await expect(page.locator('.tag-label', { hasText: 'ExistingTag' })).toBeVisible();
     });
 
     test('should display existing tags including Spam', async ({ page }) => {
@@ -68,7 +69,7 @@ test.describe('Tags CRUD', () => {
             { timeout: 5000 }
         );
 
-        await page.route('**/api/tags', async route => {
+        await page.route('**/api/tags**', async route => {
             if (route.request().method() === 'POST') {
                 await route.fulfill({
                     status: 201,
@@ -97,15 +98,16 @@ test.describe('Tags CRUD', () => {
 
     test('should delete a tag', async ({ page }) => {
         // Mock DELETE /api/tags/1
-        let deleteRequest;
+        const deleteRequestPromise = page.waitForRequest(req => req.url().includes('/api/tags/1') && req.method() === 'DELETE');
         await page.route('**/api/tags/1', async route => {
             if (route.request().method() === 'DELETE') {
-                deleteRequest = route.request();
                 await route.fulfill({
                     status: 200,
                     contentType: 'application/json',
                     body: JSON.stringify({ ok: true })
                 });
+            } else {
+                await route.continue();
             }
         });
 
@@ -120,7 +122,7 @@ test.describe('Tags CRUD', () => {
         await tagItem.locator('button[aria-label="Delete Tag"]').click();
 
         // Verify request
-        expect(deleteRequest).toBeTruthy();
+        await expect(deleteRequestPromise).resolves.toBeTruthy();
 
         // Verify UI update
         await expect(page.locator('.tag-label', { hasText: 'ExistingTag' })).toBeHidden();
@@ -149,7 +151,7 @@ test.describe('Spam tag fallback', () => {
             });
         });
 
-        await page.route('**/api/tags', async route => {
+        await page.route('**/api/tags**', async route => {
             if (route.request().method() === 'GET') {
                 await route.fulfill({
                     status: 200,
