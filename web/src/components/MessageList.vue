@@ -11,6 +11,12 @@
           v-model="searchInput"
           :placeholder="searchPlaceholder"
           class="search-input"
+          type="search"
+          inputmode="search"
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="off"
+          spellcheck="false"
           @input="handleInput"
         />
       </div>
@@ -386,28 +392,37 @@ export default {
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+    min-width: 44px;
+    min-height: 44px;
   }
 
   .list-header {
-    padding: 12px;
+    padding: 8px 12px;
     gap: 8px;
   }
 
   .search-input {
     padding: 10px 12px;
+    font-size: 16px; /* Prevents iOS auto-zoom on focus */
+    border-radius: 8px;
   }
 
-  /* Note: height is enforced to 90px by main rule, check if this fits */
+  /* Remove webkit search cancel button styling conflicts */
+  .search-input::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+  }
+
   .message-item {
-    padding: 14px;
+    padding: 12px 16px;
+    -webkit-tap-highlight-color: transparent;
   }
 
   .from {
-    font-size: 13px;
+    font-size: 14px;
   }
 
   .time {
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .message-subject {
@@ -416,6 +431,11 @@ export default {
 
   .snippet {
     font-size: 12px;
+  }
+
+  .btn-secondary {
+    min-height: 44px;
+    font-size: 15px;
   }
 }
 </style>
