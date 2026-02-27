@@ -251,6 +251,15 @@ export default {
       });
     },
   },
+  watch: {
+    showAdd(newVal) {
+      if (newVal) {
+        this.$nextTick(() => {
+          this.$refs.input?.focus();
+        });
+      }
+    }
+  },
   async created() {
     await this.loadTags();
   },
