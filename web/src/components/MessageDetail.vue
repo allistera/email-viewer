@@ -102,23 +102,6 @@
             <span class="toolbar-label">{{ isCurrentlySnoozed ? 'Resnooze' : 'Snooze' }}</span>
           </button>
 
-          <div v-if="showSnoozePicker" class="snooze-picker" role="group" aria-label="Snooze options">
-            <select v-model="snoozePreset" class="snooze-select">
-              <option value="1h">In 1 hour</option>
-              <option value="tomorrow">Tomorrow at 8:00 AM</option>
-              <option value="nextweek">Next week at 8:00 AM</option>
-              <option value="custom">Custom date &amp; time</option>
-            </select>
-            <input
-              v-if="snoozePreset === 'custom'"
-              v-model="customSnoozeAt"
-              type="datetime-local"
-              class="snooze-input"
-            />
-            <button class="toolbar-btn" type="button" @click="applySnooze">Save</button>
-            <button class="toolbar-btn" type="button" @click="cancelSnoozePicker">Cancel</button>
-          </div>
-
           <button
             v-if="isCurrentlySnoozed"
             class="toolbar-btn"
@@ -164,6 +147,23 @@
             <span class="toolbar-label">{{ archiving ? 'Marking done…' : 'Done' }}</span>
           </button>
 
+        </div>
+
+        <div v-if="showSnoozePicker" class="snooze-picker" role="group" aria-label="Snooze options">
+          <select v-model="snoozePreset" class="snooze-select">
+            <option value="1h">In 1 hour</option>
+            <option value="tomorrow">Tomorrow at 8:00 AM</option>
+            <option value="nextweek">Next week at 8:00 AM</option>
+            <option value="custom">Custom date &amp; time</option>
+          </select>
+          <input
+            v-if="snoozePreset === 'custom'"
+            v-model="customSnoozeAt"
+            type="datetime-local"
+            class="snooze-input"
+          />
+          <button class="toolbar-btn" type="button" @click="applySnooze">Save</button>
+          <button class="toolbar-btn" type="button" @click="cancelSnoozePicker">Cancel</button>
         </div>
 
         <div class="detail-header">
@@ -666,13 +666,13 @@ export default {
 
 
 .snooze-picker {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: var(--color-surface, #fff);
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--color-bg-secondary);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .snooze-select,
@@ -1037,8 +1037,13 @@ export default {
   .detail-toolbar {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
-    padding: 10px 12px;
-    gap: 6px;
+    padding: 8px 12px;
+    gap: 4px;
+    scrollbar-width: none; /* Firefox */
+  }
+
+  .detail-toolbar::-webkit-scrollbar {
+    display: none; /* Chrome/Safari */
   }
 
   /* Hide labels on smaller screens, show only icons */
@@ -1047,9 +1052,11 @@ export default {
   }
 
   .toolbar-btn {
-    padding: 8px;
-    min-width: 40px;
+    padding: 10px;
+    min-width: 44px;
+    min-height: 44px;
     justify-content: center;
+    -webkit-tap-highlight-color: transparent;
   }
 
   .toolbar-icon {
@@ -1065,7 +1072,10 @@ export default {
 
   .back-btn {
     min-width: auto;
-    padding: 6px 10px;
+    padding: 8px 12px;
+    font-size: 14px;
+    font-weight: 500;
+    gap: 6px;
   }
 
   /* Adjust header for mobile */
@@ -1075,7 +1085,7 @@ export default {
 
   .sender-row {
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 8px;
   }
 
   .sender-avatar {
@@ -1087,6 +1097,7 @@ export default {
 
   .subject-title {
     font-size: 16px;
+    white-space: normal; /* Allow wrap on mobile */
   }
 
   .sender-date {
@@ -1098,9 +1109,23 @@ export default {
     max-width: 100%;
   }
 
+  .snooze-picker {
+    padding: 12px 16px;
+  }
+
+  .snooze-select,
+  .snooze-input {
+    font-size: 16px; /* Prevents iOS zoom */
+    min-height: 36px;
+  }
+
   /* Attachments mobile */
   .attachments {
     padding: 12px 16px;
+  }
+
+  .attachment-item {
+    min-height: 44px;
   }
 
   .body-content {

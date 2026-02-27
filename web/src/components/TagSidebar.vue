@@ -673,10 +673,28 @@ export default {
     display: flex;
     align-items: center;
     justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
   }
 
   .app-title {
     padding: 12px 16px;
+    padding-top: calc(12px + env(safe-area-inset-top, 0px));
+  }
+
+  .tag-sidebar {
+    overflow-y: auto;
+  }
+
+  .tag-item {
+    min-height: 44px;
+    padding: 10px 16px;
+  }
+
+  .compose-btn {
+    margin: 8px 16px;
+    padding: 12px 16px;
+    min-height: 44px;
   }
 }
 </style>

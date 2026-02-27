@@ -33,6 +33,7 @@
         :class="mobileViewClass"
         :style="gridStyle"
       >
+
         <TagSidebar
           ref="sidebar"
           :selected-tag="selectedTag"
@@ -111,6 +112,42 @@
           @toggle-settings="showSettingsModal = !showSettingsModal"
         />
       </div>
+
+      <nav v-if="isMobile" class="mobile-tab-bar" aria-label="App navigation">
+        <button
+          class="tab-btn"
+          :class="{ active: mobileView === 'sidebar' }"
+          @click="openMobileSidebar"
+          aria-label="Open menu"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true" width="22" height="22">
+            <path d="M3 6h18M3 12h18M3 18h18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <span>Menu</span>
+        </button>
+        <button
+          class="tab-btn tab-btn-compose"
+          @click="openCompose"
+          aria-label="Compose new email"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true" width="22" height="22">
+            <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <span>Compose</span>
+        </button>
+        <button
+          class="tab-btn"
+          :class="{ active: mobileView === 'list' || mobileView === 'detail' }"
+          @click="closeMobileSidebar"
+          aria-label="Go to inbox"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true" width="22" height="22">
+            <rect x="2" y="4" width="20" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/>
+            <path d="M22 6L12 13 2 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span>Inbox</span>
+        </button>
+      </nav>
     </div>
   </div>
 </template>
@@ -187,6 +224,7 @@ export default {
   },
   computed: {
     gridStyle() {
+      if (this.isMobile) return {};
       if (this.currentView === 'settings') {
         return {
           gridTemplateColumns: `${this.sidebarWidth}px 1fr 4px ${this.rightSidebarWidth}px`
@@ -763,9 +801,49 @@ export default {
   background: var(--color-primary);
 }
 
+/* Mobile bottom tab bar */
+.mobile-tab-bar {
+  display: flex;
+  align-items: stretch;
+  background: var(--color-bg);
+  border-top: 1px solid var(--color-border);
+  flex-shrink: 0;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+.tab-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 10px 4px;
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tab-btn.active {
+  color: var(--color-primary);
+}
+
+.tab-btn-compose {
+  color: var(--color-primary);
+}
+
+.tab-btn svg {
+  flex-shrink: 0;
+}
+
 @media (max-width: 768px) {
   .app-container {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr !important;
     position: relative;
   }
 
