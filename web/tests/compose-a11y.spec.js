@@ -62,6 +62,7 @@ test.describe('Compose Modal - Accessibility', () => {
 
         // Type to show suggestions
         await input.fill('test');
+        await page.waitForTimeout(DEBOUNCE_WAIT);
 
         // Wait for suggestions to appear
         await expect(listbox).toBeVisible();

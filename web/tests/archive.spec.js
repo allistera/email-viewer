@@ -81,24 +81,14 @@ test.describe('Done Message', () => {
         // Wait for toolbar
         await expect(page.locator('.toolbar-btn', { hasText: 'Done' })).toBeVisible({ timeout: 10000 });
 
-        // Track if archive was called
-        let archiveCalled = false;
-        await page.route('**/api/messages/*/archive', async route => {
-            archiveCalled = true;
-            await route.fulfill({
-                status: 200,
-                contentType: 'application/json',
-                body: JSON.stringify({ ok: true })
-            });
-        });
+        const archiveResponsePromise = page.waitForResponse(
+            response => response.url().includes('/api/messages/') && response.url().includes('/archive') && response.status() === 200
+        );
 
         // Click Done button
         await page.locator('.toolbar-btn', { hasText: 'Done' }).click();
 
-        // Wait for the request to be made
-        await page.waitForTimeout(500);
-
         // Verify archive API was called
-        expect(archiveCalled).toBe(true);
+        await archiveResponsePromise;
     });
 });

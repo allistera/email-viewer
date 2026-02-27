@@ -15,7 +15,7 @@ test.describe('TagSidebar - Accessibility', () => {
             });
         });
 
-        await page.route('**/api/tags', async route => {
+        await page.route('**/api/tags**', async route => {
             await route.fulfill({
                 status: 200,
                 contentType: 'application/json',
@@ -36,6 +36,7 @@ test.describe('TagSidebar - Accessibility', () => {
 
         await page.goto('/');
         await expect(page.locator('.tag-sidebar')).toBeVisible({ timeout: 10000 });
+        await expect(page.locator('.tag-item').filter({ hasText: 'Work' }).first()).toBeVisible();
     });
 
     test('should have accessible tags with role button', async ({ page }) => {
