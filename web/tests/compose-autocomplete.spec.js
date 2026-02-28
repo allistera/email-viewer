@@ -6,12 +6,25 @@ const BLUR_WAIT = 300; // 200ms blur delay + 100ms buffer
 
 test.describe('Compose Modal - Email Autocomplete', () => {
     test.beforeEach(async ({ page }) => {
+        // Pre-set auth token to bypass auth modal
+        await page.addInitScript(() => {
+            localStorage.setItem('email_api_token', 'test-token');
+        });
+
         // Mock API endpoints
-        await page.route('**/api/messages*', async route => {
+        await page.route('**/api/messages?*', async route => {
             await route.fulfill({
                 status: 200,
                 contentType: 'application/json',
-                body: JSON.stringify({ items: [] })
+                body: JSON.stringify({ items: [], nextBefore: null })
+            });
+        });
+
+        await page.route('**/api/messages/counts', async route => {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({ inbox: 0, archive: 0, spam: 0, tags: {} })
             });
         });
 
@@ -24,11 +37,15 @@ test.describe('Compose Modal - Email Autocomplete', () => {
         });
 
         await page.goto('/');
+<<<<<<< HEAD
+        await expect(page.locator('.tag-sidebar')).toBeVisible({ timeout: 10000 });
+=======
 
         // Authenticate
         await page.fill('input[type="password"]', 'dev-token-12345');
         await page.click('button[type="submit"]');
         await expect(page.locator('.modal')).toBeHidden();
+>>>>>>> d2bd57a (WIP)
 
         // Open compose modal
         await page.getByRole('button', { name: 'Compose' }).click();
@@ -37,7 +54,7 @@ test.describe('Compose Modal - Email Autocomplete', () => {
 
     test('should show dropdown with suggestions when typing in To field', async ({ page }) => {
         // Mock contacts API
-        await page.route('**/api/contacts?q=john**', async route => {
+        await page.route('**/api/contacts**', async route => {
             await route.fulfill({
                 status: 200,
                 contentType: 'application/json',
@@ -71,7 +88,7 @@ test.describe('Compose Modal - Email Autocomplete', () => {
 
     test('should navigate suggestions with ArrowDown key', async ({ page }) => {
         // Mock contacts API
-        await page.route('**/api/contacts?q=test**', async route => {
+        await page.route('**/api/contacts**', async route => {
             await route.fulfill({
                 status: 200,
                 contentType: 'application/json',
@@ -111,7 +128,7 @@ test.describe('Compose Modal - Email Autocomplete', () => {
 
     test('should navigate suggestions with ArrowUp key', async ({ page }) => {
         // Mock contacts API
-        await page.route('**/api/contacts?q=test**', async route => {
+        await page.route('**/api/contacts**', async route => {
             await route.fulfill({
                 status: 200,
                 contentType: 'application/json',
@@ -148,7 +165,7 @@ test.describe('Compose Modal - Email Autocomplete', () => {
 
     test('should select suggestion with Enter key', async ({ page }) => {
         // Mock contacts API
-        await page.route('**/api/contacts?q=alice**', async route => {
+        await page.route('**/api/contacts**', async route => {
             await route.fulfill({
                 status: 200,
                 contentType: 'application/json',
@@ -192,7 +209,7 @@ test.describe('Compose Modal - Email Autocomplete', () => {
 
     test('should hide dropdown on Escape key', async ({ page }) => {
         // Mock contacts API
-        await page.route('**/api/contacts?q=bob**', async route => {
+        await page.route('**/api/contacts**', async route => {
             await route.fulfill({
                 status: 200,
                 contentType: 'application/json',
@@ -221,7 +238,7 @@ test.describe('Compose Modal - Email Autocomplete', () => {
 
     test('should hide dropdown on blur', async ({ page }) => {
         // Mock contacts API
-        await page.route('**/api/contacts?q=charlie**', async route => {
+        await page.route('**/api/contacts**', async route => {
             await route.fulfill({
                 status: 200,
                 contentType: 'application/json',
@@ -252,7 +269,7 @@ test.describe('Compose Modal - Email Autocomplete', () => {
 
     test('should select suggestion by clicking', async ({ page }) => {
         // Mock contacts API
-        await page.route('**/api/contacts?q=diana**', async route => {
+        await page.route('**/api/contacts**', async route => {
             await route.fulfill({
                 status: 200,
                 contentType: 'application/json',
@@ -304,7 +321,7 @@ test.describe('Compose Modal - Email Autocomplete', () => {
 
     test('should not show dropdown when no contacts match', async ({ page }) => {
         // Mock contacts API with empty results
-        await page.route('**/api/contacts?q=xyz**', async route => {
+        await page.route('**/api/contacts**', async route => {
             await route.fulfill({
                 status: 200,
                 contentType: 'application/json',
@@ -325,30 +342,19 @@ test.describe('Compose Modal - Email Autocomplete', () => {
     });
 
     test('should update suggestions when typing continues', async ({ page }) => {
-        // Mock contacts API for 'e'
-        await page.route('**/api/contacts?q=e**', async route => {
-            await route.fulfill({
-                status: 200,
-                contentType: 'application/json',
-                body: JSON.stringify({
-                    contacts: [
-                        { email: 'eve@example.com' },
-                        { email: 'eric@example.com' }
-                    ]
-                })
-            });
-        });
+        await page.route('**/api/contacts**', async route => {
+            const q = new URL(route.request().url()).searchParams.get('q');
+            const contacts = q === 'ev'
+                ? [{ email: 'eve@example.com' }]
+                : [
+                    { email: 'eve@example.com' },
+                    { email: 'eric@example.com' }
+                ];
 
-        // Mock contacts API for 'ev'
-        await page.route('**/api/contacts?q=ev**', async route => {
             await route.fulfill({
                 status: 200,
                 contentType: 'application/json',
-                body: JSON.stringify({
-                    contacts: [
-                        { email: 'eve@example.com' }
-                    ]
-                })
+                body: JSON.stringify({ contacts })
             });
         });
 
@@ -372,7 +378,7 @@ test.describe('Compose Modal - Email Autocomplete', () => {
 
     test('should highlight suggestion on mouse hover', async ({ page }) => {
         // Mock contacts API
-        await page.route('**/api/contacts?q=frank**', async route => {
+        await page.route('**/api/contacts**', async route => {
             await route.fulfill({
                 status: 200,
                 contentType: 'application/json',

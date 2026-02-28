@@ -1,3 +1,9 @@
+<<<<<<< HEAD
+## 2025-02-24 - SQL Wildcard Injection in D1
+**Vulnerability:** User input passed directly to SQL `LIKE` queries allowed wildcard injection (e.g., `%`, `_`), enabling broader searches than intended and potential DoS via resource exhaustion.
+**Learning:** Cloudflare D1 (SQLite) `LIKE` operator does not automatically escape wildcard characters in bound parameters.
+**Prevention:** Use the `ESCAPE '\'` clause in SQL queries and sanitize input using a helper function (e.g., `str.replace(/[\\%_]/g, '\\$&')`) before binding.
+=======
 ## 2024-10-23 - Cloudflare Workers env.ASSETS Security Headers
 **Vulnerability:** Static assets served via `env.ASSETS` in Cloudflare Workers lacked security headers (CSP, HSTS, X-Frame-Options), leaving the frontend vulnerable to XSS and Clickjacking.
 **Learning:** The `env.ASSETS` binding returns a standard Response object that must be intercepted and wrapped to add custom headers. It does not inherit headers from the Worker configuration automatically.
@@ -7,3 +13,4 @@
 **Vulnerability:** A custom `constantTimeCompare` implementation leaked the length of the secret token by padding inputs to `Math.max(input.length, secret.length)`. This created a timing inflection point when the attacker's input length exceeded the secret's length.
 **Learning:** Padding to a max length creates a length oracle if the padding size depends on the secret. Independent hashing of both inputs (double-HMAC or simple double-hash) ensures execution time depends only on the attacker's input length plus a constant factor for the secret.
 **Prevention:** Avoid custom padding logic for constant-time comparisons. Instead, hash both inputs independently using a cryptographic hash function (like SHA-256 via `crypto.subtle`) and compare the resulting fixed-size digests in constant time.
+>>>>>>> d2bd57a (WIP)

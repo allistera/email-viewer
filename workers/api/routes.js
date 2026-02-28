@@ -37,6 +37,12 @@ const isValidPriority = (p) => {
   return Number.isInteger(n) && n >= 0 && n <= 100;
 };
 
+// Escapes special characters for SQL LIKE pattern
+// Uses backslash as the escape character
+const escapeLikePattern = (str) => {
+  return str.replace(/[\\%_]/g, '\\$&');
+};
+
 
 const resolveTodoistToken = (request, body = {}, env = {}) => {
   const headerToken = request.headers.get('X-Todoist-Token') || request.headers.get('Todoist-Token');
@@ -613,14 +619,15 @@ export const ApiRouter = {
 
         // Get unique email addresses from both from_addr and to_addr, ordered by most recent use
         // Note: this query does not filter by a specific user address; it relies solely on the search pattern and timestamps
+        // Uses ESCAPE '\' to prevent wildcard injection (e.g. searching for '%')
         const sql = `
           SELECT DISTINCT email, MAX(last_used) as last_used FROM (
             SELECT from_addr as email, MAX(received_at) as last_used FROM messages
-            WHERE from_addr LIKE ?
+            WHERE from_addr LIKE ? ESCAPE '\\'
             GROUP BY from_addr
             UNION ALL
             SELECT to_addr as email, MAX(received_at) as last_used FROM messages
-            WHERE to_addr LIKE ?
+            WHERE to_addr LIKE ? ESCAPE '\\'
             GROUP BY to_addr
           )
           GROUP BY email
@@ -628,7 +635,8 @@ export const ApiRouter = {
           LIMIT ?
         `;
 
-        const searchPattern = `${query}%`;
+        // Escape special chars in the user query, then append wildcard
+        const searchPattern = `${escapeLikePattern(query)}%`;
         const result = await env.DB.prepare(sql)
           .bind(searchPattern, searchPattern, limit)
           .all();

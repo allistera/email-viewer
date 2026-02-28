@@ -2,6 +2,11 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Done Message', () => {
     test.beforeEach(async ({ page }) => {
+        // Pre-set auth token to bypass auth modal
+        await page.addInitScript(() => {
+            localStorage.setItem('email_api_token', 'test-token');
+        });
+
         // Mock all API endpoints before navigation
         await page.route('**/api/messages/**', async route => {
             const url = route.request().url();
@@ -55,12 +60,23 @@ test.describe('Done Message', () => {
             });
         });
 
-        await page.goto('/');
+        await page.route('**/api/messages/counts', async route => {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({ inbox: 1, archive: 0, spam: 0, tags: {} })
+            });
+        });
 
+<<<<<<< HEAD
+        await page.goto('/');
+        await expect(page.locator('.tag-sidebar')).toBeVisible({ timeout: 10000 });
+=======
         // Authenticate
         await page.fill('input[type="password"]', 'dev-token-12345');
         await page.click('button[type="submit"]');
         await expect(page.locator('.modal')).toBeHidden({ timeout: 5000 });
+>>>>>>> d2bd57a (WIP)
     });
 
     test('should display Done button in toolbar', async ({ page }) => {
@@ -72,24 +88,14 @@ test.describe('Done Message', () => {
         // Wait for toolbar
         await expect(page.locator('.toolbar-btn', { hasText: 'Done' })).toBeVisible({ timeout: 10000 });
 
-        // Track if archive was called
-        let archiveCalled = false;
-        await page.route('**/api/messages/*/archive', async route => {
-            archiveCalled = true;
-            await route.fulfill({
-                status: 200,
-                contentType: 'application/json',
-                body: JSON.stringify({ ok: true })
-            });
-        });
+        const archiveResponsePromise = page.waitForResponse(
+            response => response.url().includes('/api/messages/') && response.url().includes('/archive') && response.status() === 200
+        );
 
         // Click Done button
         await page.locator('.toolbar-btn', { hasText: 'Done' }).click();
 
-        // Wait for the request to be made
-        await page.waitForTimeout(500);
-
         // Verify archive API was called
-        expect(archiveCalled).toBe(true);
+        await archiveResponsePromise;
     });
 });

@@ -2,8 +2,13 @@ import { test, expect } from '@playwright/test';
 
 test.describe('MessageList Accessibility', () => {
     test.beforeEach(async ({ page }) => {
+        // Pre-set auth token to bypass auth modal
+        await page.addInitScript(() => {
+            localStorage.setItem('email_api_token', 'test-token');
+        });
+
         // Mock messages API
-        await page.route('**/api/messages*', async route => {
+        await page.route('**/api/messages?*', async route => {
             if (route.request().method() === 'GET') {
                 await route.fulfill({
                     status: 200,
@@ -64,10 +69,16 @@ test.describe('MessageList Accessibility', () => {
             });
         });
 
+        await page.route('**/api/tags', async route => {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify([])
+            });
+        });
+
         await page.goto('/');
-        await page.fill('input[type="password"]', 'dev-token-12345');
-        await page.click('button[type="submit"]');
-        await expect(page.locator('.modal')).toBeHidden();
+        await expect(page.locator('.tag-sidebar')).toBeVisible({ timeout: 10000 });
     });
 
     test('message items should have button role and be focusable', async ({ page }) => {
