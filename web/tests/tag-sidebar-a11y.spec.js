@@ -94,4 +94,13 @@ test.describe('TagSidebar - Accessibility', () => {
         await expect(workTag).toHaveClass(/active/);
         await expect(workTag).toHaveAttribute('aria-current', 'page');
     });
+
+    test('should focus input when add tag button is clicked', async ({ page }) => {
+        const addBtn = page.getByRole('button', { name: 'Add Tag' });
+        await addBtn.click();
+
+        const input = page.getByPlaceholder('New tag...');
+        await expect(input).toBeVisible();
+        await expect(input).toBeFocused();
+    });
 });
