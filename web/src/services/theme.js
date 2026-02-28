@@ -21,3 +21,7 @@ export const applyTheme = (pref) => {
     else root.classList.remove('dark-mode');
   }
 };
+
+export const init = () => {
+  applyTheme(getPreference());
+};
