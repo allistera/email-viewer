@@ -604,6 +604,36 @@ export const ApiRouter = {
         return jsonResponse({ ok: true });
       }
 
+      // GET /api/settings
+      if (path === 'settings' && request.method === 'GET') {
+        // Return public settings or specific settings
+        // For now, just return retention policy
+        const retentionDays = await DB.getSetting(env.DB, 'retention_days');
+        return jsonResponse({
+          retention_days: retentionDays ? parseInt(retentionDays, 10) : 0
+        });
+      }
+
+      // PUT /api/settings
+      if (path === 'settings' && request.method === 'PUT') {
+        let body;
+        try {
+          body = await readJsonBody(request);
+        } catch (error) {
+          return jsonResponse({ error: error.message || 'Invalid JSON body' }, { status: 400 });
+        }
+
+        if (body.retention_days !== undefined) {
+          const days = parseInt(body.retention_days, 10);
+          if (isNaN(days) || days < 0) {
+             return jsonResponse({ error: 'retention_days must be a non-negative integer' }, { status: 400 });
+          }
+          await DB.setSetting(env.DB, 'retention_days', days.toString());
+        }
+
+        return jsonResponse({ ok: true });
+      }
+
       // GET /api/contacts
       // Returns unique email addresses from sent and received messages for autocomplete
       if (path === 'contacts' && request.method === 'GET') {

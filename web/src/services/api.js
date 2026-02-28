@@ -123,6 +123,22 @@ export async function archiveMessage(id) {
   });
 }
 
+// ==================
+// Settings API
+// ==================
+
+export async function getSettings() {
+  return request('/settings');
+}
+
+export async function updateSettings(settings) {
+  return request('/settings', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(settings)
+  });
+}
+
 export async function snoozeMessage(id, until) {
   return request(`/messages/${id}/snooze`, {
     method: 'POST',

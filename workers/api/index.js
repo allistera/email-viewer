@@ -2,6 +2,7 @@ import { authenticate } from '../shared/auth.js';
 import { ApiRouter } from './routes.js';
 import { StreamRouter } from './stream.js';
 import { handleOptions, withCors } from '../shared/cors.js';
+import { handleRetention } from '../shared/retention.js';
 export { RealtimeHub } from '../shared/realtimeHub.js';
 
 import * as Sentry from "@sentry/cloudflare";
@@ -89,5 +90,12 @@ export default Sentry.withSentry(sentryOptions, {
       // Fallback for when assets are not available (e.g. dev without assets, or misconfig)
       return new Response('Assets binding missing / Not Found', { status: 404 });
     }
+  },
+
+  /**
+   * Scheduled Handler
+   */
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(handleRetention(env));
   }
 });

@@ -7,3 +7,7 @@ compatibility_flags = ["nodejs_compat"]
 binding = "DB"
 database_name = "test-db"
 database_id = "test-id"
+
+[[r2_buckets]]
+binding = "MAILSTORE"
+bucket_name = "mailstore-test"

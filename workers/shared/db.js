@@ -827,5 +827,96 @@ export const DB = {
     }
 
     return true;
+  },
+
+  // ==================
+  // Settings Helpers
+  // ==================
+
+  /**
+   * Get a setting value
+   * @param {D1Database} db
+   * @param {string} key
+   * @returns {Promise<string|null>}
+   */
+  async getSetting(db, key) {
+    const row = await db.prepare('SELECT value FROM settings WHERE key = ?').bind(key).first();
+    return row ? row.value : null;
+  },
+
+  /**
+   * Set a setting value
+   * @param {D1Database} db
+   * @param {string} key
+   * @param {string} value
+   */
+  async setSetting(db, key, value) {
+    await db.prepare(`
+      INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)
+      ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+    `).bind(key, value, Date.now()).run();
+  },
+
+  // ==================
+  // Retention Helpers
+  // ==================
+
+  /**
+   * Get messages older than a specific timestamp for retention policy
+   * @param {D1Database} db
+   * @param {number} cutoffTimestamp
+   * @param {number} limit
+   */
+  async getMessagesForRetention(db, cutoffTimestamp, limit = 50) {
+    const { results } = await db.prepare(
+      'SELECT id, raw_r2_key FROM messages WHERE received_at < ? ORDER BY received_at ASC LIMIT ?'
+    ).bind(cutoffTimestamp, limit).all();
+    return results || [];
+  },
+
+  /**
+   * Get attachments for a list of message IDs
+   * @param {D1Database} db
+   * @param {string[]} messageIds
+   */
+  async getAttachmentsForMessages(db, messageIds) {
+    if (!messageIds || messageIds.length === 0) return [];
+
+    // SQLite limits variables, so we might need to batch if messageIds is huge.
+    // Assuming limit=50 from getMessagesForRetention, it's fine.
+    const placeholders = messageIds.map(() => '?').join(',');
+    const { results } = await db.prepare(
+      `SELECT r2_key FROM attachments WHERE message_id IN (${placeholders})`
+    ).bind(...messageIds).all();
+
+    return results ? results.map(r => r.r2_key) : [];
+  },
+
+  /**
+   * Delete messages by ID (and cascading attachments)
+   * @param {D1Database} db
+   * @param {string[]} messageIds
+   */
+  async deleteMessages(db, messageIds) {
+    if (!messageIds || messageIds.length === 0) return;
+
+    const placeholders = messageIds.map(() => '?').join(',');
+    await db.prepare(
+      `DELETE FROM messages WHERE id IN (${placeholders})`
+    ).bind(...messageIds).run();
+  },
+
+  /**
+   * Delete dedupe entries for message IDs
+   * @param {D1Database} db
+   * @param {string[]} messageIds
+   */
+  async deleteDedupeForMessages(db, messageIds) {
+    if (!messageIds || messageIds.length === 0) return;
+
+    const placeholders = messageIds.map(() => '?').join(',');
+    await db.prepare(
+      `DELETE FROM dedupe WHERE message_id IN (${placeholders})`
+    ).bind(...messageIds).run();
   }
 };

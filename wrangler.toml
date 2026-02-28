@@ -3,6 +3,10 @@ main = "workers/api/index.js"
 compatibility_date = "2024-10-22"
 compatibility_flags = ["nodejs_compat"]
 
+# Triggers
+[triggers]
+crons = ["0 0 * * *"] # Run daily at midnight UTC
+
 # D1 Database
 [[d1_databases]]
 binding = "DB"
@@ -32,6 +36,7 @@ service = "mail-app-todoist"
 [vars]
 SEND_FROM_EMAIL = "hello@infinitywave.design"
 TAG_LABELS = "Marketing, Recruitment, Personal, Finance, Support, Other"
+# RETENTION_DAYS = "0" # Default disabled, configure in Settings
 # Push notifications via ntfy (https://ntfy.sh)
 # NTFY_TOPIC = "my-email-inbox"
 # NOTIFY_APP_URL = "https://mail.infinitywave.design"
