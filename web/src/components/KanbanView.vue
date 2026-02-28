@@ -23,7 +23,11 @@
             v-for="message in lanesWithMessages[lane.id]"
             :key="message.id"
             class="kanban-card"
+            role="button"
+            tabindex="0"
             @click="$emit('select-message', message.id)"
+            @keydown.enter.prevent="$emit('select-message', message.id)"
+            @keydown.space.prevent="$emit('select-message', message.id)"
           >
             <div class="card-header">
               <span class="card-from">{{ message.from }}</span>
@@ -278,6 +282,11 @@ export default {
 .kanban-card:hover {
   border-color: var(--color-primary);
   box-shadow: 0 2px 8px rgba(219, 76, 63, 0.12);
+}
+
+.kanban-card:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 .kanban-card:last-child {
