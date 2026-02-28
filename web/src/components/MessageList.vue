@@ -28,8 +28,11 @@
       {{ error }}
     </div>
 
-    <div v-else-if="messages.length === 0" class="empty">
-      No messages found
+    <div v-else-if="messages.length === 0" class="empty-state">
+      <div class="empty-icon" aria-hidden="true">{{ emptyStateIcon }}</div>
+      <h3>{{ emptyStateTitle }}</h3>
+      <p>{{ emptyStateMessage }}</p>
+      <button v-if="hasSearch" @click="clearSearch" class="btn-secondary">Clear Search</button>
     </div>
 
     <VirtualList
@@ -138,6 +141,33 @@ export default {
         return `Search in ${this.selectedTag}...`;
       }
       return 'Search all messages...';
+    },
+    hasSearch() {
+      return this.searchInput.length > 0;
+    },
+    emptyStateIcon() {
+      if (this.hasSearch) return '🔍';
+      if (this.selectedTag === 'spam') return '🚫';
+      if (this.selectedTag === 'archive') return '📦';
+      if (this.selectedTag === 'sent') return '✈️';
+      if (this.selectedTag) return '🏷️';
+      return '📭';
+    },
+    emptyStateTitle() {
+      if (this.hasSearch) return 'No messages found';
+      if (this.selectedTag === 'spam') return 'No spam here';
+      if (this.selectedTag === 'archive') return 'Archive is empty';
+      if (this.selectedTag === 'sent') return 'No sent messages';
+      if (this.selectedTag) return 'No messages in this tag';
+      return 'All caught up';
+    },
+    emptyStateMessage() {
+      if (this.hasSearch) return `We couldn't find anything matching "${this.searchInput}".`;
+      if (this.selectedTag === 'spam') return 'Hooray! Your inbox is safe.';
+      if (this.selectedTag === 'archive') return 'You haven\'t archived any messages yet.';
+      if (this.selectedTag === 'sent') return 'You haven\'t sent any messages yet.';
+      if (this.selectedTag) return `No messages tagged with "${this.selectedTag}".`;
+      return 'Your inbox is empty. Time to relax!';
     }
   },
   watch: {
@@ -182,6 +212,11 @@ export default {
           this.$refs.virtualList.scrollToIndex(index);
         }
       });
+    },
+
+    clearSearch() {
+      this.searchInput = '';
+      this.$emit('search', '');
     }
   }
 };
@@ -232,10 +267,37 @@ export default {
 
 .loading,
 .empty,
+.empty-state,
 .error-message {
-  padding: 32px;
+  padding: 48px 32px;
   text-align: center;
   color: var(--color-text-secondary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+.empty-state .empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  line-height: 1;
+}
+
+.empty-state h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 8px;
+}
+
+.empty-state p {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  margin-bottom: 24px;
+  max-width: 300px;
+  line-height: 1.5;
 }
 
 .error-message {
