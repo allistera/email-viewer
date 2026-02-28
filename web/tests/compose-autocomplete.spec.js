@@ -26,9 +26,12 @@ test.describe('Compose Modal - Email Autocomplete', () => {
         await page.goto('/');
 
         // Authenticate
-        await page.fill('input[type="password"]', 'dummy-token');
-        await page.click('button[type="submit"]');
-        await expect(page.locator('.modal')).toBeHidden();
+        await page.evaluate(() => {
+            localStorage.setItem('email_api_token', 'mock-token');
+        });
+        await page.reload();
+        await page.waitForSelector('.modal', { state: 'hidden', timeout: 5000 }).catch(() => {});
+        await expect(page.locator('.modal')).toBeHidden({ timeout: 5000 });
 
         // Open compose modal
         await page.getByRole('button', { name: 'Compose' }).click();

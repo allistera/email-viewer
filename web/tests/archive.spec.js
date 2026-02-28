@@ -58,8 +58,11 @@ test.describe('Done Message', () => {
         await page.goto('/');
 
         // Authenticate
-        await page.fill('input[type="password"]', 'dummy-token');
-        await page.click('button[type="submit"]');
+        await page.evaluate(() => {
+            localStorage.setItem('email_api_token', 'mock-token');
+        });
+        await page.reload();
+        await page.waitForSelector('.modal', { state: 'hidden', timeout: 5000 }).catch(() => {});
         await expect(page.locator('.modal')).toBeHidden({ timeout: 5000 });
     });
 

@@ -65,9 +65,12 @@ test.describe('MessageList Accessibility', () => {
         });
 
         await page.goto('/');
-        await page.fill('input[type="password"]', 'dev-token-12345');
-        await page.click('button[type="submit"]');
-        await expect(page.locator('.modal')).toBeHidden();
+        await page.evaluate(() => {
+            localStorage.setItem('email_api_token', 'mock-token');
+        });
+        await page.reload();
+        await page.waitForSelector('.modal', { state: 'hidden', timeout: 5000 }).catch(() => {});
+        await expect(page.locator('.modal')).toBeHidden({ timeout: 5000 });
     });
 
     test('message items should have button role and be focusable', async ({ page }) => {
