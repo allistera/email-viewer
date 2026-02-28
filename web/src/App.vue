@@ -278,6 +278,9 @@ export default {
       this.connectRealtime();
     },
     async loadCounts() {
+      // Don't load counts if there is an auth error, we'll hit an unauthorized error loop
+      if (this.showAuthModal || this.authError || !hasToken()) return;
+
       try {
         this.messageCounts = await getMessageCounts();
       } catch (e) {

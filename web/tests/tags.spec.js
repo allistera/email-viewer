@@ -13,6 +13,15 @@ test.describe('Tags CRUD', () => {
             });
         });
 
+        // Mock counts
+        await page.route('**/api/messages/counts', async route => {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({ inbox: 0, archive: 0, spam: 0, sent: 0, tags: {} })
+            });
+        });
+
         // Mock initial Tags with Spam and a User tag
         await page.route('**/api/tags', async route => {
             if (route.request().method() === 'GET') {
@@ -31,10 +40,22 @@ test.describe('Tags CRUD', () => {
 
         await page.goto('/');
 
-        // Handle Auth
-        await page.fill('input[type="password"]', 'dummy-token');
-        await page.click('button[type="submit"]');
-        await expect(page.locator('.modal')).toBeHidden();
+        // Ensure mock is matched immediately for login
+        await page.route('**/api/auth/login', async route => {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({ token: 'mock-token', user: { id: 1, email: 'test@example.com' } })
+            });
+        });
+
+        await page.evaluate(() => {
+            localStorage.setItem('email_api_token', 'mock-token');
+        });
+        await page.reload();
+        await page.waitForSelector('.modal', { state: 'hidden', timeout: 5000 }).catch(() => {});
+
+        await expect(page.locator('.modal')).toBeHidden({ timeout: 5000 });
     });
 
     test('should display existing tags including Spam', async ({ page }) => {
@@ -122,6 +143,15 @@ test.describe('Tags CRUD', () => {
 
 test.describe('Spam tag fallback', () => {
     test.beforeEach(async ({ page }) => {
+        // Mock counts
+        await page.route('**/api/messages/counts', async route => {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({ inbox: 0, archive: 0, spam: 0, sent: 0, tags: {} })
+            });
+        });
+
         await page.route('**/api/messages*', async route => {
             await route.fulfill({
                 status: 200,
@@ -142,11 +172,23 @@ test.describe('Spam tag fallback', () => {
             }
         });
 
+        await page.route('**/api/auth/login', async route => {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({ token: 'mock-token', user: { id: 1, email: 'test@example.com' } })
+            });
+        });
+
         await page.goto('/');
 
-        await page.fill('input[type="password"]', 'dummy-token');
-        await page.click('button[type="submit"]');
-        await expect(page.locator('.modal')).toBeHidden();
+        await page.evaluate(() => {
+            localStorage.setItem('email_api_token', 'mock-token');
+        });
+        await page.reload();
+        await page.waitForSelector('.modal', { state: 'hidden', timeout: 5000 }).catch(() => {});
+
+        await expect(page.locator('.modal')).toBeHidden({ timeout: 5000 });
     });
 
     test('should always display Spam tag even when missing from API', async ({ page }) => {

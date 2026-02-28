@@ -3,6 +3,14 @@ import { test, expect } from '@playwright/test';
 test.describe('Compose Modal - UX Improvements', () => {
     test.beforeEach(async ({ page }) => {
         // Mock initial data to ensure clean state
+        await page.route('**/api/messages/counts', async route => {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({ inbox: 0, archive: 0, spam: 0, sent: 0, tags: {} })
+            });
+        });
+
         await page.route('**/api/messages*', async route => {
             if (route.request().method() === 'GET') {
                 await route.fulfill({
@@ -15,9 +23,22 @@ test.describe('Compose Modal - UX Improvements', () => {
             }
         });
 
+        await page.route('**/api/auth/login', async route => {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({ token: 'mock-token', user: { id: 1, email: 'test@example.com' } })
+            });
+        });
+
         await page.goto('/');
-        await page.fill('input[type="password"]', 'dummy-token');
-        await page.click('button[type="submit"]');
+
+        await page.evaluate(() => {
+            localStorage.setItem('email_api_token', 'mock-token');
+        });
+        await page.reload();
+        await page.waitForSelector('.modal', { state: 'hidden', timeout: 5000 }).catch(() => {});
+
         await expect(page.locator('.modal')).toBeHidden();
 
         // Open compose modal
