@@ -8,10 +8,6 @@ export const setPreference = (pref) => {
   applyTheme(pref);
 };
 
-export const init = () => {
-  applyTheme(getPreference());
-};
-
 export const applyTheme = (pref) => {
   const root = document.documentElement;
   if (pref === 'dark') {
