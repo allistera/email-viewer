@@ -21,3 +21,12 @@ export const applyTheme = (pref) => {
     else root.classList.remove('dark-mode');
   }
 };
+
+export const init = () => {
+  const pref = getPreference();
+  applyTheme(pref);
+
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    if (getPreference() === 'system') applyTheme('system');
+  });
+};

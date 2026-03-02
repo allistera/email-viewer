@@ -7,6 +7,12 @@ let tagsCache = null;
 let tagsCacheTime = 0;
 const TAGS_CACHE_TTL = 60 * 1000; // 60 seconds
 
+// Escapes special characters for SQL LIKE pattern
+// Uses backslash as the escape character
+const escapeLikePattern = (str) => {
+  return str.replace(/[\\%_]/g, '\\$&');
+};
+
 export const DB = {
   /**
    * Insert a new message
@@ -118,13 +124,14 @@ export const DB = {
     }
 
     if (tag) {
-      conditions.push('EXISTS (SELECT 1 FROM message_tags mt JOIN tags t ON mt.tag_id = t.id WHERE mt.message_id = m.id AND (t.name = ? OR t.name LIKE ?))');
-      params.push(tag, `${tag}/%`);
+      conditions.push('EXISTS (SELECT 1 FROM message_tags mt JOIN tags t ON mt.tag_id = t.id WHERE mt.message_id = m.id AND (t.name = ? OR t.name LIKE ? ESCAPE \'\\\'))');
+      params.push(tag, `${escapeLikePattern(tag)}/%`);
     }
 
     if (excludeTag) {
-      conditions.push('NOT EXISTS (SELECT 1 FROM message_tags mt JOIN tags t ON mt.tag_id = t.id WHERE mt.message_id = m.id AND t.name = ?)');
-      params.push(excludeTag);
+      conditions.push('NOT EXISTS (SELECT 1 FROM message_tags mt JOIN tags t ON mt.tag_id = t.id WHERE mt.message_id = m.id AND (t.name = ? OR t.name LIKE ? ESCAPE \'\\\'))');
+      params.push(excludeTag, `${escapeLikePattern(excludeTag)}/%`);
+
     }
 
     // Archived filter:
@@ -203,13 +210,14 @@ export const DB = {
     }
 
     if (tag) {
-      conditions.push('EXISTS (SELECT 1 FROM message_tags mt JOIN tags t ON mt.tag_id = t.id WHERE mt.message_id = m.id AND (t.name = ? OR t.name LIKE ?))');
-      params.push(tag, `${tag}/%`);
+      conditions.push('EXISTS (SELECT 1 FROM message_tags mt JOIN tags t ON mt.tag_id = t.id WHERE mt.message_id = m.id AND (t.name = ? OR t.name LIKE ? ESCAPE \'\\\'))');
+      params.push(tag, `${escapeLikePattern(tag)}/%`);
     }
 
     if (excludeTag) {
-      conditions.push('NOT EXISTS (SELECT 1 FROM message_tags mt JOIN tags t ON mt.tag_id = t.id WHERE mt.message_id = m.id AND t.name = ?)');
-      params.push(excludeTag);
+      conditions.push('NOT EXISTS (SELECT 1 FROM message_tags mt JOIN tags t ON mt.tag_id = t.id WHERE mt.message_id = m.id AND (t.name = ? OR t.name LIKE ? ESCAPE \'\\\'))');
+      params.push(excludeTag, `${escapeLikePattern(excludeTag)}/%`);
+
     }
 
     if (!includeArchived) {
@@ -614,8 +622,8 @@ export const DB = {
     await db.prepare(`
       UPDATE tags 
       SET name = ? || SUBSTR(name, LENGTH(?) + 1) 
-      WHERE name LIKE ? || '/%'
-    `).bind(newName, oldName, oldName).run();
+      WHERE name LIKE ? || '/%' ESCAPE '\\'
+    `).bind(newName, oldName, escapeLikePattern(oldName)).run();
 
     // Update Messages (Exact match)
     await db.prepare('UPDATE messages SET tag = ? WHERE tag = ?').bind(newName, oldName).run();
@@ -625,8 +633,8 @@ export const DB = {
     await db.prepare(`
       UPDATE messages 
       SET tag = ? || SUBSTR(tag, LENGTH(?) + 1) 
-      WHERE tag LIKE ? || '/%'
-    `).bind(newName, oldName, oldName).run();
+      WHERE tag LIKE ? || '/%' ESCAPE '\\'
+    `).bind(newName, oldName, escapeLikePattern(oldName)).run();
 
     // Invalidate cache
     tagsCache = null;
