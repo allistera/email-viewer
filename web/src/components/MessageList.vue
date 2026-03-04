@@ -11,6 +11,7 @@
           v-model="searchInput"
           :placeholder="searchPlaceholder"
           class="search-input"
+          :aria-label="searchPlaceholder"
           type="search"
           inputmode="search"
           autocomplete="off"
