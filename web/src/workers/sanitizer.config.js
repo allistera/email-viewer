@@ -2,7 +2,7 @@ import sanitizeHtml from 'sanitize-html';
 
 export const CONFIG = {
   allowedTags: sanitizeHtml.defaults.allowedTags.concat([
-    'img', 'style', 'font', 'center', 'u', 's', 'ins', 'del', 'map', 'area'
+    'img', 'font', 'center', 'u', 's', 'ins', 'del', 'map', 'area'
   ]),
   allowedAttributes: {
     '*': ['style', 'class', 'id', 'name', 'width', 'height', 'title', 'lang', 'dir', 'align', 'valign', 'bgcolor', 'color', 'face', 'size'],
