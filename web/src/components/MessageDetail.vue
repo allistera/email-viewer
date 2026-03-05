@@ -197,7 +197,7 @@
             <div class="tag-list">
               <div v-for="tag in currentTags" :key="tag" class="tag-chip">
                 <TagBadge :tag="tag" />
-                <button class="remove-tag-btn" @click="handleRemoveTag(tag)" title="Remove Tag">&times;</button>
+                <button class="remove-tag-btn" @click="handleRemoveTag(tag)" title="Remove Tag" aria-label="Remove Tag">&times;</button>
               </div>
             </div>
 
@@ -209,10 +209,10 @@
                     {{ tag.name }}
                   </option>
                 </select>
-                <button @click="cancelAddingTag" class="cancel-add-btn" title="Cancel">&times;</button>
+                <button @click="cancelAddingTag" class="cancel-add-btn" title="Cancel" aria-label="Cancel adding tag">&times;</button>
               </div>
             </template>
-            <button v-else @click="startAddingTag" class="add-tag-btn" title="Add Tag">+</button>
+            <button v-else @click="startAddingTag" class="add-tag-btn" title="Add Tag" aria-label="Add Tag">+</button>
           </div>
         </div>
 
