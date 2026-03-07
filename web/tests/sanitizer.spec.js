@@ -20,4 +20,11 @@ test.describe('Sanitizer Security', () => {
     const output = sanitizeHtml(input, CONFIG);
     expect(output).not.toContain('<script');
   });
+
+  test('🛡️ Sentinel: should block <style> tags to prevent XSS and CSS injection', async () => {
+    const input = '<style>body { background: red; }</style><p>Text</p>';
+    const output = sanitizeHtml(input, CONFIG);
+    expect(output).not.toContain('<style');
+    expect(output).toContain('<p>Text</p>');
+  });
 });
