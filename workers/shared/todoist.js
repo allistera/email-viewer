@@ -3,6 +3,9 @@ const TODOIST_PROJECTS_API_URL = 'https://api.todoist.com/rest/v2/projects';
 const TODOIST_CONTENT_MAX = 500;
 const TODOIST_DESCRIPTION_MAX = 2000;
 
+const projectsCache = new Map();
+const PROJECTS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 const truncateText = (value, maxLength) => {
   if (!value) return '';
   const text = String(value);
@@ -79,6 +82,15 @@ const readTodoistError = async (response) => {
 };
 
 export const fetchTodoistProjects = async (todoistToken) => {
+  if (!todoistToken) return [];
+
+  const now = Date.now();
+  const cached = projectsCache.get(todoistToken);
+
+  if (cached && now - cached.timestamp < PROJECTS_CACHE_TTL) {
+    return cached.data;
+  }
+
   const response = await fetch(TODOIST_PROJECTS_API_URL, {
     method: 'GET',
     headers: {
@@ -95,7 +107,20 @@ export const fetchTodoistProjects = async (todoistToken) => {
   }
 
   const projects = await response.json();
-  return Array.isArray(projects) ? projects : [];
+  const data = Array.isArray(projects) ? projects : [];
+
+  projectsCache.set(todoistToken, {
+    data,
+    timestamp: now
+  });
+
+  // Optional: keep cache from growing infinitely in long-lived isolates
+  if (projectsCache.size > 100) {
+    const oldestKey = projectsCache.keys().next().value;
+    projectsCache.delete(oldestKey);
+  }
+
+  return data;
 };
 
 export const createTodoistTask = async (todoistToken, payload) => {
