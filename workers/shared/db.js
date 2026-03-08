@@ -7,6 +7,11 @@ let tagsCache = null;
 let tagsCacheTime = 0;
 const TAGS_CACHE_TTL = 60 * 1000; // 60 seconds
 
+// Cache for settings to reduce DB reads
+let settingsCache = {};
+let settingsCacheTime = 0;
+const SETTINGS_CACHE_TTL = 60 * 1000; // 60 seconds
+
 // Escapes special characters for SQL LIKE pattern
 // Uses backslash as the escape character
 const escapeLikePattern = (str) => {
@@ -848,8 +853,22 @@ export const DB = {
    * @returns {Promise<string|null>}
    */
   async getSetting(db, key) {
+    const now = Date.now();
+    if (settingsCache[key] !== undefined && (now - settingsCacheTime < SETTINGS_CACHE_TTL)) {
+      return settingsCache[key];
+    }
+
     const row = await db.prepare('SELECT value FROM settings WHERE key = ?').bind(key).first();
-    return row ? row.value : null;
+    const value = row ? row.value : null;
+
+    // Invalidate if TTL expired, otherwise just add to cache
+    if (now - settingsCacheTime >= SETTINGS_CACHE_TTL) {
+      settingsCache = {};
+    }
+    settingsCache[key] = value;
+    settingsCacheTime = now;
+
+    return value;
   },
 
   /**
@@ -863,6 +882,10 @@ export const DB = {
       INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)
       ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
     `).bind(key, value, Date.now()).run();
+
+    // Update cache
+    settingsCache[key] = value;
+    settingsCacheTime = Date.now();
   },
 
   // ==================
