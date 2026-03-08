@@ -2,6 +2,7 @@ import sanitizeHtml from 'sanitize-html';
 
 export const CONFIG = {
   allowedTags: sanitizeHtml.defaults.allowedTags.concat([
+    // 🛡️ Sentinel: Removed 'style' tag to prevent CSS injection and XSS vulnerabilities
     'img', 'font', 'center', 'u', 's', 'ins', 'del', 'map', 'area'
   ]),
   allowedAttributes: {
