@@ -183,11 +183,6 @@ export const ApiRouter = {
         const parts = path.split('/');
         const id = parts[1];
 
-        // Validate message ID format
-        if (!isValidUUID(id)) {
-          return jsonResponse({ error: 'Invalid message ID format' }, { status: 400 });
-        }
-
         // Detail
         if (parts.length === 2 && request.method === 'GET') {
           const msg = await DB.getMessage(env.DB, id);
@@ -274,11 +269,6 @@ export const ApiRouter = {
         // Download Attachment
         if (parts.length === 4 && parts[2] === 'attachments' && request.method === 'GET') {
           const attId = parts[3];
-          
-          // Validate attachment ID format
-          if (!isValidUUID(attId)) {
-            return jsonResponse({ error: 'Invalid attachment ID format' }, { status: 400 });
-          }
           
           const msg = await DB.getMessage(env.DB, id);
           if (!msg) return new Response('Message Not Found', { status: 404 });

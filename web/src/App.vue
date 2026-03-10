@@ -255,29 +255,10 @@ export default {
       return `mobile-view-${this.mobileView}`;
     },
     pageTitle() {
-      const base = 'Inboxer';
-      if (this.showAuthModal) return base;
-      if (this.currentView === 'settings') return `${base} - Settings`;
-      const counts = this.messageCounts;
-      let label;
-      let count;
-      if (this.selectedTag === null) {
-        label = 'Inbox';
-        count = counts?.inbox ?? null;
-      } else if (this.selectedTag === 'archive') {
-        label = 'Archive';
-        count = counts?.archive ?? null;
-      } else if (this.selectedTag === 'spam') {
-        label = 'Spam';
-        count = counts?.spam ?? null;
-      } else if (this.selectedTag === 'sent') {
-        label = 'Sent';
-        count = counts?.sent ?? null;
-      } else {
-        label = this.selectedTag;
-        count = counts?.tags?.[this.selectedTag] ?? null;
-      }
-      return (count != null && count !== 0) ? `${label} (${count})` : label;
+      // Simplified, static app title.
+      // Previously this showed folder names and counts
+      // like "Inbox (1)" – now always "Email".
+      return 'Email';
     }
   },
   watch: {
