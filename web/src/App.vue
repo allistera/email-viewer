@@ -821,7 +821,9 @@ export default {
   width: 4px;
   min-width: 4px;
   cursor: col-resize;
-  background: var(--color-border);
+  /* Default to transparent so there's no visible gap
+     between panels; highlight only on hover/active. */
+  background: transparent;
   flex-shrink: 0;
   transition: background 0.15s;
 }
