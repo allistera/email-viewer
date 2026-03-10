@@ -828,6 +828,11 @@ export default {
   transition: background 0.15s;
 }
 
+/* First resize handle (sidebar–list): match sidebar so no white gap */
+.resize-handle-sidebar {
+  background: var(--color-sidebar-bg);
+}
+
 .resize-handle:hover {
   background: var(--color-primary);
 }

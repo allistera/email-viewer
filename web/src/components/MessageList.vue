@@ -6,21 +6,6 @@
           <path d="M3 6h18M3 12h18M3 18h18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
         </svg>
       </button>
-      <div class="search-container">
-        <input
-          v-model="searchInput"
-          :placeholder="searchPlaceholder"
-          :aria-label="searchPlaceholder"
-          class="search-input"
-          type="search"
-          inputmode="search"
-          autocomplete="off"
-          autocorrect="off"
-          autocapitalize="off"
-          spellcheck="false"
-          @input="handleInput"
-        />
-      </div>
     </div>
 
     <div v-if="loading" class="loading">Loading messages...</div>
@@ -124,22 +109,8 @@ export default {
   emits: ['select', 'search', 'load-more', 'open-sidebar'],
   data() {
     return {
-      searchInput: '',
-      searchTimeout: null,
       itemHeight: 100 // Default fixed height
     };
-  },
-  computed: {
-    searchPlaceholder() {
-      if (this.selectedTag === 'archive') {
-        return 'Search in Archive...';
-      } else if (this.selectedTag === 'spam') {
-        return 'Search in Spam...';
-      } else if (this.selectedTag) {
-        return `Search in ${this.selectedTag}...`;
-      }
-      return 'Search all messages...';
-    }
   },
   watch: {
     selectedId(newId) {
@@ -151,19 +122,9 @@ export default {
       if (!isLoading && this.selectedId) {
         this.scrollToSelected();
       }
-    },
-    selectedTag() {
-      // Clear search when switching tags for a fresh search context
-      this.searchInput = '';
     }
   },
   methods: {
-    handleInput() {
-      if (this.searchTimeout) clearTimeout(this.searchTimeout);
-      this.searchTimeout = setTimeout(() => {
-        this.$emit('search', this.searchInput);
-      }, 300);
-    },
     formatTime(timestamp) {
       return formatRelativeDate(timestamp);
     },
@@ -196,31 +157,13 @@ export default {
   border-right: 1px solid var(--color-border);
 }
 
+/* Shown only on mobile for the menu button; hidden on desktop (global search used) */
 .list-header {
+  display: none;
   padding: 16px;
   border-bottom: 1px solid var(--color-border);
-  display: flex;
-  justify-content: space-between;
   align-items: center;
   gap: 12px;
-}
-
-.search-container {
-  flex: 1;
-  display: flex;
-}
-
-.search-input {
-  width: 100%;
-  padding: 8px 12px;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  font-size: 14px;
-}
-
-.search-input:focus {
-  outline: none;
-  border-color: var(--color-primary);
 }
 
 .list-header h2 {
@@ -391,6 +334,12 @@ export default {
 }
 
 @media (max-width: 768px) {
+  .list-header {
+    display: flex;
+    padding: 8px 12px;
+    gap: 8px;
+  }
+
   .menu-btn {
     display: flex;
     align-items: center;
@@ -398,22 +347,6 @@ export default {
     flex-shrink: 0;
     min-width: 44px;
     min-height: 44px;
-  }
-
-  .list-header {
-    padding: 8px 12px;
-    gap: 8px;
-  }
-
-  .search-input {
-    padding: 10px 12px;
-    font-size: 16px; /* Prevents iOS auto-zoom on focus */
-    border-radius: 8px;
-  }
-
-  /* Remove webkit search cancel button styling conflicts */
-  .search-input::-webkit-search-cancel-button {
-    -webkit-appearance: none;
   }
 
   .message-item {
