@@ -41,7 +41,7 @@ test.describe('Tags CRUD', () => {
         });
 
         await page.goto('/');
-        await expect(page.locator('.tag-sidebar')).toBeVisible({ timeout: 10000 });
+        await expect(page.locator('.discord-sidebar')).toBeVisible({ timeout: 10000 });
         await expect(page.locator('.tag-label', { hasText: 'ExistingTag' })).toBeVisible();
     });
 
@@ -164,7 +164,7 @@ test.describe('Spam tag fallback', () => {
         });
 
         await page.goto('/');
-        await expect(page.locator('.tag-sidebar')).toBeVisible({ timeout: 10000 });
+        await expect(page.locator('.discord-sidebar')).toBeVisible({ timeout: 10000 });
     });
 
     test('should always display Spam tag even when missing from API', async ({ page }) => {

@@ -69,7 +69,7 @@ test.describe('Done Message', () => {
         });
 
         await page.goto('/');
-        await expect(page.locator('.tag-sidebar')).toBeVisible({ timeout: 10000 });
+        await expect(page.locator('.discord-sidebar')).toBeVisible({ timeout: 10000 });
     });
 
     test('should display Done button in toolbar', async ({ page }) => {

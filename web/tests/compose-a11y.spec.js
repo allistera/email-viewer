@@ -21,7 +21,7 @@ test.describe('Compose Modal - Accessibility', () => {
         });
 
         await page.goto('/');
-        await expect(page.locator('.tag-sidebar')).toBeVisible({ timeout: 10000 });
+        await expect(page.locator('.discord-sidebar')).toBeVisible({ timeout: 10000 });
         await page.getByRole('button', { name: 'Compose' }).click();
         await expect(page.locator('.compose-modal')).toBeVisible();
     });

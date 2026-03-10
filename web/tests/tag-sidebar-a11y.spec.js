@@ -35,7 +35,7 @@ test.describe('TagSidebar - Accessibility', () => {
         });
 
         await page.goto('/');
-        await expect(page.locator('.tag-sidebar')).toBeVisible({ timeout: 10000 });
+        await expect(page.locator('.discord-sidebar')).toBeVisible({ timeout: 10000 });
         await expect(page.locator('.tag-item').filter({ hasText: 'Work' }).first()).toBeVisible();
     });
 

@@ -37,7 +37,7 @@ test.describe('Compose Modal - UX Improvements', () => {
         });
 
         await page.goto('/');
-        await expect(page.locator('.tag-sidebar')).toBeVisible({ timeout: 10000 });
+        await expect(page.locator('.discord-sidebar')).toBeVisible({ timeout: 10000 });
 
         // Open compose modal
         await page.getByRole('button', { name: 'Compose' }).click();

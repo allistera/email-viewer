@@ -78,7 +78,7 @@ test.describe('MessageList Accessibility', () => {
         });
 
         await page.goto('/');
-        await expect(page.locator('.tag-sidebar')).toBeVisible({ timeout: 10000 });
+        await expect(page.locator('.discord-sidebar')).toBeVisible({ timeout: 10000 });
     });
 
     test('message items should have button role and be focusable', async ({ page }) => {

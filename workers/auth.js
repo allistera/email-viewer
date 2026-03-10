@@ -308,7 +308,7 @@ async function handleVerify(request) {
  * Main worker handler
  */
 export default {
-  async fetch(request, env, ctx) {
+  async fetch(request, env) {
     const url = new URL(request.url);
 
     // Handle CORS preflight
