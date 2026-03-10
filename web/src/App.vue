@@ -55,13 +55,6 @@
           @message-dropped="handleMessageDropped"
         />
 
-        <div
-          v-if="!isMobile && currentView !== 'settings'"
-          class="resize-handle resize-handle-sidebar"
-          aria-label="Resize sidebar"
-          @mousedown.prevent="startResize('sidebar', $event)"
-        />
-
         <template v-if="currentView === 'settings'">
           <SettingsView class="settings-panel" @close="closeSettings" />
         </template>
@@ -243,11 +236,11 @@ export default {
       }
       if (this.rightRailView === 'calendar') {
         return {
-          gridTemplateColumns: `${this.sidebarWidth}px 4px 1fr ${this.rightSidebarWidth}px`
+          gridTemplateColumns: `${this.sidebarWidth}px 1fr ${this.rightSidebarWidth}px`
         };
       }
       return {
-        gridTemplateColumns: `${this.sidebarWidth}px 4px ${this.listWidth}px 4px 1fr ${this.rightSidebarWidth}px`
+        gridTemplateColumns: `${this.sidebarWidth}px ${this.listWidth}px 4px 1fr ${this.rightSidebarWidth}px`
       };
     },
     mobileViewClass() {
@@ -826,11 +819,6 @@ export default {
   background: transparent;
   flex-shrink: 0;
   transition: background 0.15s;
-}
-
-/* First resize handle (sidebar–list): match sidebar so no white gap */
-.resize-handle-sidebar {
-  background: var(--color-sidebar-bg);
 }
 
 .resize-handle:hover {
