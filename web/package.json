@@ -8,7 +8,11 @@
     "build": "vite build",
     "preview": "vite preview",
     "mock": "node mock-server.js",
+    "mock:enhanced": "node mock-server-enhanced.js",
+    "mock:minimal": "node mock-server-enhanced.js minimal",
+    "mock:large": "node mock-server-enhanced.js large",
     "dev:mock": "npm run mock & npm run dev",
+    "dev:mock:enhanced": "npm run mock:enhanced & npm run dev",
     "test": "playwright test",
     "test:headed": "playwright test --headed",
     "test:ui": "playwright test --ui",
@@ -21,9 +25,14 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
+    "@tailwindcss/postcss": "^4.2.1",
     "@vitejs/plugin-vue": "^5.0.0",
+    "autoprefixer": "^10.4.27",
     "cors": "^2.8.0",
     "express": "^4.18.0",
+    "flyonui": "^2.4.1",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.2.1",
     "vite": "^5.0.0"
   }
 }

@@ -26,6 +26,8 @@
       class="tag-item inbox-item"
       :class="{ active: selectedTag === null && !settingsActive }"
       @click="$emit('select', null)"
+      @dragover="onDragOver($event)"
+      @drop="onDropInbox($event)"
       role="button"
       tabindex="0"
       @keydown.enter.prevent="$emit('select', null)"
@@ -218,7 +220,8 @@ export default {
       showAdd: false,
       draggedTag: null,
       editingTagId: null,
-      editName: ''
+      editName: '',
+      dragOverTarget: null
     };
   },
   computed: {
@@ -362,8 +365,13 @@ export default {
         return false;
     },
 
+    onDragLeave(event) {
+        event.preventDefault();
+    },
+
     async onDrop(event, targetTag) {
         event.preventDefault();
+        this.dragOverTarget = null;
 
         // 1. Handle Message Drop (Tagging)
         const messageId = event.dataTransfer.getData('application/x-message-id');
@@ -382,7 +390,7 @@ export default {
         // 2. Handle Tag Drop (Reordering/Nesting)
         const dragged = this.draggedTag;
         this.draggedTag = null;
-        
+
         if (!dragged || dragged.id === targetTag.id) return;
 
         if (targetTag.name.startsWith(dragged.name + '/')) {
@@ -406,6 +414,7 @@ export default {
     
     async onDropSystem(event, type) {
         event.preventDefault();
+        this.dragOverTarget = null;
         const messageId = event.dataTransfer.getData('application/x-message-id');
         if (!messageId) return;
 
@@ -424,6 +433,22 @@ export default {
                     alert('Failed to mark as Spam: ' + e.message);
                 }
             }
+        }
+    },
+
+    async onDropInbox(event) {
+        event.preventDefault();
+        this.dragOverTarget = null;
+        const messageId = event.dataTransfer.getData('application/x-message-id');
+        if (!messageId) return;
+
+        try {
+            // Remove kanban lane tags when moving back to inbox
+            await updateMessageTag(messageId, null);
+            // Refresh the inbox view to show the updated message
+            this.$emit('select', null);
+        } catch (e) {
+            alert('Failed to move to inbox: ' + e.message);
         }
     }
   }
@@ -557,10 +582,19 @@ export default {
   font-size: 14px;
   color: var(--color-text);
   border-left: 3px solid transparent;
+  transition: background 0.15s, border-color 0.15s;
 }
 
 .tag-item:hover {
   background: var(--color-bg-hover);
+}
+
+.tag-item[draggable="true"] {
+  cursor: grab;
+}
+
+.tag-item[draggable="true"]:active {
+  cursor: grabbing;
 }
 
 .tag-item.active {

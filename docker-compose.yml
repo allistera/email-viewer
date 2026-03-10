@@ -1,0 +1,142 @@
+version: '3.8'
+
+services:
+  # Frontend development server
+  frontend:
+    image: node:20-alpine
+    container_name: email-viewer-frontend
+    working_dir: /app
+    volumes:
+      - ./web:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    environment:
+      - VITE_API_URL=http://localhost:8787
+      - VITE_AUTH_URL=http://localhost:8788
+    networks:
+      - email-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5173"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Cloudflare Workers local development (API)
+  workers-api:
+    image: node:20-alpine
+    container_name: email-viewer-workers-api
+    working_dir: /app
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/web/node_modules
+    ports:
+      - "8787:8787"
+    command: sh -c "npm install && npm run dev:api"
+    environment:
+      - NODE_ENV=development
+      - CLOUDFLARE_ACCOUNT_ID=${CLOUDFLARE_ACCOUNT_ID}
+      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
+    networks:
+      - email-network
+    depends_on:
+      - redis
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8787/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Auth Worker (JWT authentication)
+  workers-auth:
+    image: node:20-alpine
+    container_name: email-viewer-auth
+    working_dir: /app
+    volumes:
+      - .:/app
+      - /app/node_modules
+    ports:
+      - "8788:8788"
+    command: sh -c "npm install && npx wrangler dev workers/auth.js --port 8788 --local"
+    environment:
+      - NODE_ENV=development
+      - JWT_SECRET=${JWT_SECRET:-your-secret-key-change-this}
+      - PASSWORD_HASH=${PASSWORD_HASH}
+    networks:
+      - email-network
+    depends_on:
+      - redis
+
+  # Redis for rate limiting and session storage
+  redis:
+    image: redis:7-alpine
+    container_name: email-viewer-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - email-network
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # PostgreSQL for local development (optional - for email storage)
+  postgres:
+    image: postgres:15-alpine
+    container_name: email-viewer-db
+    environment:
+      - POSTGRES_DB=emaildb
+      - POSTGRES_USER=emailuser
+      - POSTGRES_PASSWORD=emailpass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+    networks:
+      - email-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U emailuser -d emaildb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Nginx reverse proxy (optional - for production-like setup)
+  nginx:
+    image: nginx:alpine
+    container_name: email-viewer-proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    networks:
+      - email-network
+    depends_on:
+      - frontend
+      - workers-api
+      - workers-auth
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  email-network:
+    driver: bridge
+
+volumes:
+  redis-data:
+    driver: local
+  postgres-data:
+    driver: local

@@ -1,5 +1,5 @@
 <template>
-  <div id="app">
+  <div id="app" class="min-h-screen">
     <AuthModal
       :show="showAuthModal"
       :error-message="authError"
@@ -28,13 +28,21 @@
     />
 
     <div v-if="!showAuthModal" class="app-layout">
-      <div
-        class="app-container"
-        :class="mobileViewClass"
-        :style="gridStyle"
-      >
+      <!-- Top Navigation Bar -->
+      <TopBar
+        :page-title="pageTitle"
+        :search-query="searchQuery"
+        :is-mobile="isMobile"
+        @toggle-sidebar="toggleMobileSidebar"
+        @search="handleSearch"
+        @compose="openCompose"
+        @refresh="handleRefresh"
+        @settings="openSettings"
+      />
 
-        <TagSidebar
+      <div class="app-container" :class="mobileViewClass">
+        <!-- Left Sidebar -->
+        <DiscordSidebar
           ref="sidebar"
           :selected-tag="selectedTag"
           :message-counts="messageCounts"
@@ -44,6 +52,7 @@
           @settings="openSettings"
           @close="closeMobileSidebar"
           @compose="openCompose"
+          @message-dropped="handleMessageDropped"
         />
 
         <div
@@ -154,7 +163,8 @@
 
 <script>
 import AuthModal from './components/AuthModal.vue';
-import TagSidebar from './components/TagSidebar.vue';
+import TopBar from './components/TopBar.vue';
+import DiscordSidebar from './components/DiscordSidebar.vue';
 import MessageList from './components/MessageList.vue';
 import MessageDetail from './components/MessageDetail.vue';
 import SettingsView from './components/SettingsView.vue';
@@ -174,7 +184,8 @@ export default {
   name: 'App',
   components: {
     AuthModal,
-    TagSidebar,
+    TopBar,
+    DiscordSidebar,
     MessageList,
     MessageDetail,
     SettingsView,
@@ -598,8 +609,15 @@ export default {
     },
 
     async handleMessageDropped({ messageId, newTag }) {
+      console.log('handleMessageDropped called:', { messageId, newTag });
+
       // Reload messages to get updated tags from database
       await this.loadMessages();
+
+      console.log('Messages after reload:', this.messages.length);
+      const droppedMessage = this.messages.find(m => m.id === messageId);
+      console.log('Dropped message after reload:', droppedMessage);
+
       await this.loadCounts();
 
       // If the dropped message is currently selected, reload it to show updated tags
@@ -709,6 +727,12 @@ export default {
       }
     },
 
+    toggleMobileSidebar() {
+      if (this.isMobile) {
+        this.mobileView = this.mobileView === 'sidebar' ? 'list' : 'sidebar';
+      }
+    },
+
     startResize(which, event) {
       this.resizing = which;
       this.resizeStartX = event.clientX;
@@ -783,6 +807,7 @@ export default {
 #app {
   height: 100vh;
   overflow: hidden;
+  background: var(--color-bg);
 }
 
 .app-layout {
@@ -793,8 +818,10 @@ export default {
 
 .app-container {
   display: grid;
+  grid-template-columns: 240px 1fr;
   flex: 1;
   min-height: 0;
+  overflow: hidden;
 }
 
 /* Ensure grid items are constrained to enable inner scrolling */

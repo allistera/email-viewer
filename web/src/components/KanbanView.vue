@@ -25,6 +25,8 @@
             class="kanban-card"
             role="button"
             tabindex="0"
+            draggable="true"
+            @dragstart="onCardDragStart($event, message)"
             @click="$emit('select-message', message.id)"
             @keydown.enter.prevent="$emit('select-message', message.id)"
             @keydown.space.prevent="$emit('select-message', message.id)"
@@ -131,6 +133,11 @@ export default {
     formatTime(timestamp) {
       return formatRelativeDate(timestamp);
     },
+    onCardDragStart(event, message) {
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('application/x-message-id', message.id);
+      event.dataTransfer.setData('text/plain', message.id);
+    },
     onDragOver(event, laneId) {
       event.preventDefault();
       event.dataTransfer.dropEffect = 'move';
@@ -180,28 +187,36 @@ export default {
         'done': 'done'
       };
       const newTag = tagMap[laneId];
-      
+
       if (!newTag) {
         console.error('Unknown lane:', laneId);
         return;
       }
-      
+
       try {
         // Remove existing lane tags so each message appears in one swimlane.
         const message = this.messages.find((m) => m.id === messageId);
+        console.log('KanbanView: Message before tag update:', message);
+
         const laneTagBindings = this.getLaneTagBindings(message);
+        console.log('KanbanView: Lane tag bindings:', laneTagBindings);
+
         const tagsToRemove = [...new Set(
           laneTagBindings
             .filter(({ canonical }) => canonical !== newTag)
             .map(({ raw }) => raw)
         )];
+
         if (tagsToRemove.length > 0) {
+          console.log('KanbanView: Removing tags:', tagsToRemove);
           await Promise.all(tagsToRemove.map((tag) => removeMessageTag(messageId, tag)));
         }
 
         // Add lane tag without removing non-kanban tags so the email stays in Inbox context.
-        await addMessageTag(messageId, newTag);
-        
+        console.log('KanbanView: Adding tag:', newTag);
+        const result = await addMessageTag(messageId, newTag);
+        console.log('KanbanView: Tag added, result:', result);
+
         // Emit event to parent to refresh messages
         this.$emit('message-dropped', { messageId, newTag });
       } catch (error) {
@@ -311,8 +326,12 @@ export default {
   border: 1px solid var(--color-border);
   border-radius: 8px;
   margin-bottom: 8px;
-  cursor: pointer;
+  cursor: grab;
   transition: box-shadow 0.15s, border-color 0.15s;
+}
+
+.kanban-card:active {
+  cursor: grabbing;
 }
 
 .kanban-card:hover {

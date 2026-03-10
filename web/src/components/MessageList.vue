@@ -249,7 +249,7 @@ export default {
 .message-item {
   padding: 16px;
   border-bottom: 1px solid var(--color-border);
-  cursor: pointer;
+  cursor: grab;
   transition: background 0.15s;
   height: 100px; /* Enforce fixed height */
   box-sizing: border-box;
@@ -257,6 +257,10 @@ export default {
   display: flex;
   flex-direction: column;
   justify-content: center;
+}
+
+.message-item:active {
+  cursor: grabbing;
 }
 
 .message-item:hover {

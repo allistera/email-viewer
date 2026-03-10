@@ -46,6 +46,8 @@
   },
   "dependencies": {
     "@sentry/cloudflare": "^10.35.0",
+    "bcryptjs": "^2.4.3",
+    "jose": "^5.2.0",
     "postal-mime": "^2.7.3"
   }
 }
