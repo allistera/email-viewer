@@ -10,6 +10,7 @@
         <input
           v-model="searchInput"
           :placeholder="searchPlaceholder"
+          :aria-label="searchPlaceholder"
           class="search-input"
           type="search"
           inputmode="search"
