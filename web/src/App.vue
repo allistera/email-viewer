@@ -406,6 +406,8 @@ export default {
            params.tag = 'Spam';
         } else if (this.selectedTag === 'sent') {
            params.tag = 'Sent';
+        } else if (this.selectedTag === 'all') {
+           // No filters, load everything
         } else if (this.selectedTag) {
           params.tag = this.selectedTag;
           // Exclude archived by default unless viewing archive
