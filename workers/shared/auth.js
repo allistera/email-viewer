@@ -81,16 +81,15 @@ async function constantTimeCompare(a, b) {
   const aHashArray = new Uint8Array(aHash);
   const bHashArray = new Uint8Array(bHash);
   
-  // Length check must still happen to prevent length oracle
-  if (aBytes.length !== bBytes.length) {
-    return false;
-  }
-  
   // Compare hashes (both are same length, 32 bytes)
   let result = 0;
   for (let i = 0; i < aHashArray.length; i++) {
     result |= aHashArray[i] ^ bHashArray[i];
   }
   
+  // Mix in length comparison into result to prevent length oracle in constant time
+  // If lengths differ, this will make result non-zero
+  result |= aBytes.length ^ bBytes.length;
+
   return result === 0;
 }
