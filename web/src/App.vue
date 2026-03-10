@@ -40,7 +40,7 @@
         @settings="openSettings"
       />
 
-      <div class="app-container" :class="mobileViewClass">
+      <div class="app-container" :class="mobileViewClass" :style="gridStyle">
         <!-- Left Sidebar -->
         <DiscordSidebar
           ref="sidebar"
