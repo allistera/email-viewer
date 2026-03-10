@@ -137,6 +137,7 @@ export const ApiRouter = {
           inbox: counts.inbox,
           archive: counts.archive,
           spam: counts.spam,
+          unreadSpam: counts.unreadSpam,
           sent: counts.sent,
           tags: tagCountMap
         });
