@@ -198,7 +198,9 @@ export default {
         const message = this.messages.find((m) => m.id === messageId);
         console.log('KanbanView: Message before tag update:', message);
 
-        const laneTagBindings = this.getLaneTagBindings(message);
+        // If message is dragged from a different view (e.g. Inbox), it might not
+        // be in the KanbanView's messages array yet, or might not have lane tags.
+        const laneTagBindings = message ? this.getLaneTagBindings(message) : [];
         console.log('KanbanView: Lane tag bindings:', laneTagBindings);
 
         const tagsToRemove = [...new Set(
