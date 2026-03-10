@@ -288,6 +288,16 @@ export const DB = {
       WHERE (m.is_archived = 0 OR m.is_archived IS NULL)
         AND (m.snoozed_until IS NULL OR m.snoozed_until <= strftime('%s','now') * 1000)
       GROUP BY t.name
+
+      UNION ALL
+
+      SELECT
+        'unread_archive' as type,
+        NULL as tag_name,
+        COUNT(id) as count
+      FROM messages
+      WHERE is_archived = 1 
+        AND (is_read = 0 OR is_read IS NULL)
     `;
 
     const { results } = await db.prepare(query).all();
@@ -295,6 +305,7 @@ export const DB = {
     let archive = 0;
     let totalUnarchived = 0;
     let unreadSpam = 0;
+    let unreadArchive = 0;
     const tagCounts = {};
 
     if (results) {
@@ -305,6 +316,8 @@ export const DB = {
           totalUnarchived = row.count;
         } else if (row.type === 'unread_spam') {
           unreadSpam = row.count;
+        } else if (row.type === 'unread_archive') {
+          unreadArchive = row.count;
         } else if (row.type === 'tag') {
           tagCounts[row.tag_name] = row.count;
         }
@@ -321,6 +334,7 @@ export const DB = {
       archive,
       spam,
       unreadSpam,
+      unreadArchive,
       sent,
       tagCounts
     };
