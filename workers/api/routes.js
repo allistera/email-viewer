@@ -689,7 +689,7 @@ export const ApiRouter = {
         let emailSubject;
         let emailBody;
         let replyToId;
-        let resendAttachments = [];
+        const resendAttachments = [];
 
         if (contentType.includes('multipart/form-data')) {
           let formData;
