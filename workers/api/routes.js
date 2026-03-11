@@ -66,6 +66,17 @@ const readJsonBody = async (request) => {
   }
 };
 
+/** Convert ArrayBuffer to base64 in chunks to avoid stack overflow. */
+const arrayBufferToBase64 = (buffer) => {
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 8192;
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+};
+
 const jsonResponse = (payload, init = {}) =>
   new Response(JSON.stringify(payload), {
     headers: { 'Content-Type': 'application/json', ...(init.headers || {}) },
@@ -673,19 +684,57 @@ export const ApiRouter = {
 
       // POST /api/send
       if (path === 'send' && request.method === 'POST') {
-        let body;
-        try {
-          body = await readJsonBody(request);
-        } catch (error) {
-          return jsonResponse({ error: error.message || 'Invalid JSON body' }, { status: 400 });
+        const contentType = (request.headers.get('Content-Type') || '').toLowerCase();
+        let rawTo;
+        let emailSubject;
+        let emailBody;
+        let replyToId;
+        let resendAttachments = [];
+
+        if (contentType.includes('multipart/form-data')) {
+          let formData;
+          try {
+            formData = await request.formData();
+          } catch (error) {
+            return jsonResponse({ error: error.message || 'Invalid multipart body' }, { status: 400 });
+          }
+          const toStr = formData.get('to');
+          try {
+            rawTo = toStr != null ? JSON.parse(toStr) : [];
+          } catch (e) {
+            rawTo = typeof toStr === 'string' ? toStr.split(',') : [];
+          }
+          emailSubject = formData.get('subject') ?? '';
+          emailBody = formData.get('body') ?? '';
+          const replyToIdVal = formData.get('replyToId');
+          replyToId = replyToIdVal !== null && replyToIdVal !== undefined && String(replyToIdVal).trim() !== '' ? String(replyToIdVal).trim() : null;
+          const files = formData.getAll('attachments').filter(Boolean);
+          for (const file of files) {
+            if (file && typeof file.arrayBuffer === 'function') {
+              const buffer = await file.arrayBuffer();
+              const content = arrayBufferToBase64(buffer);
+              const filename = file.name || 'attachment';
+              const contentTypeAtt = file.type || 'application/octet-stream';
+              resendAttachments.push({ filename, content, content_type: contentTypeAtt });
+            }
+          }
+        } else {
+          let body;
+          try {
+            body = await readJsonBody(request);
+          } catch (error) {
+            return jsonResponse({ error: error.message || 'Invalid JSON body' }, { status: 400 });
+          }
+          rawTo = body.to;
+          emailSubject = body.subject;
+          emailBody = body.body;
+          replyToId = body.replyToId ?? null;
         }
 
-        const { to, subject, body: emailBody, replyToId } = body;
-
-        const rawRecipients = Array.isArray(to)
-          ? to
-          : typeof to === 'string'
-            ? to.split(',')
+        const rawRecipients = Array.isArray(rawTo)
+          ? rawTo
+          : typeof rawTo === 'string'
+            ? rawTo.split(',')
             : [];
 
         if (!rawRecipients || rawRecipients.length === 0) {
@@ -730,7 +779,7 @@ export const ApiRouter = {
 
         try {
           const fromEmail = env.SEND_FROM_EMAIL || 'hello@infinitywave.design';
-          const emailSubject = subject || '(No Subject)';
+          const subjectLine = emailSubject || '(No Subject)';
           const emailText = emailBody || '';
           const toHeader = recipients.join(', ');
 
@@ -758,7 +807,7 @@ export const ApiRouter = {
             const mcPayload = {
               personalizations: [{ to: recipients.map(email => ({ email })) }],
               from: { email: fromEmail },
-              subject: emailSubject,
+              subject: subjectLine,
               content: [{ type: 'text/plain', value: emailText }]
             };
 
@@ -786,7 +835,7 @@ export const ApiRouter = {
             const resendPayload = {
               from: fromEmail,
               to: recipients,
-              subject: emailSubject,
+              subject: subjectLine,
               text: emailText
             };
 
@@ -795,6 +844,11 @@ export const ApiRouter = {
                 'In-Reply-To': inReplyTo,
                 'References': references
               };
+            }
+            if (resendAttachments.length > 0) {
+              resendPayload.attachments = resendAttachments.map(({ filename, content, content_type }) =>
+                content_type ? { filename, content, content_type } : { filename, content }
+              );
             }
 
             const response = await fetch('https://api.resend.com/emails', {
@@ -835,10 +889,10 @@ export const ApiRouter = {
             received_at: now,
             from_addr: fromEmail,
             to_addr: toHeader,
-            subject: emailSubject,
+            subject: subjectLine,
             date_header: new Date(now).toISOString(),
             snippet: snippet,
-            has_attachments: false,
+            has_attachments: resendAttachments.length > 0,
             raw_r2_key: null,
             text_body: emailText,
             html_body: null,
@@ -846,7 +900,7 @@ export const ApiRouter = {
               'Message-ID': resultId,
               'From': fromEmail,
               'To': toHeader,
-              'Subject': emailSubject,
+              'Subject': subjectLine,
               'Date': new Date(now).toISOString(),
               'In-Reply-To': inReplyTo,
               'References': references

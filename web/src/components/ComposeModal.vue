@@ -96,6 +96,51 @@
           ></textarea>
         </div>
 
+        <div class="form-field attachments-field">
+          <label>Attachments</label>
+          <div class="attachments-row">
+            <input
+              ref="fileInput"
+              type="file"
+              class="file-input-hidden"
+              multiple
+              accept="*/*"
+              @change="handleFileSelect"
+              aria-label="Attach files"
+            />
+            <button
+              type="button"
+              class="btn-attach"
+              :disabled="sending"
+              @click="triggerFileInput"
+              title="Attach files"
+              aria-label="Attach files"
+            >
+              <span class="attach-icon" aria-hidden="true">📎</span>
+              <span class="attach-label">Attach</span>
+            </button>
+            <div v-if="attachments.length > 0" class="attachment-chips">
+              <div
+                v-for="(file, index) in attachments"
+                :key="`${file.name}-${file.size}-${index}`"
+                class="attachment-chip"
+              >
+                <span class="attachment-chip-name" :title="file.name">{{ file.name }}</span>
+                <span class="attachment-chip-size">{{ formatFileSize(file.size) }}</span>
+                <button
+                  type="button"
+                  class="attachment-chip-remove"
+                  :disabled="sending"
+                  @click="removeAttachment(index)"
+                  :aria-label="'Remove ' + file.name"
+                >
+                  &times;
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div v-if="error" class="error-message">
           {{ error }}
         </div>
@@ -145,6 +190,7 @@ export default {
       toInput: '',
       subject: '',
       body: '',
+      attachments: [],
       sending: false,
       error: null,
       suggestions: [],
@@ -195,6 +241,7 @@ export default {
       this.toInput = '';
       this.subject = '';
       this.body = '';
+      this.attachments = [];
       this.error = null;
       this.sending = false;
       this.suggestions = [];
@@ -204,6 +251,32 @@ export default {
         clearTimeout(this.debounceTimer);
         this.debounceTimer = null;
       }
+      if (this.$refs.fileInput) {
+        this.$refs.fileInput.value = '';
+      }
+    },
+    triggerFileInput() {
+      this.$refs.fileInput?.click();
+    },
+    handleFileSelect(event) {
+      const input = event.target;
+      if (!input?.files?.length) return;
+      const files = Array.from(input.files);
+      for (const file of files) {
+        this.attachments.push(file);
+      }
+      input.value = '';
+    },
+    removeAttachment(index) {
+      if (index >= 0 && index < this.attachments.length) {
+        this.attachments.splice(index, 1);
+      }
+    },
+    formatFileSize(bytes) {
+      if (bytes === null || bytes === undefined || isNaN(bytes)) return '';
+      if (bytes < 1024) return `${bytes} B`;
+      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+      return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
     },
     async fetchSuggestions(query) {
       if (!query || query.length < 1) {
@@ -410,7 +483,8 @@ export default {
           to: this.recipients,
           subject: this.subject,
           body: this.body,
-          replyToId: this.replyTo?.id
+          replyToId: this.replyTo?.id,
+          attachments: this.attachments.length > 0 ? this.attachments : undefined
         });
         this.$emit('sent');
         this.$emit('close');
@@ -655,6 +729,105 @@ export default {
   flex: 1;
   min-height: 0;
   resize: none;
+}
+
+.attachments-field {
+  padding-top: 0;
+  padding-bottom: 12px;
+}
+
+.attachments-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.file-input-hidden {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  overflow: hidden;
+}
+
+.btn-attach {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: 4px;
+  background: var(--color-bg, #fff);
+  color: var(--color-text-secondary, #808080);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.btn-attach:hover:not(:disabled) {
+  background: var(--color-bg-secondary, #f5f5f5);
+  border-color: var(--color-primary, #db4c3f);
+  color: var(--color-primary, #db4c3f);
+}
+
+.btn-attach:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.attach-icon {
+  font-size: 14px;
+}
+
+.attachment-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.attachment-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px 4px 10px;
+  background: var(--color-bg-secondary, #f5f5f5);
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: 16px;
+  font-size: 12px;
+  color: var(--color-text, #202020);
+  max-width: 180px;
+}
+
+.attachment-chip-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachment-chip-size {
+  color: var(--color-text-secondary, #808080);
+  flex-shrink: 0;
+}
+
+.attachment-chip-remove {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary, #808080);
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.attachment-chip-remove:hover:not(:disabled) {
+  color: var(--color-primary, #db4c3f);
+}
+
+.attachment-chip-remove:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .error-message {

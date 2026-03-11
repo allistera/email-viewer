@@ -260,7 +260,32 @@ export async function deleteTag(id) {
   });
 }
 
-export async function sendEmail({ to, subject, body, replyToId }) {
+export async function sendEmail({ to, subject, body, replyToId, attachments }) {
+  const token = getToken();
+  const headers = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  if (attachments && attachments.length > 0) {
+    const formData = new FormData();
+    formData.append('to', JSON.stringify(Array.isArray(to) ? to : [to]));
+    formData.append('subject', subject ?? '');
+    formData.append('body', body ?? '');
+    if (replyToId) formData.append('replyToId', replyToId);
+    for (const file of attachments) {
+      formData.append('attachments', file, file.name || 'attachment');
+    }
+    const response = await fetch(`${API_BASE}/send`, {
+      method: 'POST',
+      headers,
+      body: formData
+    });
+    if (!response.ok) {
+      const message = await getErrorMessage(response);
+      throw new ApiError(message, response.status);
+    }
+    return response.headers.get('Content-Type')?.includes('application/json') ? response.json() : response;
+  }
+
   return request('/send', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
