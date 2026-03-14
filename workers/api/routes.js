@@ -883,6 +883,26 @@ export const ApiRouter = {
           const messageId = crypto.randomUUID();
           const now = Date.now();
           const snippet = emailText.substring(0, 150).replace(/\n/g, ' ');
+          const rawR2Key = `raw/${messageId}.eml`;
+          const rawEmail = [
+            `Message-ID: <${resultId}>`,
+            `From: ${fromEmail}`,
+            `To: ${toHeader}`,
+            `Subject: ${subjectLine}`,
+            `Date: ${new Date(now).toUTCString()}`,
+            ...(inReplyTo ? [`In-Reply-To: ${inReplyTo}`] : []),
+            ...(references ? [`References: ${references}`] : []),
+            'MIME-Version: 1.0',
+            'Content-Type: text/plain; charset=UTF-8',
+            '',
+            emailText
+          ].join('\r\n');
+
+          if (env.MAILSTORE?.put) {
+            await env.MAILSTORE.put(rawR2Key, rawEmail, {
+              httpMetadata: { contentType: 'message/rfc822' }
+            });
+          }
 
           await DB.insertMessage(env.DB, {
             id: messageId,
@@ -893,7 +913,7 @@ export const ApiRouter = {
             date_header: new Date(now).toISOString(),
             snippet: snippet,
             has_attachments: resendAttachments.length > 0,
-            raw_r2_key: null,
+            raw_r2_key: rawR2Key,
             text_body: emailText,
             html_body: null,
             headers_json: JSON.stringify({
