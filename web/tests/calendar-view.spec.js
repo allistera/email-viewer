@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 // Helper to generate mock events
 function mockEvent(overrides = {}) {
-  const now = Date.now();
+  const now = new Date('2026-01-15T12:00:00.000Z').getTime();
   return {
     id: '550e8400-e29b-41d4-a716-446655440001',
     title: 'Team Meeting',
@@ -22,7 +22,7 @@ function setupCommonRoutes(page) {
     page.addInitScript(() => {
       localStorage.setItem('email_api_token', 'test-token');
     }),
-    page.route('**/api/messages?*', async route => {
+    page.route('**/api/messages**', async route => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -43,7 +43,10 @@ function setupCommonRoutes(page) {
           contentType: 'application/json',
           body: JSON.stringify([{ id: 'spam-id', name: 'Spam' }])
         });
+        return;
       }
+
+      await route.continue();
     })
   ]);
 }
