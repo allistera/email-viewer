@@ -917,6 +917,88 @@ export const ApiRouter = {
         }
       }
 
+      // ==================
+      // Calendar Events
+      // ==================
+
+      if (path === 'calendar/events' && request.method === 'GET') {
+        const start = url.searchParams.get('start');
+        const end = url.searchParams.get('end');
+        if (!start || !end) {
+          return jsonResponse({ error: 'start and end query params required' }, { status: 400 });
+        }
+        const events = await DB.listCalendarEvents(env.DB, Number(start), Number(end));
+        return jsonResponse({ events });
+      }
+
+      if (path === 'calendar/events' && request.method === 'POST') {
+        const body = await readJsonBody(request);
+        if (!body.title || typeof body.title !== 'string' || body.title.length === 0) {
+          return jsonResponse({ error: 'title is required' }, { status: 400 });
+        }
+        if (!body.startTime || !body.endTime) {
+          return jsonResponse({ error: 'startTime and endTime are required' }, { status: 400 });
+        }
+        if (Number(body.endTime) <= Number(body.startTime)) {
+          return jsonResponse({ error: 'endTime must be after startTime' }, { status: 400 });
+        }
+        const event = await DB.createCalendarEvent(env.DB, {
+          title: body.title.substring(0, 500),
+          description: body.description ? String(body.description).substring(0, 5000) : null,
+          startTime: Number(body.startTime),
+          endTime: Number(body.endTime),
+          allDay: Boolean(body.allDay),
+          color: body.color ? String(body.color).substring(0, 20) : null
+        });
+        return jsonResponse(event, { status: 201 });
+      }
+
+      // calendar/events/:id
+      const calendarMatch = path.match(/^calendar\/events\/([^/]+)$/);
+      if (calendarMatch) {
+        const eventId = calendarMatch[1];
+        if (!isValidUUID(eventId)) {
+          return jsonResponse({ error: 'Invalid event ID' }, { status: 400 });
+        }
+
+        if (request.method === 'GET') {
+          const event = await DB.getCalendarEvent(env.DB, eventId);
+          if (!event) return jsonResponse({ error: 'Event not found' }, { status: 404 });
+          return jsonResponse(event);
+        }
+
+        if (request.method === 'PUT') {
+          const body = await readJsonBody(request);
+          if (body.title !== undefined && (typeof body.title !== 'string' || body.title.length === 0)) {
+            return jsonResponse({ error: 'title must be a non-empty string' }, { status: 400 });
+          }
+          if (body.startTime && body.endTime && Number(body.endTime) <= Number(body.startTime)) {
+            return jsonResponse({ error: 'endTime must be after startTime' }, { status: 400 });
+          }
+          try {
+            const updates = {};
+            if (body.title !== undefined) updates.title = String(body.title).substring(0, 500);
+            if (body.description !== undefined) updates.description = body.description ? String(body.description).substring(0, 5000) : null;
+            if (body.startTime !== undefined) updates.startTime = Number(body.startTime);
+            if (body.endTime !== undefined) updates.endTime = Number(body.endTime);
+            if (body.allDay !== undefined) updates.allDay = Boolean(body.allDay);
+            if (body.color !== undefined) updates.color = body.color ? String(body.color).substring(0, 20) : null;
+            const result = await DB.updateCalendarEvent(env.DB, eventId, updates);
+            return jsonResponse(result);
+          } catch (e) {
+            if (e.message === 'Calendar event not found') {
+              return jsonResponse({ error: 'Event not found' }, { status: 404 });
+            }
+            throw e;
+          }
+        }
+
+        if (request.method === 'DELETE') {
+          await DB.deleteCalendarEvent(env.DB, eventId);
+          return jsonResponse({ ok: true });
+        }
+      }
+
       return new Response('Not Found', { status: 404 });
     } catch (error) {
       if (isMissingTableError(error)) {

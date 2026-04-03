@@ -336,6 +336,42 @@ export async function deleteTaggingRule(id) {
 }
 
 // ==================
+// Calendar Events API
+// ==================
+
+export async function getCalendarEvents(start, end) {
+  const params = new URLSearchParams({ start, end });
+  const response = await request(`/calendar/events?${params}`);
+  return response.events || [];
+}
+
+export async function getCalendarEvent(id) {
+  return request(`/calendar/events/${id}`);
+}
+
+export async function createCalendarEvent(event) {
+  return request('/calendar/events', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(event)
+  });
+}
+
+export async function updateCalendarEvent(id, updates) {
+  return request(`/calendar/events/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updates)
+  });
+}
+
+export async function deleteCalendarEvent(id) {
+  return request(`/calendar/events/${id}`, {
+    method: 'DELETE'
+  });
+}
+
+// ==================
 // Notifications API
 // ==================
 
