@@ -1,8 +1,11 @@
 import { test, expect } from '@playwright/test';
 
-// Helper to generate mock events
+// Helper to generate mock events - uses current date to ensure events
+// appear in the current month/week view
 function mockEvent(overrides = {}) {
-  const now = new Date('2026-01-15T12:00:00.000Z').getTime();
+  const today = new Date();
+  today.setHours(10, 0, 0, 0);
+  const now = today.getTime();
   return {
     id: '550e8400-e29b-41d4-a716-446655440001',
     title: 'Team Meeting',
@@ -17,38 +20,49 @@ function mockEvent(overrides = {}) {
   };
 }
 
-function setupCommonRoutes(page) {
-  return Promise.all([
-    page.addInitScript(() => {
-      localStorage.setItem('email_api_token', 'test-token');
-    }),
-    page.route('**/api/messages**', async route => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ items: [], nextBefore: null })
-      });
-    }),
-    page.route('**/api/messages/counts', async route => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ inbox: 0, archive: 0, spam: 0, sent: 0, tags: {} })
-      });
-    }),
-    page.route('**/api/tags**', async route => {
-      if (route.request().method() === 'GET') {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify([{ id: 'spam-id', name: 'Spam' }])
-        });
-        return;
-      }
+async function setupCommonRoutes(page) {
+  await page.addInitScript(() => {
+    localStorage.setItem('email_api_token', 'test-token');
+  });
 
-      await route.continue();
-    })
-  ]);
+  // Mock SSE stream to prevent stalling EventSource connections
+  await page.route('**/api/stream*', async route => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'text/event-stream',
+      body: ':ok\n\n'
+    });
+  });
+
+  // Mock messages/counts (register before messages to avoid glob overlap)
+  await page.route('**/api/messages/counts', async route => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ inbox: 0, archive: 0, spam: 0, sent: 0, tags: {} })
+    });
+  });
+
+  await page.route('**/api/messages?*', async route => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ items: [], nextBefore: null })
+    });
+  });
+
+  // Mock tags - handle all methods to prevent stalls
+  await page.route('**/api/tags**', async route => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([{ id: 'spam-id', name: 'Spam' }])
+      });
+    } else {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+    }
+  });
 }
 
 async function navigateToCalendar(page) {
@@ -58,39 +72,50 @@ async function navigateToCalendar(page) {
   await expect(page.locator('.calendar-view')).toBeVisible({ timeout: 5000 });
 }
 
+// Route handler that handles ALL methods to prevent request stalls
+function calendarEventsRoute(events, options = {}) {
+  return async (route) => {
+    const method = route.request().method();
+    if (method === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ events })
+      });
+    } else if (method === 'POST') {
+      const body = route.request().postDataJSON();
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 'new-event-id',
+          ...body,
+          created_at: Date.now(),
+          updated_at: Date.now()
+        })
+      });
+    } else if (method === 'PUT') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ id: 'updated', updated_at: Date.now() })
+      });
+    } else if (method === 'DELETE') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true })
+      });
+    } else {
+      await route.fulfill({ status: 405, body: 'Method not allowed' });
+    }
+  };
+}
+
 test.describe('Calendar View', () => {
   test.beforeEach(async ({ page }) => {
     await setupCommonRoutes(page);
-
-    await page.route('**/api/calendar/events**', async route => {
-      const method = route.request().method();
-      if (method === 'GET') {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ events: [mockEvent()] })
-        });
-      } else if (method === 'POST') {
-        await route.fulfill({
-          status: 201,
-          contentType: 'application/json',
-          body: JSON.stringify(mockEvent({ id: 'new-event-id' }))
-        });
-      } else if (method === 'PUT') {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ id: 'updated', updated_at: Date.now() })
-        });
-      } else if (method === 'DELETE') {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ ok: true })
-        });
-      }
-    });
-
+    await page.route('**/api/calendar/events**', calendarEventsRoute([mockEvent()]));
     await navigateToCalendar(page);
   });
 
@@ -105,17 +130,14 @@ test.describe('Calendar View', () => {
   });
 
   test('should switch between view modes', async ({ page }) => {
-    // Switch to week view
     await page.click('.view-tab:has-text("Week")');
     await expect(page.locator('.week-view')).toBeVisible();
     await expect(page.locator('.month-view')).toBeHidden();
 
-    // Switch to year view
     await page.click('.view-tab:has-text("Year")');
     await expect(page.locator('.year-view')).toBeVisible();
     await expect(page.locator('.week-view')).toBeHidden();
 
-    // Switch back to month view
     await page.click('.view-tab:has-text("Month")');
     await expect(page.locator('.month-view')).toBeVisible();
   });
@@ -123,7 +145,6 @@ test.describe('Calendar View', () => {
   test('should display header title for month view', async ({ page }) => {
     const title = page.locator('.calendar-title');
     await expect(title).toBeVisible();
-    // Should contain a month name and year
     const text = await title.textContent();
     expect(text).toMatch(/\w+ \d{4}/);
   });
@@ -132,12 +153,10 @@ test.describe('Calendar View', () => {
     const title = page.locator('.calendar-title');
     const initialTitle = await title.textContent();
 
-    // Navigate forward
     await page.click('button[title="Next"]');
     const nextTitle = await title.textContent();
     expect(nextTitle).not.toBe(initialTitle);
 
-    // Navigate back twice to go to previous month
     await page.click('button[title="Previous"]');
     await page.click('button[title="Previous"]');
     const prevTitle = await title.textContent();
@@ -148,12 +167,10 @@ test.describe('Calendar View', () => {
     const title = page.locator('.calendar-title');
     const initialTitle = await title.textContent();
 
-    // Navigate away
     await page.click('button[title="Next"]');
     await page.click('button[title="Next"]');
     await page.click('button[title="Next"]');
 
-    // Click Today
     await page.click('.today-btn');
     const todayTitle = await title.textContent();
     expect(todayTitle).toBe(initialTitle);
@@ -179,7 +196,6 @@ test.describe('Calendar View', () => {
 
   test('should display events in month view', async ({ page }) => {
     const monthEvents = page.locator('.month-event');
-    // At least one event should be visible (our mock event)
     await expect(monthEvents.first()).toBeVisible({ timeout: 5000 });
     await expect(monthEvents.first()).toContainText('Team Meeting');
   });
@@ -188,17 +204,7 @@ test.describe('Calendar View', () => {
 test.describe('Calendar Week View', () => {
   test.beforeEach(async ({ page }) => {
     await setupCommonRoutes(page);
-
-    await page.route('**/api/calendar/events**', async route => {
-      if (route.request().method() === 'GET') {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ events: [mockEvent()] })
-        });
-      }
-    });
-
+    await page.route('**/api/calendar/events**', calendarEventsRoute([mockEvent()]));
     await navigateToCalendar(page);
     await page.click('.view-tab:has-text("Week")');
     await expect(page.locator('.week-view')).toBeVisible();
@@ -234,17 +240,7 @@ test.describe('Calendar Week View', () => {
 test.describe('Calendar Year View', () => {
   test.beforeEach(async ({ page }) => {
     await setupCommonRoutes(page);
-
-    await page.route('**/api/calendar/events**', async route => {
-      if (route.request().method() === 'GET') {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ events: [] })
-        });
-      }
-    });
-
+    await page.route('**/api/calendar/events**', calendarEventsRoute([]));
     await navigateToCalendar(page);
     await page.click('.view-tab:has-text("Year")');
     await expect(page.locator('.year-view')).toBeVisible();
@@ -288,35 +284,11 @@ test.describe('Calendar Year View', () => {
 test.describe('Calendar Event Creation', () => {
   test.beforeEach(async ({ page }) => {
     await setupCommonRoutes(page);
-
-    await page.route('**/api/calendar/events**', async route => {
-      const method = route.request().method();
-      if (method === 'GET') {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ events: [] })
-        });
-      } else if (method === 'POST') {
-        const body = route.request().postDataJSON();
-        await route.fulfill({
-          status: 201,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            id: 'new-event-id',
-            ...body,
-            created_at: Date.now(),
-            updated_at: Date.now()
-          })
-        });
-      }
-    });
-
+    await page.route('**/api/calendar/events**', calendarEventsRoute([]));
     await navigateToCalendar(page);
   });
 
   test('should open event modal when clicking a month cell', async ({ page }) => {
-    // Click a cell in the current month
     const currentMonthCell = page.locator('.month-cell:not(.other-month)').first();
     await currentMonthCell.click();
 
@@ -347,7 +319,6 @@ test.describe('Calendar Event Creation', () => {
     await page.locator('.month-cell:not(.other-month)').first().click();
     await expect(page.locator('.event-modal')).toBeVisible();
 
-    // Click the overlay (outside the modal)
     await page.locator('.modal-overlay').click({ position: { x: 10, y: 10 } });
     await expect(page.locator('.event-modal')).toBeHidden();
   });
@@ -360,14 +331,11 @@ test.describe('Calendar Event Creation', () => {
       { timeout: 5000 }
     );
 
-    // Fill out the form
     await page.fill('input[placeholder="Event title"]', 'New Test Event');
     await page.fill('textarea[placeholder="Description (optional)"]', 'Test description');
 
-    // Submit
     await page.click('.btn-primary:has-text("Save")');
 
-    // Verify request was made
     const postRequest = await postRequestPromise;
     const body = postRequest.postDataJSON();
     expect(body.title).toBe('New Test Event');
@@ -375,44 +343,38 @@ test.describe('Calendar Event Creation', () => {
     expect(body.startTime).toBeDefined();
     expect(body.endTime).toBeDefined();
 
-    // Modal should close
     await expect(page.locator('.event-modal')).toBeHidden();
   });
 
   test('should toggle all-day checkbox and hide time inputs', async ({ page }) => {
     await page.locator('.month-cell:not(.other-month)').first().click();
 
-    // Time inputs should be visible initially
     await expect(page.locator('input[type="time"]').first()).toBeVisible();
 
-    // Check all-day
     await page.locator('.checkbox-group input[type="checkbox"]').check();
 
-    // Time inputs should be hidden
     await expect(page.locator('input[type="time"]')).toHaveCount(0);
   });
 
   test('should select a color from the color picker', async ({ page }) => {
     await page.locator('.month-cell:not(.other-month)').first().click();
 
-    // Click a different color swatch
     const swatches = page.locator('.color-swatch');
-    await swatches.nth(2).click(); // Third color option
+    await swatches.nth(2).click();
 
-    // It should become active
     await expect(swatches.nth(2)).toHaveClass(/active/);
   });
 });
 
 test.describe('Calendar Event Editing', () => {
-  const existingEvent = mockEvent({
-    id: 'edit-event-id',
-    title: 'Existing Event',
-    description: 'Existing description'
-  });
-
   test.beforeEach(async ({ page }) => {
     await setupCommonRoutes(page);
+
+    const existingEvent = mockEvent({
+      id: 'edit-event-id',
+      title: 'Existing Event',
+      description: 'Existing description'
+    });
 
     await page.route('**/api/calendar/events**', async route => {
       const method = route.request().method();
@@ -435,6 +397,8 @@ test.describe('Calendar Event Editing', () => {
           contentType: 'application/json',
           body: JSON.stringify({ ok: true })
         });
+      } else {
+        await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
       }
     });
 
@@ -464,7 +428,6 @@ test.describe('Calendar Event Editing', () => {
       { timeout: 5000 }
     );
 
-    // Change the title
     await page.fill('input[placeholder="Event title"]', 'Updated Event Title');
     await page.click('.btn-primary:has-text("Save")');
 
@@ -493,14 +456,7 @@ test.describe('Calendar Event Editing', () => {
 test.describe('Calendar Navigation Rail', () => {
   test.beforeEach(async ({ page }) => {
     await setupCommonRoutes(page);
-
-    await page.route('**/api/calendar/events**', async route => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ events: [] })
-      });
-    });
+    await page.route('**/api/calendar/events**', calendarEventsRoute([]));
   });
 
   test('should show calendar button in right sidebar', async ({ page }) => {
@@ -513,11 +469,9 @@ test.describe('Calendar Navigation Rail', () => {
     await page.goto('/');
     await expect(page.locator('.discord-sidebar')).toBeVisible({ timeout: 10000 });
 
-    // Switch to calendar
     await page.click('button[aria-label="Calendar"]');
     await expect(page.locator('.calendar-view')).toBeVisible();
 
-    // Switch back to email
     await page.click('button[aria-label="Email"]');
     await expect(page.locator('.calendar-view')).toBeHidden();
   });
