@@ -877,9 +877,15 @@ export default {
 }
 
 @media (max-width: 768px) {
+  #app,
+  .app-layout {
+    height: 100dvh;
+  }
+
   .app-container {
     grid-template-columns: 1fr !important;
     position: relative;
+    background: linear-gradient(180deg, var(--color-bg-secondary) 0%, var(--color-bg) 120px);
   }
 
   .settings-panel {
@@ -909,6 +915,36 @@ export default {
 
   .right-sidebar-panel {
     display: none;
+  }
+
+  .mobile-tab-bar {
+    background: color-mix(in srgb, var(--color-bg) 88%, transparent);
+    backdrop-filter: blur(10px);
+    border-top-color: color-mix(in srgb, var(--color-border) 80%, transparent);
+    padding-top: 2px;
+  }
+
+  .tab-btn {
+    font-size: 10px;
+    letter-spacing: 0.01em;
+  }
+
+  .tab-btn.active {
+    color: var(--color-primary);
+    text-shadow: 0 0 0.01px currentColor;
+  }
+
+  .tab-btn-compose {
+    position: relative;
+  }
+
+  .tab-btn-compose::before {
+    content: '';
+    position: absolute;
+    inset: 6px 20px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-primary) 14%, transparent);
+    z-index: -1;
   }
 }
 </style>

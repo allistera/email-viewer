@@ -334,10 +334,16 @@ export default {
 }
 
 @media (max-width: 768px) {
+  .message-list {
+    border-right: none;
+    background: transparent;
+  }
+
   .list-header {
     display: flex;
-    padding: 8px 12px;
+    padding: 10px 12px 8px;
     gap: 8px;
+    border-bottom: none;
   }
 
   .menu-btn {
@@ -350,8 +356,25 @@ export default {
   }
 
   .message-item {
-    padding: 12px 16px;
+    margin: 0 10px 8px;
+    padding: 12px 14px;
+    height: 96px;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: var(--color-bg);
     -webkit-tap-highlight-color: transparent;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  }
+
+  .message-item.active {
+    border-left-width: 1px;
+    padding-left: 14px;
+    border-color: color-mix(in srgb, var(--color-primary) 55%, var(--color-border));
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 35%, transparent);
+  }
+
+  .messages {
+    padding-bottom: 12px;
   }
 
   .from {
@@ -373,6 +396,7 @@ export default {
   .btn-secondary {
     min-height: 44px;
     font-size: 15px;
+    border-radius: 10px;
   }
 }
 </style>

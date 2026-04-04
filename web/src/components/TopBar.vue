@@ -253,15 +253,38 @@ export default {
 
 @media (max-width: 768px) {
   .top-bar {
-    padding: 0 12px;
+    height: 60px;
+    padding: env(safe-area-inset-top, 0) 12px 0;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: color-mix(in srgb, var(--color-topbar-bg) 92%, transparent);
+    backdrop-filter: blur(10px);
   }
 
   .top-bar-left {
     min-width: auto;
+    gap: 8px;
   }
 
   .title-text {
-    font-size: 14px;
+    font-size: 15px;
+  }
+
+  .logo-icon {
+    width: 24px;
+    height: 24px;
+  }
+
+  .mobile-menu-btn {
+    width: 38px;
+    height: 38px;
+    border: 1px solid var(--color-border);
+    background: color-mix(in srgb, var(--color-bg-secondary) 76%, transparent);
+  }
+
+  .top-bar-right {
+    display: none;
   }
 
   .top-bar-center {
