@@ -82,8 +82,12 @@
             @mousedown.prevent="startResize('list', $event)"
           />
 
+          <CalendarView
+            v-if="rightRailView === 'calendar' && !isMobile"
+            class="calendar-panel"
+          />
           <KanbanView
-            v-if="rightRailView === 'kanban' && !isMobile"
+            v-else-if="rightRailView === 'kanban' && !isMobile"
             :messages="messages"
             class="kanban-panel"
             @message-dropped="handleMessageDropped"
@@ -165,6 +169,7 @@ import ComposeModal from './components/ComposeModal.vue';
 import ToastNotification from './components/ToastNotification.vue';
 import RightSidebar from './components/RightSidebar.vue';
 import KanbanView from './components/KanbanView.vue';
+import CalendarView from './components/CalendarView.vue';
 import TodoistSlideout from './components/TodoistSlideout.vue';
 import SettingsModal from './components/SettingsModal.vue';
 import { hasToken, setToken, clearToken } from './services/auth.js';
@@ -186,6 +191,7 @@ export default {
     ToastNotification,
     RightSidebar,
     KanbanView,
+    CalendarView,
     TodoistSlideout,
     SettingsModal
   },
@@ -805,6 +811,7 @@ export default {
 .list-panel,
 .detail-panel,
 .kanban-panel,
+.calendar-panel,
 .right-sidebar-panel {
   min-height: 0;
   overflow: hidden;
