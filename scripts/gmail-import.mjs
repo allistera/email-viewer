@@ -49,12 +49,18 @@ const stats = {
 
 /**
  * POST a raw email to the import endpoint with retry logic.
+ * @param {Buffer} rawBuffer - Raw RFC 2822 email bytes
+ * @param {Object} [options]
+ * @param {boolean} [options.archived] - Whether the message was archived in Gmail
  */
-async function postEmail(rawBuffer) {
+async function postEmail(rawBuffer, options = {}) {
   const maxRetries = 3;
+  const url = new URL(`${API_URL}/api/messages/import`);
+  if (options.archived) url.searchParams.set('archived', 'true');
+
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      const response = await fetch(`${API_URL}/api/messages/import`, {
+      const response = await fetch(url.toString(), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${API_TOKEN}`,
@@ -141,6 +147,20 @@ async function main() {
   // Process messages in order (oldest first for consistent received_at ordering)
   const uidsToProcess = MAX_MESSAGES ? uids.slice(0, MAX_MESSAGES) : uids;
 
+  // When importing from [Gmail]/All Mail, fetch flags to detect archived messages.
+  // In Gmail IMAP, archived messages lack the \Inbox flag.
+  const isAllMail = GMAIL_FOLDER.toLowerCase().includes('all mail');
+  let flagsByUid = new Map();
+  if (isAllMail && uidsToProcess.length > 0) {
+    console.log('  Fetching message flags to detect archived emails...');
+    for await (const msg of client.fetch(uidsToProcess, { flags: true, uid: true })) {
+      flagsByUid.set(msg.uid, msg.flags);
+    }
+    const archivedCount = [...flagsByUid.values()].filter(f => !f.has('\\Inbox')).length;
+    console.log(`  Found ${archivedCount} archived messages out of ${flagsByUid.size}`);
+    console.log('');
+  }
+
   for (const uid of uidsToProcess) {
     try {
       // Fetch raw RFC 2822 source
@@ -151,7 +171,11 @@ async function main() {
       }
       const rawBuffer = Buffer.concat(chunks);
 
-      const result = await postEmail(rawBuffer);
+      // Determine if message was archived in Gmail (not in Inbox)
+      const flags = flagsByUid.get(uid);
+      const isArchived = isAllMail && flags && !flags.has('\\Inbox');
+
+      const result = await postEmail(rawBuffer, { archived: isArchived });
 
       if (result.skipped) {
         stats.errors++;
@@ -159,6 +183,7 @@ async function main() {
         stats.deduplicated++;
       } else {
         stats.imported++;
+        if (isArchived) stats.archived = (stats.archived || 0) + 1;
       }
     } catch (err) {
       stats.errors++;
@@ -170,7 +195,7 @@ async function main() {
 
   console.log('\n');
   console.log('  Import complete!');
-  console.log(`  Imported: ${stats.imported}`);
+  console.log(`  Imported: ${stats.imported}${stats.archived ? ` (${stats.archived} archived)` : ''}`);
   console.log(`  Skipped (duplicates): ${stats.deduplicated}`);
   console.log(`  Errors: ${stats.errors}`);
   console.log(`  Total time: ${((Date.now() - stats.startTime) / 1000).toFixed(0)}s`);
