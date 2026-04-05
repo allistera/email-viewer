@@ -1,9 +1,9 @@
 import * as Sentry from "@sentry/cloudflare";
-import { MimeParser } from '../shared/mime.js';
 import { DB } from '../shared/db.js';
 import { R2 } from '../shared/r2.js';
 import { MessageClassifier } from '../shared/openai.js';
 import { sendNewEmailNotification } from '../shared/notifications.js';
+import { ingestRawEmail } from '../shared/ingest.js';
 
 /**
  * Async Background Processor
@@ -127,107 +127,38 @@ export default Sentry.withSentry(sentryOptions, {
      * Email Handler (Ingest)
      */
     async email(message, env, ctx) {
-        // Read raw content early and store for potential error recovery
-        // This must be done once since streams can only be consumed once
         let rawBuffer;
         let messageId;
-        
+
         try {
             messageId = crypto.randomUUID();
 
-            // 1. Read Raw Content into Memory
-            // We read into an ArrayBuffer to avoid stream length issues with R2 after tee()
+            // Read raw content (streams can only be consumed once)
             rawBuffer = await new Response(message.raw).arrayBuffer();
 
-            // 2. Write to R2 (Async) and Parse (Async)
-            // parse expects content, saveRawEmail expects buffer/stream
-            const r2Promise = R2.saveRawEmail(env.MAILSTORE, messageId, rawBuffer, rawBuffer.byteLength);
-            const parsePromise = MimeParser.parse(rawBuffer);
+            // Use shared ingestion pipeline
+            const result = await ingestRawEmail(rawBuffer, env, { messageId });
 
-            const [rawKey, parsed] = await Promise.all([r2Promise, parsePromise]);
-
-            // 3. Dedupe Check based on Message-ID + To (or derived ID)
-            const messageIdHeader = parsed.messageId || parsed.allHeaders['message-id'] || '';
-            const dedupeSource = messageIdHeader || [
-                parsed.from || '',
-                parsed.to || '',
-                parsed.subject || '',
-                parsed.date || '',
-                parsed.snippet || ''
-            ].join('|');
-
-            const dedupeKey = await crypto.subtle.digest(
-                'SHA-256',
-                new TextEncoder().encode(dedupeSource)
-            ).then(buf => new Uint8Array(buf).reduce((a, b) => a + b.toString(16).padStart(2, '0'), ''));
-
-            const isUnique = await DB.checkDedupe(env.DB, dedupeKey, messageId);
-            if (!isUnique) {
-                console.log(`Duplicate message skipped: ${parsed.allHeaders['message-id'] || 'unknown-id'}`);
+            if (result.deduplicated) {
+                console.log(`Duplicate message skipped: ${messageId}`);
                 return;
             }
 
-            // 4. Insert Message Metadata
-            const dbMessage = {
-                id: messageId,
-                received_at: Date.now(),
-                from_addr: parsed.from,
-                to_addr: parsed.to,
-                subject: parsed.subject,
-                date_header: parsed.date,
-                snippet: parsed.snippet,
-                has_attachments: parsed.attachments.length > 0,
-                raw_r2_key: rawKey,
-                text_body: parsed.textBody,
-                html_body: parsed.htmlBody,
-                headers_json: JSON.stringify(parsed.allHeaders)
-            };
-
-            await DB.insertMessage(env.DB, dbMessage);
-
-            // 5. Save Attachments
-            const attachmentPromises = parsed.attachments.map(async (att) => {
-                const attId = crypto.randomUUID();
-                const filename = att.filename || `attachment-${attId}`;
-                const attKey = await R2.saveAttachment(env.MAILSTORE, messageId, attId, filename, att.content);
-
-                return {
-                    id: attId,
-                    message_id: messageId,
-                    filename,
-                    content_type: att.mimeType || att.contentType || null,
-                    size_bytes: att.content?.byteLength ?? 0,
-                    sha256: null, // skipped for now
-                    r2_key: attKey
-                };
-            });
-
-            const attachmentInserts = await Promise.all(attachmentPromises);
-            await DB.insertAttachments(env.DB, attachmentInserts);
-
-            // Enrich local message object with attachments and tags for post-processing
-            // This ensures it matches the structure returned by DB.getMessage()
-            dbMessage.attachments = attachmentInserts;
-            dbMessage.tags = [];
-            dbMessage.tag = null;
-
-            // 6. Trigger Post-Processing (Background)
-            ctx.waitUntil(processMessage(messageId, env, dbMessage));
+            // Trigger Post-Processing (Background)
+            ctx.waitUntil(processMessage(messageId, env, result.dbMessage));
 
         } catch (e) {
             Sentry.captureException(e);
             console.error('Email Ingest Failed:', e.message || e);
-            
+
             // Try to save minimal record on failure instead of rejecting
-            // Use the already-read rawBuffer if available, otherwise we can't recover
             try {
                 const failedMessageId = messageId || crypto.randomUUID();
-                
-                // Only attempt to save to R2 if we have the raw buffer
+
                 if (rawBuffer) {
                     await R2.saveRawEmail(env.MAILSTORE, failedMessageId, rawBuffer, rawBuffer.byteLength);
                 }
-                
+
                 const minimalMessage = {
                     id: failedMessageId,
                     received_at: Date.now(),
