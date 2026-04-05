@@ -1,0 +1,51 @@
+name: Gmail Import
+
+on:
+  workflow_dispatch:
+    inputs:
+      folder:
+        description: 'Gmail IMAP folder to import'
+        required: false
+        default: '[Gmail]/All Mail'
+        type: string
+      after_date:
+        description: 'Only import emails after this date (YYYY-MM-DD)'
+        required: false
+        type: string
+      max_messages:
+        description: 'Maximum number of messages to import (0 = unlimited)'
+        required: false
+        default: '0'
+        type: string
+      dry_run:
+        description: 'Dry run (list messages only, no import)'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360  # 6 hours max
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install imapflow
+        run: npm install imapflow
+
+      - name: Run Gmail Import
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          API_URL: ${{ secrets.IMPORT_API_URL }}
+          API_TOKEN: ${{ secrets.IMPORT_API_TOKEN }}
+          GMAIL_FOLDER: ${{ inputs.folder }}
+          AFTER_DATE: ${{ inputs.after_date }}
+          MAX_MESSAGES: ${{ inputs.max_messages }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: node scripts/gmail-import.mjs
