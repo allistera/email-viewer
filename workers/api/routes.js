@@ -1033,7 +1033,13 @@ export const ApiRouter = {
           }
         }
 
-        return jsonResponse({ id: result.messageId, deduplicated: false }, { status: 201 });
+        // Mark as archived if the source indicates it (e.g. Gmail archived messages)
+        const shouldArchive = url.searchParams.get('archived') === 'true';
+        if (shouldArchive) {
+          await DB.archiveMessage(env.DB, result.messageId);
+        }
+
+        return jsonResponse({ id: result.messageId, deduplicated: false, archived: shouldArchive }, { status: 201 });
       }
 
       return new Response('Not Found', { status: 404 });
