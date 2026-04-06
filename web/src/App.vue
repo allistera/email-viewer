@@ -63,6 +63,7 @@
             v-show="rightRailView !== 'calendar' || isMobile"
             :messages="messages"
             :selected-id="selectedMessageId"
+            :selected-ids="selectedMessageIds"
             :selected-tag="selectedTag"
             :loading="loadingMessages"
             :loading-more="loadingMore"
@@ -73,6 +74,7 @@
             @search="handleSearch"
             @load-more="handleLoadMore"
             @open-sidebar="openMobileSidebar"
+            @bulk-archive="handleBulkArchive"
           />
 
           <div
@@ -173,7 +175,7 @@ import CalendarView from './components/CalendarView.vue';
 import TodoistSlideout from './components/TodoistSlideout.vue';
 import SettingsModal from './components/SettingsModal.vue';
 import { hasToken, setToken, clearToken } from './services/auth.js';
-import { getMessages, getMessage, getMessageCounts } from './services/api.js';
+import { getMessages, getMessage, getMessageCounts, archiveMessage } from './services/api.js';
 import { init as initTheme } from './services/theme.js';
 import { realtimeClient } from './services/realtime.js';
 import { debounce } from './utils/debounce.js';
@@ -201,6 +203,7 @@ export default {
       messages: [],
       currentMessage: null,
       selectedMessageId: null,
+      selectedMessageIds: [],
       loadingMessages: false,
       loadingDetail: false,
       loadingMore: false,
@@ -458,6 +461,7 @@ export default {
     },
 
     async handleSelectMessage(messageId) {
+      this.selectedMessageIds = [];
       this.selectedMessageId = messageId;
       this.loadingDetail = true;
       this.detailError = null;
@@ -588,6 +592,36 @@ export default {
       if (!this.isMobile && this.messages.length > 0 && !this.selectedMessageId) {
         this.handleSelectMessage(this.messages[0].id);
       }
+    },
+
+    async handleBulkArchive(messageIds) {
+      if (!messageIds || messageIds.length === 0) return;
+
+      const idsToArchive = [...messageIds];
+      this.selectedMessageIds = [];
+
+      // Archive all messages in parallel
+      await Promise.allSettled(idsToArchive.map(id => archiveMessage(id)));
+
+      // Remove from list
+      this.messages = this.messages.filter(m => !idsToArchive.includes(m.id));
+      this.loadCounts();
+
+      // Clear current message if it was in the selection
+      if (this.currentMessage && idsToArchive.includes(this.currentMessage.id)) {
+        this.currentMessage = null;
+        this.selectedMessageId = null;
+        if (this.isMobile) {
+          this.mobileView = 'list';
+        }
+      }
+
+      // Select first remaining message on desktop
+      if (!this.isMobile && this.messages.length > 0 && !this.selectedMessageId) {
+        this.handleSelectMessage(this.messages[0].id);
+      }
+
+      this.$refs.toast?.success(`Archived ${idsToArchive.length} email${idsToArchive.length !== 1 ? 's' : ''}`);
     },
 
     async handleMessageDropped({ messageId, newTag }) {
@@ -755,6 +789,19 @@ export default {
 
       // Skip if modal is open or no messages
       if (this.showAuthModal || this.messages.length === 0) {
+        return;
+      }
+
+      // Cmd+A (Mac) or Ctrl+A: select all displayed messages
+      if (event.key === 'a' && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault();
+        this.selectedMessageIds = this.messages.map(m => m.id);
+        return;
+      }
+
+      // Escape: clear multi-selection
+      if (event.key === 'Escape' && this.selectedMessageIds.length > 0) {
+        this.selectedMessageIds = [];
         return;
       }
 

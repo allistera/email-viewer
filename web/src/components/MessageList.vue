@@ -8,6 +8,13 @@
       </button>
     </div>
 
+    <div v-if="selectedIds.length > 0" class="bulk-action-bar">
+      <span class="bulk-count">{{ selectedIds.length }} selected</span>
+      <button class="bulk-done-btn" @click="$emit('bulk-archive', selectedIds)" title="Mark selected as done">
+        Mark as Done
+      </button>
+    </div>
+
     <div v-if="loading" class="loading">Loading messages...</div>
 
     <div v-else-if="error" class="error-message">
@@ -27,7 +34,7 @@
     >
       <template #default="{ item: message }">
         <div
-          :class="['message-item', { active: selectedId === message.id, unread: !message.isRead }]"
+          :class="['message-item', { active: selectedId === message.id, unread: !message.isRead, 'bulk-selected': selectedIds.includes(message.id) }]"
           draggable="true"
           @dragstart="onDragStart($event, message)"
           @click="$emit('select', message.id)"
@@ -85,6 +92,10 @@ export default {
       type: String,
       default: null
     },
+    selectedIds: {
+      type: Array,
+      default: () => []
+    },
     selectedTag: {
       type: String,
       default: null
@@ -106,7 +117,7 @@ export default {
       default: null
     }
   },
-  emits: ['select', 'search', 'load-more', 'open-sidebar'],
+  emits: ['select', 'search', 'load-more', 'open-sidebar', 'bulk-archive'],
   data() {
     return {
       itemHeight: 100 // Default fixed height
@@ -286,6 +297,43 @@ export default {
 
 .attachment-icon {
   font-size: 14px;
+}
+
+.bulk-action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.bulk-count {
+  font-weight: 600;
+}
+
+.bulk-done-btn {
+  padding: 5px 12px;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.15s;
+}
+
+.bulk-done-btn:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.message-item.bulk-selected {
+  background: color-mix(in srgb, var(--color-primary) 12%, var(--color-bg));
+  border-left: 3px solid var(--color-primary);
+  padding-left: 13px;
 }
 
 .load-more {
