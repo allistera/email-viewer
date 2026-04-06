@@ -246,99 +246,59 @@ export const DB = {
    * @param {D1Database} db
    */
   async getCounts(db) {
-    const query = `
-      SELECT
-        'archive' as type,
-        NULL as tag_name,
-        COUNT(*) as count
-      FROM messages
-      WHERE is_archived = 1
+    const [archiveRes, unarchivedRes, unreadSpamRes, unreadArchiveRes, unreadInboxRes, tagRes] =
+      await db.batch([
+        db.prepare(`
+          SELECT COUNT(*) as count FROM messages WHERE is_archived = 1
+        `),
+        db.prepare(`
+          SELECT COUNT(*) as count FROM messages
+          WHERE (is_archived = 0 OR is_archived IS NULL)
+            AND (snoozed_until IS NULL OR snoozed_until <= strftime('%s','now') * 1000)
+        `),
+        db.prepare(`
+          SELECT COUNT(m.id) as count
+          FROM messages m
+          JOIN message_tags mt ON m.id = mt.message_id
+          JOIN tags t ON mt.tag_id = t.id
+          WHERE t.name = 'Spam'
+            AND (m.is_read = 0 OR m.is_read IS NULL)
+        `),
+        db.prepare(`
+          SELECT COUNT(id) as count FROM messages
+          WHERE is_archived = 1
+            AND (is_read = 0 OR is_read IS NULL)
+        `),
+        db.prepare(`
+          SELECT COUNT(m.id) as count
+          FROM messages m
+          LEFT JOIN message_tags mt ON m.id = mt.message_id
+          LEFT JOIN tags t ON mt.tag_id = t.id AND t.name = 'Spam'
+          WHERE (m.is_archived = 0 OR m.is_archived IS NULL)
+            AND (m.snoozed_until IS NULL OR m.snoozed_until <= strftime('%s','now') * 1000)
+            AND (m.is_read = 0 OR m.is_read IS NULL)
+            AND t.id IS NULL
+        `),
+        db.prepare(`
+          SELECT t.name as tag_name, COUNT(m.id) as count
+          FROM messages m
+          JOIN message_tags mt ON m.id = mt.message_id
+          JOIN tags t ON mt.tag_id = t.id
+          WHERE (m.is_archived = 0 OR m.is_archived IS NULL)
+            AND (m.snoozed_until IS NULL OR m.snoozed_until <= strftime('%s','now') * 1000)
+          GROUP BY t.name
+        `),
+      ]);
 
-      UNION ALL
+    const archive = archiveRes.results[0]?.count ?? 0;
+    const totalUnarchived = unarchivedRes.results[0]?.count ?? 0;
+    const unreadSpam = unreadSpamRes.results[0]?.count ?? 0;
+    const unreadArchive = unreadArchiveRes.results[0]?.count ?? 0;
+    const unreadInbox = unreadInboxRes.results[0]?.count ?? 0;
 
-      SELECT
-        'total_unarchived' as type,
-        NULL as tag_name,
-        COUNT(*) as count
-      FROM messages
-      WHERE (is_archived = 0 OR is_archived IS NULL)
-        AND (snoozed_until IS NULL OR snoozed_until <= strftime('%s','now') * 1000)
-
-      UNION ALL
-
-      SELECT
-        'unread_spam' as type,
-        NULL as tag_name,
-        COUNT(m.id) as count
-      FROM messages m
-      JOIN message_tags mt ON m.id = mt.message_id
-      JOIN tags t ON mt.tag_id = t.id
-      WHERE t.name = 'Spam' 
-        AND (m.is_read = 0 OR m.is_read IS NULL)
-      
-      UNION ALL
-
-      SELECT
-        'tag' as type,
-        t.name as tag_name,
-        COUNT(m.id) as count
-      FROM messages m
-      JOIN message_tags mt ON m.id = mt.message_id
-      JOIN tags t ON mt.tag_id = t.id
-      WHERE (m.is_archived = 0 OR m.is_archived IS NULL)
-        AND (m.snoozed_until IS NULL OR m.snoozed_until <= strftime('%s','now') * 1000)
-      GROUP BY t.name
-
-      UNION ALL
-
-      SELECT
-        'unread_archive' as type,
-        NULL as tag_name,
-        COUNT(id) as count
-      FROM messages
-      WHERE is_archived = 1
-        AND (is_read = 0 OR is_read IS NULL)
-
-      UNION ALL
-
-      SELECT
-        'unread_inbox' as type,
-        NULL as tag_name,
-        COUNT(m.id) as count
-      FROM messages m
-      LEFT JOIN message_tags mt ON m.id = mt.message_id
-      LEFT JOIN tags t ON mt.tag_id = t.id AND t.name = 'Spam'
-      WHERE (m.is_archived = 0 OR m.is_archived IS NULL)
-        AND (m.snoozed_until IS NULL OR m.snoozed_until <= strftime('%s','now') * 1000)
-        AND (m.is_read = 0 OR m.is_read IS NULL)
-        AND t.id IS NULL
-    `;
-
-    const { results } = await db.prepare(query).all();
-
-    let archive = 0;
-    let totalUnarchived = 0;
-    let unreadSpam = 0;
-    let unreadArchive = 0;
-    let unreadInbox = 0;
     const tagCounts = {};
-
-    if (results) {
-      for (const row of results) {
-        if (row.type === 'archive') {
-          archive = row.count;
-        } else if (row.type === 'total_unarchived') {
-          totalUnarchived = row.count;
-        } else if (row.type === 'unread_spam') {
-          unreadSpam = row.count;
-        } else if (row.type === 'unread_archive') {
-          unreadArchive = row.count;
-        } else if (row.type === 'unread_inbox') {
-          unreadInbox = row.count;
-        } else if (row.type === 'tag') {
-          tagCounts[row.tag_name] = row.count;
-        }
-      }
+    for (const row of tagRes.results || []) {
+      tagCounts[row.tag_name] = row.count;
     }
 
     const spam = tagCounts['Spam'] || 0;
