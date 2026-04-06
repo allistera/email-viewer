@@ -173,8 +173,8 @@ async function main() {
   console.log(`  Upload concurrency: ${CONCURRENCY}`);
   console.log('');
 
-  // Process messages in order (oldest first for consistent received_at ordering)
-  const uidsToProcess = MAX_MESSAGES ? uids.slice(0, MAX_MESSAGES) : uids;
+  // Process messages newest first (highest UIDs last assigned = most recent)
+  const uidsToProcess = MAX_MESSAGES ? uids.slice(-MAX_MESSAGES).reverse() : [...uids].reverse();
 
   // When importing from [Gmail]/All Mail, fetch flags to detect archived messages.
   // In Gmail IMAP, archived messages lack the \Inbox flag.
