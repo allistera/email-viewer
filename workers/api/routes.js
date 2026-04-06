@@ -305,6 +305,30 @@ export const ApiRouter = {
           });
         }
 
+        // GET /api/messages/:id/raw - Download raw .eml file
+        if (parts.length === 3 && parts[2] === 'raw' && request.method === 'GET') {
+          const msg = await DB.getMessage(env.DB, id);
+          if (!msg) return new Response('Message Not Found', { status: 404 });
+
+          if (!msg.raw_r2_key) return new Response('Raw email not available', { status: 404 });
+
+          const object = await env.MAILSTORE.get(msg.raw_r2_key);
+          if (!object) return new Response('File Not Found', { status: 404 });
+
+          const safeSubject = (msg.subject || 'email')
+            .replace(/["\\\r\n]/g, '_')
+            .replace(/[^\x20-\x7E]/g, '_')
+            .slice(0, 60);
+
+          return new Response(object.body, {
+            headers: {
+              'Content-Type': 'message/rfc822',
+              'Content-Disposition': `attachment; filename="${safeSubject}.eml"`,
+              'Cache-Control': 'private, max-age=3600'
+            }
+          });
+        }
+
         // PATCH /api/messages/:id (Update Tag)
         // Supports: 
         // - tag: string (Replace all tags with this one, legacy)

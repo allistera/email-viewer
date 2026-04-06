@@ -147,6 +147,18 @@
             <span class="toolbar-label">{{ archiving ? 'Marking done…' : 'Done' }}</span>
           </button>
 
+          <a
+            class="toolbar-btn raw-btn"
+            :href="getRawEmailUrl(message.id)"
+            download
+            title="Download raw .eml"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" class="toolbar-icon">
+              <path d="M4 6h16M4 10h16M4 14h10" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+            </svg>
+            <span class="toolbar-label">Raw</span>
+          </a>
+
         </div>
 
         <div v-if="showSnoozePicker" class="snooze-picker" role="group" aria-label="Snooze options">
@@ -254,7 +266,7 @@
 <script>
 import TagBadge from './TagBadge.vue';
 import { sanitize } from '../services/htmlSanitizer.js';
-import { getAttachmentUrl, addMessageTag, removeMessageTag, getTags, archiveMessage, addTodoistTask, snoozeMessage, unsnoozeMessage } from '../services/api.js';
+import { getAttachmentUrl, getRawEmailUrl, addMessageTag, removeMessageTag, getTags, archiveMessage, addTodoistTask, snoozeMessage, unsnoozeMessage } from '../services/api.js';
 import { formatRelativeDate } from '../utils/dateFormat.js';
 
 export default {
@@ -489,6 +501,9 @@ export default {
     getAttachmentUrl(attachmentId) {
       return getAttachmentUrl(this.message.id, attachmentId);
     },
+    getRawEmailUrl(messageId) {
+      return getRawEmailUrl(messageId);
+    },
     async handleArchive() {
       if (!this.message || this.archiving) return;
 
@@ -630,6 +645,18 @@ export default {
 .toolbar-btn.done-btn:hover:not(:disabled) {
   background: #e8f0fe;
   color: #1557b0;
+}
+
+a.toolbar-btn.raw-btn {
+  text-decoration: none;
+  margin-left: auto;
+  color: #9aa0a6;
+  font-size: 12px;
+}
+
+a.toolbar-btn.raw-btn:hover {
+  background: #f1f3f4;
+  color: #5f6368;
 }
 
 .toolbar-icon {

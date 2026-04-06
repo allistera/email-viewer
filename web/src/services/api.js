@@ -112,6 +112,11 @@ export function getAttachmentUrl(messageId, attachmentId) {
   return `${API_BASE}/messages/${messageId}/attachments/${attachmentId}?token=${encodeURIComponent(token)}`;
 }
 
+export function getRawEmailUrl(messageId) {
+  const token = getToken();
+  return `${API_BASE}/messages/${messageId}/raw?token=${encodeURIComponent(token)}`;
+}
+
 export async function checkHealth() {
   const response = await fetch(`${API_BASE}/health`);
   return response.json();
