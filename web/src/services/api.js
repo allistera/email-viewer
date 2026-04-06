@@ -128,6 +128,14 @@ export async function archiveMessage(id) {
   });
 }
 
+export async function archiveAllMessages(tag) {
+  return request('/messages/archive-all', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tag: tag ?? null })
+  });
+}
+
 // ==================
 // Settings API
 // ==================
