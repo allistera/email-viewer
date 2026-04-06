@@ -235,8 +235,6 @@ export default {
 
 .message-item.active {
   background: #fff5f5;
-  border-left: 3px solid var(--color-primary);
-  padding-left: 13px;
 }
 
 .message-item.unread .from,
@@ -415,8 +413,6 @@ export default {
   }
 
   .message-item.active {
-    border-left-width: 1px;
-    padding-left: 14px;
     border-color: color-mix(in srgb, var(--color-primary) 55%, var(--color-border));
     box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 35%, transparent);
   }
