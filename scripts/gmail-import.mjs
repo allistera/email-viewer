@@ -126,6 +126,51 @@ function printProgress() {
   );
 }
 
+const IMAP_CONFIG = {
+  host: 'imap.gmail.com',
+  port: 993,
+  secure: true,
+  auth: {
+    user: GMAIL_USER,
+    pass: GMAIL_APP_PASSWORD
+  },
+  logger: false
+};
+
+let imapClient = null;
+
+async function connectImap() {
+  if (imapClient) {
+    try { await imapClient.logout(); } catch (_) {}
+    imapClient = null;
+  }
+  imapClient = new ImapFlow(IMAP_CONFIG);
+  await imapClient.connect();
+  await imapClient.mailboxOpen(GMAIL_FOLDER);
+}
+
+async function downloadWithReconnect(uid) {
+  const maxAttempts = 3;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const download = await imapClient.download(String(uid), undefined, { uid: true });
+      const chunks = [];
+      for await (const chunk of download.content) {
+        chunks.push(chunk);
+      }
+      return Buffer.concat(chunks);
+    } catch (err) {
+      if (attempt === maxAttempts) throw err;
+      // Connection dropped — reconnect and retry
+      process.stdout.write(`\n  Connection lost (UID ${uid}), reconnecting (attempt ${attempt})...`);
+      try { imapClient.close(); } catch (_) {}
+      imapClient = null;
+      await new Promise(r => setTimeout(r, 3000 * attempt));
+      await connectImap();
+    }
+  }
+}
+
 async function main() {
   console.log(`Gmail Import`);
   console.log(`  User: ${GMAIL_USER}`);
@@ -136,21 +181,10 @@ async function main() {
   console.log(`  API: ${API_URL || '(dry run)'}`);
   console.log('');
 
-  const client = new ImapFlow({
-    host: 'imap.gmail.com',
-    port: 993,
-    secure: true,
-    auth: {
-      user: GMAIL_USER,
-      pass: GMAIL_APP_PASSWORD
-    },
-    logger: false
-  });
-
-  await client.connect();
+  await connectImap();
   console.log('  Connected to Gmail IMAP');
 
-  const mailbox = await client.mailboxOpen(GMAIL_FOLDER);
+  const mailbox = await imapClient.mailboxOpen(GMAIL_FOLDER);
   console.log(`  Mailbox "${GMAIL_FOLDER}": ${mailbox.exists} messages`);
 
   // Build IMAP search criteria
@@ -160,13 +194,13 @@ async function main() {
   }
 
   // Get list of message UIDs
-  const uids = await client.search(searchCriteria, { uid: true });
+  const uids = await imapClient.search(searchCriteria, { uid: true });
   stats.total = MAX_MESSAGES ? Math.min(uids.length, MAX_MESSAGES) : uids.length;
   console.log(`  Messages to process: ${stats.total}`);
 
   if (DRY_RUN) {
     console.log('\n  Dry run complete. No messages were imported.');
-    await client.logout();
+    await imapClient.logout();
     return;
   }
 
@@ -182,7 +216,7 @@ async function main() {
   let flagsByUid = new Map();
   if (isAllMail && uidsToProcess.length > 0) {
     console.log('  Fetching message flags to detect archived emails...');
-    for await (const msg of client.fetch(uidsToProcess, { flags: true, uid: true })) {
+    for await (const msg of imapClient.fetch(uidsToProcess, { flags: true, uid: true })) {
       flagsByUid.set(msg.uid, msg.flags);
     }
     const archivedCount = [...flagsByUid.values()].filter(f => !f.has('\\Inbox')).length;
@@ -199,12 +233,7 @@ async function main() {
     // Download from IMAP (must be sequential — single stateful connection)
     let rawBuffer, isArchived;
     try {
-      const download = await client.download(String(uid), undefined, { uid: true });
-      const chunks = [];
-      for await (const chunk of download.content) {
-        chunks.push(chunk);
-      }
-      rawBuffer = Buffer.concat(chunks);
+      rawBuffer = await downloadWithReconnect(uid);
       const flags = flagsByUid.get(uid);
       isArchived = isAllMail && flags && !flags.has('\\Inbox');
     } catch (err) {
@@ -246,7 +275,7 @@ async function main() {
   console.log(`  Errors: ${stats.errors}`);
   console.log(`  Total time: ${((Date.now() - stats.startTime) / 1000).toFixed(0)}s`);
 
-  await client.logout();
+  await imapClient.logout();
 }
 
 main().catch(err => {
