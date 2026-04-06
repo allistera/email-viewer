@@ -25,6 +25,7 @@
 <script>
 export default {
   name: 'VirtualList',
+  emits: ['near-bottom'],
   props: {
     items: {
       type: Array,
@@ -82,6 +83,10 @@ export default {
         window.requestAnimationFrame(() => {
           if (this.$refs.scroller) {
             this.scrollTop = this.$refs.scroller.scrollTop;
+            const { scrollTop, scrollHeight, clientHeight } = this.$refs.scroller;
+            if (scrollHeight - scrollTop - clientHeight < 300) {
+              this.$emit('near-bottom');
+            }
           }
           this.ticking = false;
         });

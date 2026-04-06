@@ -31,6 +31,7 @@
       :items="messages"
       :item-height="itemHeight"
       ref="virtualList"
+      @near-bottom="onNearBottom"
     >
       <template #default="{ item: message }">
         <div
@@ -62,10 +63,8 @@
         </div>
       </template>
       <template #footer>
-        <div v-if="hasMore" class="load-more">
-          <button @click="$emit('load-more')" class="btn-secondary" :disabled="loadingMore">
-            {{ loadingMore ? 'Loading...' : 'Load More' }}
-          </button>
+        <div v-if="hasMore || loadingMore" class="load-more-indicator">
+          <span v-if="loadingMore" class="loading-spinner"></span>
         </div>
       </template>
     </VirtualList>
@@ -154,6 +153,12 @@ export default {
           this.$refs.virtualList.scrollToIndex(index);
         }
       });
+    },
+
+    onNearBottom() {
+      if (this.hasMore && !this.loadingMore) {
+        this.$emit('load-more');
+      }
     }
   }
 };
@@ -336,29 +341,24 @@ export default {
   padding-left: 13px;
 }
 
-.load-more {
-  padding: 16px;
+.load-more-indicator {
+  padding: 12px;
   text-align: center;
-  border-bottom: 1px solid var(--color-border);
+  min-height: 40px;
 }
 
-.btn-secondary {
-  padding: 8px 16px;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  background: var(--color-bg);
-  color: var(--color-text);
-  cursor: pointer;
-  font-size: 14px;
+.loading-spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
 }
 
-.btn-secondary:hover:not(:disabled) {
-  background: var(--color-bg-secondary);
-}
-
-.btn-secondary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 /* Hamburger menu button - hidden on desktop */
@@ -441,10 +441,6 @@ export default {
     font-size: 12px;
   }
 
-  .btn-secondary {
-    min-height: 44px;
-    font-size: 15px;
-    border-radius: 10px;
-  }
+
 }
 </style>
