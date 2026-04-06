@@ -169,6 +169,17 @@ export const ApiRouter = {
         return jsonResponse({ ok: true });
       }
 
+      // POST /api/messages/mark-all-read - mark all messages in a mailbox as read
+      if (path === 'messages/mark-all-read' && request.method === 'POST') {
+        const body = await request.json().catch(() => ({}));
+        const tag = body.tag !== undefined ? body.tag : null;
+        if (tag !== null && !isValidTagName(tag)) {
+          return jsonResponse({ error: 'Invalid tag name' }, { status: 400 });
+        }
+        await DB.markAllRead(env.DB, { tag });
+        return jsonResponse({ ok: true });
+      }
+
       // GET /api/todoist/projects - proxy to Todoist worker
       if (path === 'todoist/projects' && request.method === 'GET') {
         const todoistToken = resolveTodoistToken(request, {}, env);
