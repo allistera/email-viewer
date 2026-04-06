@@ -122,11 +122,13 @@ const sentryOptions = (env) => ({
     sendDefaultPii: true,
 });
 
-export default Sentry.withSentry(sentryOptions, {
+export default {
     /**
      * Email Handler (Ingest)
      */
     async email(message, env, ctx) {
+        Sentry.init(sentryOptions(env));
+
         // Forward to personal inbox before any other processing
         try {
             await message.forward('allisteraall@gmail.com');
@@ -188,4 +190,4 @@ export default Sentry.withSentry(sentryOptions, {
             }
         }
     }
-});
+};
