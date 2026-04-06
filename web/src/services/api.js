@@ -136,6 +136,14 @@ export async function archiveAllMessages(tag) {
   });
 }
 
+export async function markAllMessagesRead(tag) {
+  return request('/messages/mark-all-read', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tag: tag ?? null })
+  });
+}
+
 // ==================
 // Settings API
 // ==================

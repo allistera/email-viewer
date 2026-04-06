@@ -397,6 +397,37 @@ export const DB = {
   },
 
   /**
+   * Mark all messages in a mailbox as read
+   * @param {D1Database} db
+   * @param {object} opts
+   * @param {string|null} opts.tag - tag name or null for inbox (excludes Spam)
+   */
+  async markAllRead(db, { tag } = {}) {
+    if (tag === null || tag === undefined) {
+      await db.prepare(`
+        UPDATE messages SET is_read = 1
+        WHERE (is_read = 0 OR is_read IS NULL)
+          AND (is_archived = 0 OR is_archived IS NULL)
+          AND id NOT IN (
+            SELECT mt.message_id FROM message_tags mt
+            JOIN tags t ON mt.tag_id = t.id
+            WHERE t.name = 'Spam'
+          )
+      `).run();
+    } else {
+      await db.prepare(`
+        UPDATE messages SET is_read = 1
+        WHERE (is_read = 0 OR is_read IS NULL)
+          AND id IN (
+            SELECT mt.message_id FROM message_tags mt
+            JOIN tags t ON mt.tag_id = t.id
+            WHERE t.name = ?
+          )
+      `).bind(tag).run();
+    }
+  },
+
+  /**
    * Update Todoist info for a message
    * @param {D1Database} db
    * @param {string} id

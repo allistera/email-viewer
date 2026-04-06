@@ -26,7 +26,6 @@
       class="tag-item inbox-item"
       :class="{ active: selectedTag === null && !settingsActive }"
       @click="$emit('select', null)"
-      @contextmenu.prevent="showContextMenu($event, null)"
       @dragover="onDragOver($event)"
       @drop="onDropInbox($event)"
       role="button"
@@ -40,13 +39,21 @@
           <span class="tag-dot"></span>
           <span class="tag-label">Inbox</span>
         </div>
+        <div class="tag-actions">
+          <button
+            class="action-btn menu-btn"
+            @click.stop="openDropdown($event, null)"
+            title="More options"
+            aria-label="More options"
+          >⋮</button>
+        </div>
       </div>
     </div>
 
     <div v-if="showAdd" class="add-container">
-      <input 
-        v-model.trim="newTagName" 
-        placeholder="New tag..." 
+      <input
+        v-model.trim="newTagName"
+        placeholder="New tag..."
         @keyup.enter="handleAddTag"
         ref="input"
       >
@@ -59,7 +66,6 @@
         class="tag-item"
         :class="{ active: selectedTag === tag.name && !settingsActive }"
         @click="handleSelectTag(tag.name)"
-        @contextmenu.prevent="showContextMenu($event, tag.name)"
         draggable="true"
         @dragstart="onDragStart($event, tag)"
         @dragover="onDragOver($event)"
@@ -89,16 +95,22 @@
               <span class="tag-label" :title="tag.name">{{ tag.label }}</span>
               <span v-if="tag.count != null && tag.count !== 0" class="tag-count">({{ tag.count }})</span>
             </div>
-            
+
             <div class="tag-actions">
-              <button 
-                class="action-btn edit-btn" 
+              <button
+                class="action-btn menu-btn"
+                @click.stop="openDropdown($event, tag.name)"
+                title="More options"
+                aria-label="More options"
+              >⋮</button>
+              <button
+                class="action-btn edit-btn"
                 @click.stop="startRename(tag)"
                 title="Rename"
                 aria-label="Rename Tag"
               >✎</button>
-              <button 
-                class="action-btn delete-btn" 
+              <button
+                class="action-btn delete-btn"
                 @click.stop="handleDeleteTag(tag.id)"
                 title="Delete"
                 aria-label="Delete Tag"
@@ -195,22 +207,36 @@
         </div>
       </div>
     </div>
-    <!-- Context Menu -->
+
+    <!-- Mailbox dropdown menu -->
     <teleport to="body">
       <div
-        v-if="contextMenu.visible"
-        class="context-menu"
-        :style="{ top: contextMenu.y + 'px', left: contextMenu.x + 'px' }"
+        v-if="dropdown.visible"
+        class="mailbox-dropdown"
+        :style="{ top: dropdown.y + 'px', left: dropdown.x + 'px' }"
         @click.stop
       >
-        <button class="context-menu-item" @click="handleMarkAllDone">Mark all as done</button>
+        <button class="mailbox-dropdown-item" @click="handleMarkAllDone">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="3" width="18" height="18" rx="3"/>
+            <path d="M7 12l3 3 7-7"/>
+          </svg>
+          Mark all as done
+        </button>
+        <button class="mailbox-dropdown-item" @click="handleMarkAllRead">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+          Mark all as read
+        </button>
       </div>
     </teleport>
   </aside>
 </template>
 
 <script>
-import { getTags, createTag, deleteTag, updateTag, updateMessageTag, archiveMessage, archiveAllMessages } from '../services/api.js';
+import { getTags, createTag, deleteTag, updateTag, updateMessageTag, archiveMessage, archiveAllMessages, markAllMessagesRead } from '../services/api.js';
 
 export default {
   name: 'TagSidebar',
@@ -235,7 +261,7 @@ export default {
       editingTagId: null,
       editName: '',
       dragOverTarget: null,
-      contextMenu: {
+      dropdown: {
         visible: false,
         x: 0,
         y: 0,
@@ -286,11 +312,11 @@ export default {
     await this.loadTags();
   },
   mounted() {
-    document.addEventListener('click', this.closeContextMenu);
+    document.addEventListener('click', this.closeDropdown);
     document.addEventListener('keydown', this.onKeyDown);
   },
   beforeUnmount() {
-    document.removeEventListener('click', this.closeContextMenu);
+    document.removeEventListener('click', this.closeDropdown);
     document.removeEventListener('keydown', this.onKeyDown);
   },
   methods: {
@@ -298,7 +324,7 @@ export default {
       try {
         const res = await getTags();
         this.tags = res || [];
-        // Spam is handled manually now if we keep it in DB, 
+        // Spam is handled manually now if we keep it in DB,
         // but we filter it out of user list.
       } catch (e) {
         console.error('Failed to load tags', e);
@@ -340,7 +366,7 @@ export default {
             inputs[0].focus();
         } else if (inputs && inputs.focus) {
             inputs.focus();
-        } else if (Array.isArray(inputs) && inputs[0]) { 
+        } else if (Array.isArray(inputs) && inputs[0]) {
              inputs[0].focus();
         }
       });
@@ -366,7 +392,7 @@ export default {
       }
 
       const parts = tag.name.split('/');
-      parts.pop(); 
+      parts.pop();
       parts.push(this.editName.trim());
       const newFullName = parts.join('/');
 
@@ -438,7 +464,7 @@ export default {
             }
         }
     },
-    
+
     async onDropSystem(event, type) {
         event.preventDefault();
         this.dragOverTarget = null;
@@ -463,38 +489,50 @@ export default {
         }
     },
 
-    showContextMenu(event, tag) {
-      event.preventDefault();
+    openDropdown(event, tag) {
       event.stopPropagation();
-      this.contextMenu = {
+      const rect = event.currentTarget.getBoundingClientRect();
+      this.dropdown = {
         visible: true,
-        x: event.clientX,
-        y: event.clientY,
+        x: rect.left,
+        y: rect.bottom + 4,
         tag
       };
     },
 
-    closeContextMenu() {
-      this.contextMenu.visible = false;
+    closeDropdown() {
+      this.dropdown.visible = false;
     },
 
     onKeyDown(event) {
-      if (event.key === 'Escape') this.closeContextMenu();
+      if (event.key === 'Escape') this.closeDropdown();
     },
 
     async handleMarkAllDone() {
-      const tag = this.contextMenu.tag;
+      const tag = this.dropdown.tag;
       const label = tag == null ? 'Inbox' : tag;
       if (!confirm(`Mark all messages in "${label}" as done?`)) {
-        this.closeContextMenu();
+        this.closeDropdown();
         return;
       }
-      this.closeContextMenu();
+      this.closeDropdown();
       try {
         await archiveAllMessages(tag);
         this.$emit('select', this.$props.selectedTag);
       } catch (e) {
         alert('Failed to mark all as done: ' + e.message);
+      }
+    },
+
+    async handleMarkAllRead() {
+      const tag = this.dropdown.tag;
+      const label = tag == null ? 'Inbox' : tag;
+      this.closeDropdown();
+      try {
+        await markAllMessagesRead(tag);
+        this.$emit('select', this.$props.selectedTag);
+      } catch (e) {
+        alert(`Failed to mark all as read in "${label}": ` + e.message);
       }
     },
 
@@ -753,6 +791,13 @@ export default {
   color: var(--color-primary);
 }
 
+.menu-btn {
+  font-size: 16px;
+  line-height: 1;
+  padding: 2px 5px;
+  letter-spacing: 0;
+}
+
 /* Close button - hidden on desktop */
 .close-sidebar-btn {
   display: none;
@@ -773,37 +818,6 @@ export default {
   height: 20px;
 }
 
-/* Context menu styles - not scoped since it's teleported to body */
-</style>
-<style>
-.context-menu {
-  position: fixed;
-  z-index: 9999;
-  background: var(--color-bg-secondary, #fff);
-  border: 1px solid var(--color-border, #e0e0e0);
-  border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  padding: 4px 0;
-  min-width: 180px;
-}
-
-.context-menu-item {
-  display: block;
-  width: 100%;
-  padding: 8px 16px;
-  background: none;
-  border: none;
-  text-align: left;
-  font-size: 14px;
-  color: var(--color-text, #333);
-  cursor: pointer;
-}
-
-.context-menu-item:hover {
-  background: var(--color-bg-hover, #f5f5f5);
-}
-</style>
-<style scoped>
 @media (max-width: 768px) {
   .close-sidebar-btn {
     display: flex;
@@ -832,5 +846,36 @@ export default {
     padding: 12px 16px;
     min-height: 44px;
   }
+}
+</style>
+<style>
+.mailbox-dropdown {
+  position: fixed;
+  z-index: 9999;
+  background: var(--color-bg-secondary, #fff);
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 4px 0;
+  min-width: 180px;
+}
+
+.mailbox-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 14px;
+  background: none;
+  border: none;
+  text-align: left;
+  font-size: 13px;
+  color: var(--color-text, #333);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.mailbox-dropdown-item:hover {
+  background: var(--color-bg-hover, #f5f5f5);
 }
 </style>
