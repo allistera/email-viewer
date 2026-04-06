@@ -328,9 +328,41 @@ export const DB = {
   },
 
   /**
+   * Archive all non-archived messages in a mailbox
+   * @param {D1Database} db
+   * @param {object} opts
+   * @param {string|null} opts.tag - tag name to filter by, or null for inbox (excludes Spam)
+   */
+  async archiveAllMessages(db, { tag } = {}) {
+    if (tag === null || tag === undefined) {
+      // Inbox: archive all non-archived messages that are not tagged Spam
+      await db.prepare(`
+        UPDATE messages SET is_archived = 1
+        WHERE (is_archived = 0 OR is_archived IS NULL)
+          AND id NOT IN (
+            SELECT mt.message_id FROM message_tags mt
+            JOIN tags t ON mt.tag_id = t.id
+            WHERE t.name = 'Spam'
+          )
+      `).run();
+    } else {
+      // Specific tag: archive all non-archived messages with that tag
+      await db.prepare(`
+        UPDATE messages SET is_archived = 1
+        WHERE (is_archived = 0 OR is_archived IS NULL)
+          AND id IN (
+            SELECT mt.message_id FROM message_tags mt
+            JOIN tags t ON mt.tag_id = t.id
+            WHERE t.name = ?
+          )
+      `).bind(tag).run();
+    }
+  },
+
+  /**
    * Unarchive a message
-   * @param {D1Database} db 
-   * @param {string} id 
+   * @param {D1Database} db
+   * @param {string} id
    */
   async unarchiveMessage(db, id) {
     await db.prepare('UPDATE messages SET is_archived = 0 WHERE id = ?').bind(id).run();

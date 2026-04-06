@@ -157,6 +157,18 @@ export const ApiRouter = {
         });
       }
 
+      // POST /api/messages/archive-all - archive all messages in a mailbox
+      if (path === 'messages/archive-all' && request.method === 'POST') {
+        const body = await request.json().catch(() => ({}));
+        // tag: string → specific tag; null/undefined → inbox (excludes Spam)
+        const tag = body.tag !== undefined ? body.tag : null;
+        if (tag !== null && !isValidTagName(tag)) {
+          return jsonResponse({ error: 'Invalid tag name' }, { status: 400 });
+        }
+        await DB.archiveAllMessages(env.DB, { tag });
+        return jsonResponse({ ok: true });
+      }
+
       // GET /api/todoist/projects - proxy to Todoist worker
       if (path === 'todoist/projects' && request.method === 'GET') {
         const todoistToken = resolveTodoistToken(request, {}, env);

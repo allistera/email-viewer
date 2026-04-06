@@ -26,6 +26,7 @@
       class="tag-item inbox-item"
       :class="{ active: selectedTag === null && !settingsActive }"
       @click="$emit('select', null)"
+      @contextmenu.prevent="showContextMenu($event, null)"
       @dragover="onDragOver($event)"
       @drop="onDropInbox($event)"
       role="button"
@@ -52,12 +53,13 @@
     </div>
 
     <ul class="tag-list">
-      <li 
-        v-for="tag in userTags" 
-        :key="tag.id" 
+      <li
+        v-for="tag in userTags"
+        :key="tag.id"
         class="tag-item"
         :class="{ active: selectedTag === tag.name && !settingsActive }"
         @click="handleSelectTag(tag.name)"
+        @contextmenu.prevent="showContextMenu($event, tag.name)"
         draggable="true"
         @dragstart="onDragStart($event, tag)"
         @dragover="onDragOver($event)"
@@ -193,11 +195,22 @@
         </div>
       </div>
     </div>
+    <!-- Context Menu -->
+    <teleport to="body">
+      <div
+        v-if="contextMenu.visible"
+        class="context-menu"
+        :style="{ top: contextMenu.y + 'px', left: contextMenu.x + 'px' }"
+        @click.stop
+      >
+        <button class="context-menu-item" @click="handleMarkAllDone">Mark all as done</button>
+      </div>
+    </teleport>
   </aside>
 </template>
 
 <script>
-import { getTags, createTag, deleteTag, updateTag, updateMessageTag, archiveMessage } from '../services/api.js';
+import { getTags, createTag, deleteTag, updateTag, updateMessageTag, archiveMessage, archiveAllMessages } from '../services/api.js';
 
 export default {
   name: 'TagSidebar',
@@ -221,7 +234,13 @@ export default {
       draggedTag: null,
       editingTagId: null,
       editName: '',
-      dragOverTarget: null
+      dragOverTarget: null,
+      contextMenu: {
+        visible: false,
+        x: 0,
+        y: 0,
+        tag: undefined  // null = inbox, string = tag name
+      }
     };
   },
   computed: {
@@ -265,6 +284,14 @@ export default {
   },
   async created() {
     await this.loadTags();
+  },
+  mounted() {
+    document.addEventListener('click', this.closeContextMenu);
+    document.addEventListener('keydown', this.onKeyDown);
+  },
+  beforeUnmount() {
+    document.removeEventListener('click', this.closeContextMenu);
+    document.removeEventListener('keydown', this.onKeyDown);
   },
   methods: {
     async loadTags() {
@@ -434,6 +461,41 @@ export default {
                 }
             }
         }
+    },
+
+    showContextMenu(event, tag) {
+      event.preventDefault();
+      event.stopPropagation();
+      this.contextMenu = {
+        visible: true,
+        x: event.clientX,
+        y: event.clientY,
+        tag
+      };
+    },
+
+    closeContextMenu() {
+      this.contextMenu.visible = false;
+    },
+
+    onKeyDown(event) {
+      if (event.key === 'Escape') this.closeContextMenu();
+    },
+
+    async handleMarkAllDone() {
+      const tag = this.contextMenu.tag;
+      const label = tag == null ? 'Inbox' : tag;
+      if (!confirm(`Mark all messages in "${label}" as done?`)) {
+        this.closeContextMenu();
+        return;
+      }
+      this.closeContextMenu();
+      try {
+        await archiveAllMessages(tag);
+        this.$emit('select', this.$props.selectedTag);
+      } catch (e) {
+        alert('Failed to mark all as done: ' + e.message);
+      }
     },
 
     async onDropInbox(event) {
@@ -711,6 +773,37 @@ export default {
   height: 20px;
 }
 
+/* Context menu styles - not scoped since it's teleported to body */
+</style>
+<style>
+.context-menu {
+  position: fixed;
+  z-index: 9999;
+  background: var(--color-bg-secondary, #fff);
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 4px 0;
+  min-width: 180px;
+}
+
+.context-menu-item {
+  display: block;
+  width: 100%;
+  padding: 8px 16px;
+  background: none;
+  border: none;
+  text-align: left;
+  font-size: 14px;
+  color: var(--color-text, #333);
+  cursor: pointer;
+}
+
+.context-menu-item:hover {
+  background: var(--color-bg-hover, #f5f5f5);
+}
+</style>
+<style scoped>
 @media (max-width: 768px) {
   .close-sidebar-btn {
     display: flex;
