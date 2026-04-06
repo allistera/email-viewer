@@ -69,6 +69,7 @@ describe("email worker", () => {
       raw,
       from: "sender@example.com",
       to: "recipient@example.com",
+      forward: vi.fn(async () => {}),
       setReject: vi.fn(),
     };
 
