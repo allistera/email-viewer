@@ -75,8 +75,11 @@ async function postEmail(rawBuffer, options = {}) {
       }
 
       if (!response.ok) {
+        const contentType = response.headers.get('content-type') || '';
         const text = await response.text();
-        throw new Error(`HTTP ${response.status}: ${text}`);
+        const isHtml = contentType.includes('text/html') || text.trimStart().startsWith('<!DOCTYPE') || text.trimStart().startsWith('<html');
+        const body = isHtml ? `[HTML error page - likely Cloudflare error ${response.status}]` : text;
+        throw new Error(`HTTP ${response.status}: ${body}`);
       }
 
       return await response.json();
