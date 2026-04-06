@@ -257,10 +257,8 @@ export default {
       return `mobile-view-${this.mobileView}`;
     },
     pageTitle() {
-      // Simplified, static app title.
-      // Previously this showed folder names and counts
-      // like "Inbox (1)" – now always "Email".
-      return 'Email';
+      const unread = this.messageCounts?.unreadInbox;
+      return unread ? `Email (${unread})` : 'Email';
     }
   },
   watch: {

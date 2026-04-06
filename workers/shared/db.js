@@ -296,8 +296,22 @@ export const DB = {
         NULL as tag_name,
         COUNT(id) as count
       FROM messages
-      WHERE is_archived = 1 
+      WHERE is_archived = 1
         AND (is_read = 0 OR is_read IS NULL)
+
+      UNION ALL
+
+      SELECT
+        'unread_inbox' as type,
+        NULL as tag_name,
+        COUNT(m.id) as count
+      FROM messages m
+      LEFT JOIN message_tags mt ON m.id = mt.message_id
+      LEFT JOIN tags t ON mt.tag_id = t.id AND t.name = 'Spam'
+      WHERE (m.is_archived = 0 OR m.is_archived IS NULL)
+        AND (m.snoozed_until IS NULL OR m.snoozed_until <= strftime('%s','now') * 1000)
+        AND (m.is_read = 0 OR m.is_read IS NULL)
+        AND t.id IS NULL
     `;
 
     const { results } = await db.prepare(query).all();
@@ -306,6 +320,7 @@ export const DB = {
     let totalUnarchived = 0;
     let unreadSpam = 0;
     let unreadArchive = 0;
+    let unreadInbox = 0;
     const tagCounts = {};
 
     if (results) {
@@ -318,6 +333,8 @@ export const DB = {
           unreadSpam = row.count;
         } else if (row.type === 'unread_archive') {
           unreadArchive = row.count;
+        } else if (row.type === 'unread_inbox') {
+          unreadInbox = row.count;
         } else if (row.type === 'tag') {
           tagCounts[row.tag_name] = row.count;
         }
@@ -335,6 +352,7 @@ export const DB = {
       spam,
       unreadSpam,
       unreadArchive,
+      unreadInbox,
       sent,
       tagCounts
     };
