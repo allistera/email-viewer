@@ -567,9 +567,10 @@ export default {
         }
       }
 
-      // Select the next message if available (only on desktop)
+      // Select the next unread message if available, otherwise the first message (only on desktop)
       if (!this.isMobile && this.messages.length > 0 && !this.selectedMessageId) {
-        this.handleSelectMessage(this.messages[0].id);
+        const nextUnread = this.messages.find(m => !m.is_read);
+        this.handleSelectMessage((nextUnread || this.messages[0]).id);
       }
     },
 
