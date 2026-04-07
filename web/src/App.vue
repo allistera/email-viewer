@@ -257,8 +257,7 @@ export default {
       return `mobile-view-${this.mobileView}`;
     },
     pageTitle() {
-      const unread = this.messageCounts?.unreadInbox;
-      return unread ? `Email (${unread})` : 'Email';
+      return 'Email';
     }
   },
   watch: {
