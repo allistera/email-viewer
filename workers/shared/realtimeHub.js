@@ -1,8 +1,10 @@
+import { instrumentDurableObjectWithSentry } from '@sentry/cloudflare';
+
 /**
  * Durable Object: RealtimeHub
  * Manages WebSocket and SSE connections for real-time updates.
  */
-export class RealtimeHub {
+class RealtimeHubBase {
   constructor(state, env) {
     this.state = state;
     this.env = env;
@@ -165,3 +167,13 @@ export class RealtimeHub {
     }
   }
 }
+
+export const RealtimeHub = instrumentDurableObjectWithSentry(
+  (env) => ({
+    dsn: env.SENTRY_DSN,
+    tracesSampleRate: 1.0,
+    enableLogs: true,
+    sendDefaultPii: true,
+  }),
+  RealtimeHubBase,
+);

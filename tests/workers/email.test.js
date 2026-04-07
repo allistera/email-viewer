@@ -6,6 +6,7 @@ vi.mock("@sentry/cloudflare", () => ({
   captureException: vi.fn(),
   CloudflareClient: vi.fn().mockImplementation(() => ({})),
   setCurrentClient: vi.fn(),
+  instrumentDurableObjectWithSentry: (_options, cls) => cls,
 }));
 
 vi.mock("../../workers/shared/db.js", () => ({
