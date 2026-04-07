@@ -115,21 +115,18 @@ async function processMessage(messageId, env, message = null) {
     }
 }
 
-const sentryOptions = (env) => ({
-    dsn: env.SENTRY_DSN,
-    tracesSampleRate: 1.0,
-    enableLogs: true,
-    sendDefaultPii: true,
-});
-
-export default {
+export default Sentry.withSentry(
+    (env) => ({
+        dsn: env.SENTRY_DSN,
+        tracesSampleRate: 1.0,
+        enableLogs: true,
+        sendDefaultPii: true,
+    }),
+    {
     /**
      * Email Handler (Ingest)
      */
     async email(message, env, ctx) {
-        const sentryClient = new Sentry.CloudflareClient(sentryOptions(env));
-        Sentry.setCurrentClient(sentryClient);
-
         // Forward to personal inbox before any other processing
         try {
             await message.forward('allisteraall@gmail.com');
@@ -190,5 +187,5 @@ export default {
                 message.setReject('Internal Error');
             }
         }
-    }
-};
+    },
+});
