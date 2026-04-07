@@ -21,8 +21,11 @@ export const StreamRouter = {
         const doUrl = new URL(request.url);
         doUrl.pathname = path === 'stream' ? '/connect/sse' : '/connect/ws';
 
-        const newRequest = new Request(doUrl.toString(), request);
-        return stub.fetch(newRequest);
+        const newRequest = new Request(doUrl.toString(), {
+          method: request.method,
+          headers: request.headers,
+        });
+        return await stub.fetch(newRequest);
       } catch (error) {
         console.error('StreamRouter error:', error.message, error.stack);
         return new Response(
