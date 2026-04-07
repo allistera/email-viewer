@@ -1,6 +1,5 @@
 import { DB } from '../shared/db.js';
 import { sendNewEmailNotification } from '../shared/notifications.js';
-import { ingestRawEmail } from '../shared/ingest.js';
 
 const MISSING_TABLE_PATTERN = /no such table/i;
 
@@ -1046,48 +1045,6 @@ export const ApiRouter = {
           await DB.deleteCalendarEvent(env.DB, eventId);
           return jsonResponse({ ok: true });
         }
-      }
-
-      // POST /api/messages/import - Ingest a raw RFC 2822 email
-      if (path === 'messages/import' && request.method === 'POST') {
-        const contentType = (request.headers.get('Content-Type') || '').toLowerCase();
-        if (!contentType.includes('application/octet-stream') && !contentType.includes('message/rfc822')) {
-          return jsonResponse(
-            { error: 'Content-Type must be application/octet-stream or message/rfc822' },
-            { status: 400 }
-          );
-        }
-
-        const rawBuffer = await request.arrayBuffer();
-        if (!rawBuffer || rawBuffer.byteLength === 0) {
-          return jsonResponse({ error: 'Empty request body' }, { status: 400 });
-        }
-
-        const result = await ingestRawEmail(rawBuffer, env);
-
-        if (result.deduplicated) {
-          return jsonResponse({ id: result.messageId, deduplicated: true });
-        }
-
-        // Apply tagging rules (skip AI classification for bulk import)
-        if (result.dbMessage) {
-          const ruleMatch = await DB.matchTaggingRules(env.DB, result.dbMessage);
-          if (ruleMatch) {
-            await DB.updateTagInfo(env.DB, result.messageId, {
-              tag: ruleMatch.tag,
-              confidence: ruleMatch.confidence,
-              reason: ruleMatch.reason
-            });
-          }
-        }
-
-        // Mark as archived if the source indicates it (e.g. Gmail archived messages)
-        const shouldArchive = url.searchParams.get('archived') === 'true';
-        if (shouldArchive) {
-          await DB.archiveMessage(env.DB, result.messageId);
-        }
-
-        return jsonResponse({ id: result.messageId, deduplicated: false, archived: shouldArchive }, { status: 201 });
       }
 
       return new Response('Not Found', { status: 404 });
