@@ -21,6 +21,10 @@
         <div v-if="loadingTasks" class="loading-state">
           <span>Loading tasks...</span>
         </div>
+        <div v-else-if="tasksError" class="error-state">
+          <span>{{ tasksError }}</span>
+          <button class="retry-btn" @click="loadTasks">Retry</button>
+        </div>
         <div v-else>
           <!-- Today -->
           <div class="section-header">
@@ -148,6 +152,7 @@ export default {
     return {
       tasks: { today: [], inbox: [] },
       loadingTasks: false,
+      tasksError: null,
       projects: [],
       loadingProjects: false,
       projectsExpanded: false,
@@ -215,11 +220,13 @@ export default {
     },
     async loadTasks() {
       this.loadingTasks = true;
+      this.tasksError = null;
       try {
         const result = await getTodoistTasks();
         this.tasks = { today: result.today || [], inbox: result.inbox || [] };
       } catch (e) {
         console.error('Failed to load Todoist tasks:', e);
+        this.tasksError = e.message || 'Failed to load tasks';
         this.tasks = { today: [], inbox: [] };
       } finally {
         this.loadingTasks = false;
@@ -391,6 +398,31 @@ export default {
   padding: 8px 16px;
   font-size: 12px;
   color: var(--color-text-secondary);
+}
+
+.error-state {
+  padding: 12px 16px;
+  font-size: 12px;
+  color: var(--color-error, #f23f43);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.retry-btn {
+  align-self: flex-start;
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 11px;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+}
+
+.retry-btn:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text);
 }
 
 .section-header {
