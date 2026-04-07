@@ -20,6 +20,8 @@
     "test:report": "playwright show-report"
   },
   "dependencies": {
+    "@sentry/vite-plugin": "^5.1.1",
+    "@sentry/vue": "^10.47.0",
     "sanitize-html": "^2.17.0",
     "vue": "^3.4.0"
   },
