@@ -453,7 +453,9 @@ export default {
     async loadTags() {
       try {
         const tags = await getTags();
-        this.availableTags = tags || [];
+        this.availableTags = (tags || [])
+          .filter(t => t.name !== 'Spam' && t.name !== 'Sent')
+          .sort((a, b) => a.name.localeCompare(b.name));
       } catch (e) {
         console.error('Failed to load tags in detail view', e);
       }
