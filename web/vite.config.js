@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => {
       // Requires SENTRY_AUTH_TOKEN env var (set in CI / Cloudflare Pages build settings).
       ...(env.SENTRY_AUTH_TOKEN ? [sentryVitePlugin({
         org: 'antosik-allister',
-        project: 'node-cloudflare-workers',
+        project: 'javascript-vue',
         authToken: env.SENTRY_AUTH_TOKEN,
         sourcemaps: { filesToDeleteAfterUpload: ['./dist/**/*.map'] },
         telemetry: false,
