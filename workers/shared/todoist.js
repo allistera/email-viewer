@@ -1,5 +1,5 @@
-const TODOIST_TASKS_API_URL = 'https://api.todoist.com/rest/v2/tasks';
-const TODOIST_PROJECTS_API_URL = 'https://api.todoist.com/rest/v2/projects';
+const TODOIST_TASKS_API_URL = 'https://api.todoist.com/api/v1/tasks';
+const TODOIST_PROJECTS_API_URL = 'https://api.todoist.com/api/v1/projects';
 const TODOIST_CONTENT_MAX = 500;
 const TODOIST_DESCRIPTION_MAX = 2000;
 
