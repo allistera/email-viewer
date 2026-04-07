@@ -254,7 +254,7 @@
           <iframe
             v-else
             :srcdoc="sanitizedHtml"
-            sandbox
+            sandbox="allow-popups allow-popups-to-escape-sandbox"
             class="html-iframe"
           ></iframe>
         </div>

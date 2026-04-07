@@ -22,6 +22,6 @@ export const CONFIG = {
   enforceHtmlBoundary: false,
   allowVulnerableTags: false,
   transformTags: {
-    'a': sanitizeHtml.simpleTransform('a', { rel: 'noopener noreferrer' }, true)
+    'a': sanitizeHtml.simpleTransform('a', { target: '_blank', rel: 'noopener noreferrer' }, true)
   }
 };
