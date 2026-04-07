@@ -14,6 +14,10 @@ export class RealtimeClient {
     this.reconnectDelay = 1000;
     this.reconnectTimeoutId = null;
     this.isDisconnecting = false;
+    // Heartbeat monitoring: reconnect if no event received in 60s.
+    // The DO sends a heartbeat every 25s, so two missed beats trigger this.
+    this.heartbeatTimeoutId = null;
+    this.heartbeatTimeout = 60000;
   }
 
   connect() {
@@ -22,6 +26,36 @@ export class RealtimeClient {
       return;
     }
     this.connectSSE();
+  }
+
+  resetHeartbeatTimeout() {
+    if (this.heartbeatTimeoutId) {
+      clearTimeout(this.heartbeatTimeoutId);
+    }
+    this.heartbeatTimeoutId = setTimeout(() => {
+      this.heartbeatTimeoutId = null;
+      if (!this.isDisconnecting) {
+        console.warn('Realtime: heartbeat timeout, reconnecting');
+        // Close current connection and reconnect from scratch
+        if (this.eventSource) {
+          this.eventSource.close();
+          this.eventSource = null;
+        }
+        if (this.webSocket) {
+          this.webSocket.close();
+          this.webSocket = null;
+        }
+        this.reconnectAttempts = 0;
+        this.connect();
+      }
+    }, this.heartbeatTimeout);
+  }
+
+  clearHeartbeatTimeout() {
+    if (this.heartbeatTimeoutId) {
+      clearTimeout(this.heartbeatTimeoutId);
+      this.heartbeatTimeoutId = null;
+    }
   }
 
   connectSSE() {
@@ -35,6 +69,7 @@ export class RealtimeClient {
       this.eventSource.onopen = () => {
         console.log('SSE connected');
         this.reconnectAttempts = 0;
+        this.resetHeartbeatTimeout();
       };
 
       this.eventSource.onmessage = (event) => {
@@ -70,6 +105,7 @@ export class RealtimeClient {
       this.webSocket.onopen = () => {
         console.log('WebSocket connected');
         this.reconnectAttempts = 0;
+        this.resetHeartbeatTimeout();
       };
 
       this.webSocket.onmessage = (event) => {
@@ -119,9 +155,15 @@ export class RealtimeClient {
   }
 
   handleEvent(data) {
-    const { type } = data;
-    const handlers = this.listeners.get(type) || [];
+    // Any received event resets the heartbeat watchdog.
+    this.resetHeartbeatTimeout();
 
+    const { type } = data;
+
+    // Heartbeat events are keepalives only — don't dispatch to app listeners.
+    if (type === 'heartbeat') return;
+
+    const handlers = this.listeners.get(type) || [];
     handlers.forEach(handler => {
       try {
         handler(data);
@@ -149,7 +191,10 @@ export class RealtimeClient {
   disconnect() {
     // Set flag to prevent any pending reconnection attempts
     this.isDisconnecting = true;
-    
+
+    // Cancel heartbeat watchdog
+    this.clearHeartbeatTimeout();
+
     // Cancel any pending reconnection timeout
     if (this.reconnectTimeoutId) {
       clearTimeout(this.reconnectTimeoutId);

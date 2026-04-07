@@ -11,6 +11,32 @@ export class RealtimeHub {
     // DOs are single-threaded so we don't need locks, but state resets on restart.
     this.sseSessions = new Set();
     this.wsSessions = new Set();
+    this.heartbeatInterval = null;
+  }
+
+  startHeartbeat() {
+    if (this.heartbeatInterval) return;
+    // Broadcast a heartbeat every 25s to keep the DO alive and let clients
+    // detect stale connections.
+    this.heartbeatInterval = setInterval(() => {
+      this.broadcast({ type: 'heartbeat' });
+    }, 25000);
+  }
+
+  stopHeartbeat() {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+    }
+  }
+
+  checkHeartbeat() {
+    const hasClients = this.sseSessions.size > 0 || this.wsSessions.size > 0;
+    if (hasClients) {
+      this.startHeartbeat();
+    } else {
+      this.stopHeartbeat();
+    }
   }
 
   async fetch(request) {
@@ -55,6 +81,7 @@ export class RealtimeHub {
 
     // Store session
     this.sseSessions.add(writer);
+    this.checkHeartbeat();
 
     // Cleanup when writer closes (client disconnect)
     // Note: We use both writer.closed and request.signal for redundant cleanup.
@@ -63,15 +90,18 @@ export class RealtimeHub {
     writer.closed
       .then(() => {
         this.sseSessions.delete(writer);
+        this.checkHeartbeat();
       })
       .catch(() => {
         this.sseSessions.delete(writer);
+        this.checkHeartbeat();
       });
 
     // Also handle abort signal if available
     if (request.signal) {
       request.signal.addEventListener('abort', () => {
         this.sseSessions.delete(writer);
+        this.checkHeartbeat();
         writer.close().catch(() => { });
       });
     }
@@ -97,13 +127,16 @@ export class RealtimeHub {
 
     server.accept();
     this.wsSessions.add(server);
+    this.checkHeartbeat();
 
     server.addEventListener('close', () => {
       this.wsSessions.delete(server);
+      this.checkHeartbeat();
     });
 
     server.addEventListener('error', () => {
       this.wsSessions.delete(server);
+      this.checkHeartbeat();
     });
 
     return new Response(null, {
