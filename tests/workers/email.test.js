@@ -4,7 +4,8 @@ import { env } from "cloudflare:test";
 vi.mock("@sentry/cloudflare", () => ({
   withSentry: (_options, handler) => handler,
   captureException: vi.fn(),
-  init: vi.fn(),
+  CloudflareClient: vi.fn().mockImplementation(() => ({})),
+  setCurrentClient: vi.fn(),
 }));
 
 vi.mock("../../workers/shared/db.js", () => ({

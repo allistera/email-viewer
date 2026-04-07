@@ -127,7 +127,8 @@ export default {
      * Email Handler (Ingest)
      */
     async email(message, env, ctx) {
-        Sentry.init(sentryOptions(env));
+        const sentryClient = new Sentry.CloudflareClient(sentryOptions(env));
+        Sentry.setCurrentClient(sentryClient);
 
         // Forward to personal inbox before any other processing
         try {
