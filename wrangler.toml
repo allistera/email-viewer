@@ -36,6 +36,7 @@ service = "mail-app-todoist"
 [vars]
 SEND_FROM_EMAIL = "hello@infinitywave.design"
 TAG_LABELS = "Marketing, Recruitment, Personal, Finance, Support, Other"
+SENTRY_DSN = "https://d29d6d205377084a3fa87aa4ba4d091b@o4510748410576896.ingest.de.sentry.io/4510748412346448"
 # RETENTION_DAYS = "0" # Default disabled, configure in Settings
 # Push notifications via ntfy (https://ntfy.sh)
 # NTFY_TOPIC = "my-email-inbox"

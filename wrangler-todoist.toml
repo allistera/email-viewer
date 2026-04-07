@@ -12,6 +12,7 @@ database_id = "8f96a820-872b-42e9-bf7d-a5ae41aa4b7c"
 # Environment Variables
 [vars]
 OPENROUTER_MODEL = "google/gemini-2.0-flash-lite-001"
+SENTRY_DSN = "https://d29d6d205377084a3fa87aa4ba4d091b@o4510748410576896.ingest.de.sentry.io/4510748412346448"
 
 # Development
 [env.dev]

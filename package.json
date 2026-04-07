@@ -11,7 +11,7 @@
     "deploy": "npm run deploy:api && npm run deploy:email",
     "deploy:api": "wrangler deploy --config wrangler.toml",
     "deploy:email": "wrangler deploy --config wrangler-email.toml",
-    "deploy:production": "npm run deploy:api -- --env production && npm run deploy:email -- --env production",
+    "deploy:production": "npm run deploy:api -- --env production && npm run deploy:email -- --env production && npx wrangler deploy -c wrangler-todoist.toml --env production",
     "deploy:pages": "cd web && npm run build && cd .. && wrangler pages deploy web/dist --project-name mail-app",
     "db:create": "wrangler d1 create maildb",
     "db:create:dev": "wrangler d1 create maildb-dev",
