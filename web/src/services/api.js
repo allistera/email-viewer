@@ -174,6 +174,24 @@ export async function unsnoozeMessage(id) {
   });
 }
 
+export async function getTodoistTasks() {
+  const todoistToken = getTodoistToken();
+  const headers = {};
+  if (todoistToken) {
+    headers['X-Todoist-Token'] = todoistToken;
+  }
+  return request('/todoist/tasks', { headers });
+}
+
+export async function closeTodoistTask(taskId) {
+  const todoistToken = getTodoistToken();
+  const headers = { 'Content-Type': 'application/json' };
+  if (todoistToken) {
+    headers['X-Todoist-Token'] = todoistToken;
+  }
+  return request(`/todoist/tasks/${taskId}/close`, { method: 'POST', headers });
+}
+
 export async function getTodoistProjects() {
   const todoistToken = getTodoistToken();
   const headers = {};

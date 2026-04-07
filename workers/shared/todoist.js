@@ -123,6 +123,31 @@ export const fetchTodoistProjects = async (todoistToken) => {
   return data;
 };
 
+export const fetchTodoistTasks = async (todoistToken, filter) => {
+  if (!todoistToken) return [];
+  const params = new URLSearchParams({ filter });
+  const response = await fetch(`${TODOIST_TASKS_API_URL}?${params}`, {
+    headers: { 'Authorization': `Bearer ${todoistToken}` }
+  });
+  if (!response.ok) {
+    const errorDetails = await readTodoistError(response);
+    throw new Error(errorDetails ? `Todoist request failed: ${errorDetails}` : 'Todoist request failed.');
+  }
+  const tasks = await response.json();
+  return Array.isArray(tasks) ? tasks : [];
+};
+
+export const closeTodoistTask = async (todoistToken, taskId) => {
+  const response = await fetch(`${TODOIST_TASKS_API_URL}/${taskId}/close`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${todoistToken}` }
+  });
+  if (!response.ok) {
+    const errorDetails = await readTodoistError(response);
+    throw new Error(errorDetails ? `Todoist request failed: ${errorDetails}` : 'Todoist request failed.');
+  }
+};
+
 export const createTodoistTask = async (todoistToken, payload) => {
   const response = await fetch(TODOIST_TASKS_API_URL, {
     method: 'POST',

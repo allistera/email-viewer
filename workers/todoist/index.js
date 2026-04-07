@@ -1,7 +1,7 @@
 import * as Sentry from "@sentry/cloudflare";
 import { DB } from '../shared/db.js';
 import { TodoistProjectSelector } from '../shared/openai.js';
-import { buildTodoistTaskPayload, createTodoistTask, fetchTodoistProjects, findInboxProject } from '../shared/todoist.js';
+import { buildTodoistTaskPayload, createTodoistTask, closeTodoistTask, fetchTodoistProjects, fetchTodoistTasks, findInboxProject } from '../shared/todoist.js';
 
 const MISSING_TABLE_PATTERN = /no such table/i;
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -75,6 +75,32 @@ export default Sentry.withSentry(sentryOptions, {
         }
         const projects = await fetchTodoistProjects(todoistToken);
         return jsonResponse({ projects });
+      }
+
+      // GET /tasks - return today's tasks and inbox tasks
+      if (path === 'tasks' && request.method === 'GET') {
+        const todoistToken = (request.headers.get('X-Todoist-Token') || '').trim();
+        if (!todoistToken) {
+          return jsonResponse({ error: 'Todoist token missing.' }, { status: 400 });
+        }
+        const [todayTasks, inboxTasks] = await Promise.all([
+          fetchTodoistTasks(todoistToken, 'today'),
+          fetchTodoistTasks(todoistToken, '#Inbox'),
+        ]);
+        const todayIds = new Set(todayTasks.map(t => t.id));
+        const inboxOnly = inboxTasks.filter(t => !todayIds.has(t.id));
+        return jsonResponse({ today: todayTasks, inbox: inboxOnly });
+      }
+
+      // POST /tasks/:id/close - complete a task
+      if (path.startsWith('tasks/') && path.endsWith('/close') && request.method === 'POST') {
+        const todoistToken = (request.headers.get('X-Todoist-Token') || '').trim();
+        if (!todoistToken) {
+          return jsonResponse({ error: 'Todoist token missing.' }, { status: 400 });
+        }
+        const taskId = path.split('/')[1];
+        await closeTodoistTask(todoistToken, taskId);
+        return jsonResponse({ ok: true });
       }
 
       if (!path.startsWith('messages/')) {

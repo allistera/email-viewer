@@ -211,6 +211,63 @@ export const ApiRouter = {
         });
       }
 
+      // GET /api/todoist/tasks - proxy to Todoist worker
+      if (path === 'todoist/tasks' && request.method === 'GET') {
+        const todoistToken = resolveTodoistToken(request, {}, env);
+        if (!todoistToken) {
+          return jsonResponse(
+            { error: 'Todoist token missing. Add it in Settings.' },
+            { status: 400 }
+          );
+        }
+        if (!env.TODOIST_WORKER || typeof env.TODOIST_WORKER.fetch !== 'function') {
+          return jsonResponse(
+            { error: 'Todoist worker not configured.' },
+            { status: 500 }
+          );
+        }
+        const todoistRequest = new Request('https://todoist-worker/tasks', {
+          method: 'GET',
+          headers: { 'X-Todoist-Token': todoistToken }
+        });
+        const todoistResponse = await env.TODOIST_WORKER.fetch(todoistRequest);
+        const responseBody = await todoistResponse.text();
+        const contentType = todoistResponse.headers.get('Content-Type') || 'application/json';
+        return new Response(responseBody, {
+          status: clampStatus(todoistResponse.status),
+          headers: { 'Content-Type': contentType }
+        });
+      }
+
+      // POST /api/todoist/tasks/:id/close - proxy to Todoist worker
+      if (path.startsWith('todoist/tasks/') && path.endsWith('/close') && request.method === 'POST') {
+        const todoistToken = resolveTodoistToken(request, {}, env);
+        if (!todoistToken) {
+          return jsonResponse(
+            { error: 'Todoist token missing. Add it in Settings.' },
+            { status: 400 }
+          );
+        }
+        if (!env.TODOIST_WORKER || typeof env.TODOIST_WORKER.fetch !== 'function') {
+          return jsonResponse(
+            { error: 'Todoist worker not configured.' },
+            { status: 500 }
+          );
+        }
+        const taskId = path.split('/')[2];
+        const todoistRequest = new Request(`https://todoist-worker/tasks/${taskId}/close`, {
+          method: 'POST',
+          headers: { 'X-Todoist-Token': todoistToken }
+        });
+        const todoistResponse = await env.TODOIST_WORKER.fetch(todoistRequest);
+        const responseBody = await todoistResponse.text();
+        const contentType = todoistResponse.headers.get('Content-Type') || 'application/json';
+        return new Response(responseBody, {
+          status: clampStatus(todoistResponse.status),
+          headers: { 'Content-Type': contentType }
+        });
+      }
+
       // GET /api/messages/:id
       // GET /api/messages/:id/attachments/:attId
       // POST /api/messages/:id/archive
