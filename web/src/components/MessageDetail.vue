@@ -180,7 +180,10 @@
 
         <div class="detail-header">
           <div class="sender-row">
-            <div class="sender-avatar" aria-hidden="true">{{ avatarText }}</div>
+            <div class="sender-avatar" aria-hidden="true">
+              <img v-if="gravatarUrl" :src="gravatarUrl" class="gravatar-img" alt="" @error="gravatarUrl = null" />
+              <span v-else>{{ avatarText }}</span>
+            </div>
 
             <div class="sender-main">
               <div class="subject-title">{{ message.subject }}</div>
@@ -300,7 +303,8 @@ export default {
       isSanitizing: false,
       showSnoozePicker: false,
       snoozePreset: 'tomorrow',
-      customSnoozeAt: ''
+      customSnoozeAt: '',
+      gravatarUrl: null
     };
   },
   emits: ['archived', 'snoozed', 'back', 'reply', 'forward'],
@@ -389,12 +393,28 @@ export default {
         this.updateSanitizedHtml(newMsg);
         this.cancelSnoozePicker();
       }
+    },
+    senderEmail: {
+      immediate: true,
+      handler(email) {
+        this.gravatarUrl = null;
+        if (email) this.computeGravatarUrl(email);
+      }
     }
   },
   async mounted() {
     await this.loadTags();
   },
   methods: {
+    async computeGravatarUrl(email) {
+      const normalized = email.trim().toLowerCase();
+      const msgBuffer = new TextEncoder().encode(normalized);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+      const hashHex = Array.from(new Uint8Array(hashBuffer))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+      this.gravatarUrl = `https://gravatar.com/avatar/${hashHex}?s=72&d=404`;
+    },
     resetTodoistState() {
       this.addingTodoist = false;
       this.todoistTaskUrl = '';
@@ -854,6 +874,15 @@ a.toolbar-btn.raw-btn:hover {
   font-weight: 700;
   font-size: 14px;
   flex: 0 0 36px;
+  overflow: hidden;
+}
+
+.gravatar-img {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
 }
 
 .sender-main {
@@ -1120,6 +1149,11 @@ a.toolbar-btn.raw-btn:hover {
     height: 32px;
     flex: 0 0 32px;
     font-size: 12px;
+  }
+
+  .gravatar-img {
+    width: 32px;
+    height: 32px;
   }
 
   .subject-title {
