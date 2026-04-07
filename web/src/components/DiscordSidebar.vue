@@ -137,6 +137,16 @@
 </template>
 
 <script>
+import { getTags, createTag } from '../services/api.js';
+
+const TAG_COLORS = ['#5865f2', '#23a559', '#f0b232', '#f23f43', '#6d28d9', '#db4c3f', '#0ea5e9', '#10b981'];
+
+function colorForTag(name) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  return TAG_COLORS[hash % TAG_COLORS.length];
+}
+
 export default {
   name: 'DiscordSidebar',
   props: {
@@ -157,14 +167,20 @@ export default {
     return {
       showAddTag: false,
       newTagName: '',
-      tags: [
-        { name: 'Work', color: '#5865f2', count: 0 },
-        { name: 'Personal', color: '#23a559', count: 0 },
-        { name: 'Todo', color: '#f0b232', count: 0 },
-      ]
+      rawTags: []
     };
   },
   computed: {
+    tags() {
+      return this.rawTags
+        .filter(t => t.name !== 'Spam' && t.name !== 'Sent')
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map(t => ({
+          ...t,
+          color: colorForTag(t.name),
+          count: this.messageCounts?.tags?.[t.name] || 0
+        }));
+    },
     inboxCount() {
       return this.messageCounts?.inbox || 0;
     },
@@ -184,6 +200,9 @@ export default {
       return this.messageCounts?.unreadSpam || 0;
     }
   },
+  async created() {
+    await this.loadTags();
+  },
   watch: {
     showAddTag(val) {
       if (val) {
@@ -194,25 +213,27 @@ export default {
     }
   },
   methods: {
-    addTag() {
+    async loadTags() {
+      try {
+        this.rawTags = await getTags() || [];
+      } catch (e) {
+        console.error('Failed to load tags', e);
+      }
+    },
+    async addTag() {
       if (!this.newTagName.trim()) return;
-
-      this.tags.push({
-        name: this.newTagName.trim(),
-        color: this.getRandomColor(),
-        count: 0
-      });
-
+      try {
+        const newTag = await createTag(this.newTagName.trim());
+        this.rawTags.push(newTag);
+      } catch (e) {
+        alert('Failed to create tag: ' + e.message);
+      }
       this.newTagName = '';
       this.showAddTag = false;
     },
     cancelAddTag() {
       this.newTagName = '';
       this.showAddTag = false;
-    },
-    getRandomColor() {
-      const colors = ['#5865f2', '#23a559', '#f0b232', '#f23f43', '#6d28d9', '#db4c3f'];
-      return colors[Math.floor(Math.random() * colors.length)];
     },
     handleDropInbox(event) {
       const messageId = event.dataTransfer.getData('text/plain');
