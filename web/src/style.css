@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Lexend:wght@400;500;600;700&display=swap');
 
 /* Discord-inspired color palette */
 :root {
@@ -14,11 +13,6 @@
   --color-success: #23a559;
   --color-warning: #f0b232;
   --color-danger: #f23f43;
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
-  --shadow-md: 0 12px 30px rgba(15, 23, 42, 0.08);
 
   /* Sidebar colors */
   --color-sidebar-bg: #f2f3f5;
@@ -88,6 +82,9 @@
   color-scheme: dark;
 }
 
+/* Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Lexend:wght@400;500;600;700&display=swap');
+
 * {
   margin: 0;
   padding: 0;
@@ -96,12 +93,10 @@
 
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: radial-gradient(circle at top right, color-mix(in srgb, var(--color-primary) 7%, var(--color-bg)) 0%, var(--color-bg) 42%);
+  background: var(--color-bg);
   color: var(--color-text);
   line-height: 1.5;
   overflow: hidden;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
 }
 
 /* Scrollbar styling - Discord-like */
@@ -161,17 +156,4 @@ body {
 
 .animate-fade-in {
   animation: fadeIn 0.2s ease-out;
-}
-
-button,
-input,
-textarea,
-select {
-  font: inherit;
-  color: inherit;
-}
-
-:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--color-primary) 62%, transparent);
-  outline-offset: 2px;
 }

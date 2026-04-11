@@ -849,7 +849,6 @@ export default {
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  background: color-mix(in srgb, var(--color-bg-secondary) 35%, var(--color-bg));
 }
 
 /* Ensure grid items are constrained to enable inner scrolling */
@@ -875,7 +874,7 @@ export default {
 }
 
 .resize-handle:hover {
-  background: color-mix(in srgb, var(--color-primary) 72%, transparent);
+  background: var(--color-primary);
 }
 
 .resize-handle:active {
@@ -888,7 +887,6 @@ export default {
   align-items: stretch;
   background: var(--color-bg);
   border-top: 1px solid var(--color-border);
-  box-shadow: 0 -6px 20px rgba(15, 23, 42, 0.07);
   flex-shrink: 0;
   padding-bottom: env(safe-area-inset-bottom, 0);
 }
@@ -932,7 +930,7 @@ export default {
   .app-container {
     grid-template-columns: 1fr !important;
     position: relative;
-    background: linear-gradient(180deg, color-mix(in srgb, var(--color-bg-secondary) 88%, var(--color-bg)) 0%, var(--color-bg) 180px);
+    background: linear-gradient(180deg, var(--color-bg-secondary) 0%, var(--color-bg) 120px);
   }
 
   .settings-panel {

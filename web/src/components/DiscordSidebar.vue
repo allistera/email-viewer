@@ -254,7 +254,7 @@ export default {
 <style scoped>
 .discord-sidebar {
   width: 240px;
-  background: color-mix(in srgb, var(--color-sidebar-bg) 90%, var(--color-bg));
+  background: var(--color-sidebar-bg);
   display: flex;
   flex-direction: column;
   height: 100vh;
@@ -263,12 +263,12 @@ export default {
 }
 
 .compose-btn-main {
-  margin: 14px 14px 12px;
-  height: 42px;
+  margin: 16px;
+  height: 40px;
   background: var(--color-primary);
   color: white;
   border: none;
-  border-radius: 10px;
+  border-radius: 8px;
   font-size: 14px;
   font-weight: 600;
   display: flex;
@@ -292,23 +292,19 @@ export default {
 .sidebar-nav {
   flex: 1;
   overflow-y: auto;
-  padding: 0 10px 12px;
+  padding: 0 8px;
 }
 
 .nav-section {
-  margin-bottom: 16px;
-  padding: 8px;
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--color-bg) 45%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-border) 75%, transparent);
+  margin-bottom: 24px;
 }
 
 .section-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 2px;
-  margin-bottom: 6px;
+  padding: 0 8px;
+  margin-bottom: 4px;
 }
 
 .section-title {
@@ -317,8 +313,8 @@ export default {
   text-transform: uppercase;
   color: var(--color-text-secondary);
   letter-spacing: 0.5px;
-  padding: 0 6px;
-  margin-bottom: 2px;
+  padding: 0 8px;
+  margin-bottom: 4px;
 }
 
 .add-tag-btn {
@@ -377,7 +373,7 @@ export default {
   padding: 0 12px;
   background: transparent;
   border: none;
-  border-radius: 10px;
+  border-radius: 8px;
   color: var(--color-text-secondary);
   font-size: 14px;
   font-weight: 500;
@@ -392,10 +388,9 @@ export default {
 }
 
 .nav-item.active {
-  background: color-mix(in srgb, var(--color-primary) 14%, var(--color-sidebar-hover));
+  background: var(--color-sidebar-hover);
   color: var(--color-text);
   font-weight: 600;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-primary) 20%, transparent);
 }
 
 .nav-icon {
@@ -466,7 +461,7 @@ export default {
   padding: 0 12px;
   background: transparent;
   border: none;
-  border-radius: 10px;
+  border-radius: 8px;
   color: var(--color-text-secondary);
   font-size: 14px;
   font-weight: 500;
