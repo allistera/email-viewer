@@ -102,6 +102,24 @@ const clampStatus = (status) => {
   return Math.floor(n);
 };
 
+const parseListUnsubscribeUrls = (headerValue) => {
+  if (!headerValue || typeof headerValue !== 'string') return [];
+  const urls = [];
+  const bracketMatches = headerValue.match(/<[^>]+>/g) || [];
+  if (bracketMatches.length > 0) {
+    for (const entry of bracketMatches) {
+      const raw = entry.slice(1, -1).trim();
+      if (raw) urls.push(raw);
+    }
+  } else {
+    for (const part of headerValue.split(',')) {
+      const raw = part.trim();
+      if (raw) urls.push(raw);
+    }
+  }
+  return urls;
+};
+
 
 export const ApiRouter = {
   async handle(urlString, request, env) {
@@ -355,6 +373,67 @@ export const ApiRouter = {
           return new Response(responseBody, {
             status: clampStatus(todoistResponse.status),
             headers: { 'Content-Type': contentType }
+          });
+        }
+
+        // Unsubscribe from newsletter
+        if (parts.length === 3 && parts[2] === 'unsubscribe' && request.method === 'POST') {
+          const msg = await DB.getMessage(env.DB, id);
+          if (!msg) return new Response('Message Not Found', { status: 404 });
+          if (!msg.headers_json) {
+            return jsonResponse({ error: 'No headers available for unsubscribe.' }, { status: 400 });
+          }
+
+          let headers = {};
+          try {
+            headers = JSON.parse(msg.headers_json) || {};
+          } catch {
+            return jsonResponse({ error: 'Failed to parse message headers.' }, { status: 400 });
+          }
+
+          const listUnsubscribe = headers['list-unsubscribe'] || headers['List-Unsubscribe'];
+          const listUnsubscribePost = headers['list-unsubscribe-post'] || headers['List-Unsubscribe-Post'] || '';
+          const candidates = parseListUnsubscribeUrls(listUnsubscribe);
+
+          const httpTarget = candidates.find((u) => /^https?:\/\//i.test(u));
+          if (!httpTarget) {
+            return jsonResponse({ error: 'No HTTP unsubscribe URL available for this message.' }, { status: 400 });
+          }
+
+          const oneClick = /list-unsubscribe\s*=\s*one-click/i.test(listUnsubscribePost);
+          const method = oneClick ? 'POST' : 'GET';
+          const headersOut = new Headers({
+            'User-Agent': 'email-viewer-unsubscribe/1.0'
+          });
+          let body;
+          if (oneClick) {
+            headersOut.set('Content-Type', 'application/x-www-form-urlencoded');
+            body = 'List-Unsubscribe=One-Click';
+          }
+
+          const response = await fetch(httpTarget, {
+            method,
+            headers: headersOut,
+            body,
+            redirect: 'follow'
+          });
+
+          if (!response.ok) {
+            return jsonResponse({
+              ok: false,
+              error: `Unsubscribe endpoint returned ${response.status}.`,
+              method,
+              target: httpTarget,
+              status: response.status
+            }, { status: 502 });
+          }
+
+          return jsonResponse({
+            ok: true,
+            unsubscribed: true,
+            method,
+            target: httpTarget,
+            status: response.status
           });
         }
 

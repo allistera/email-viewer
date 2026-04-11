@@ -73,6 +73,22 @@
           </button>
 
           <button
+            v-if="canAutoUnsubscribe"
+            class="toolbar-btn unsubscribe-btn"
+            type="button"
+            :disabled="unsubscribing"
+            :class="{ failed: unsubscribeStatus === 'error', success: unsubscribeStatus === 'success' }"
+            :title="unsubscribeTooltip"
+            @click="handleUnsubscribe"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" class="toolbar-icon">
+              <path d="M4 8h16v8H4z" fill="none" stroke="currentColor" stroke-width="1.75"/>
+              <path d="M4 9l8 6 8-6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/>
+            </svg>
+            <span class="toolbar-label">{{ unsubscribeButtonLabel }}</span>
+          </button>
+
+          <button
             class="toolbar-btn toolbar-btn-todoist"
             type="button"
             @click="handleTodoistAction"
@@ -269,7 +285,7 @@
 <script>
 import TagBadge from './TagBadge.vue';
 import { sanitize } from '../services/htmlSanitizer.js';
-import { getAttachmentUrl, getRawEmailUrl, addMessageTag, removeMessageTag, getTags, archiveMessage, addTodoistTask, snoozeMessage, unsnoozeMessage } from '../services/api.js';
+import { getAttachmentUrl, getRawEmailUrl, addMessageTag, removeMessageTag, getTags, archiveMessage, addTodoistTask, snoozeMessage, unsnoozeMessage, unsubscribeMessage } from '../services/api.js';
 import { formatRelativeDate } from '../utils/dateFormat.js';
 
 export default {
@@ -304,7 +320,10 @@ export default {
       showSnoozePicker: false,
       snoozePreset: 'tomorrow',
       customSnoozeAt: '',
-      gravatarUrl: null
+      gravatarUrl: null,
+      unsubscribing: false,
+      unsubscribeStatus: 'idle',
+      unsubscribeError: ''
     };
   },
   emits: ['archived', 'snoozed', 'back', 'reply', 'forward'],
@@ -382,6 +401,40 @@ export default {
     snoozeLabel() {
       if (!this.isCurrentlySnoozed) return 'Snooze';
       return `Snoozed until ${new Date(Number(this.snoozedUntil)).toLocaleString()}`;
+    },
+    unsubscribeHeaders() {
+      if (!this.message?.headers_json) return {};
+      try {
+        const parsed = JSON.parse(this.message.headers_json);
+        return parsed && typeof parsed === 'object' ? parsed : {};
+      } catch {
+        return {};
+      }
+    },
+    unsubscribeUrl() {
+      const listUnsub = this.unsubscribeHeaders['list-unsubscribe'] || this.unsubscribeHeaders['List-Unsubscribe'];
+      if (!listUnsub || typeof listUnsub !== 'string') return '';
+
+      const bracketMatches = listUnsub.match(/<[^>]+>/g) || [];
+      const candidates = bracketMatches.length > 0
+        ? bracketMatches.map((item) => item.slice(1, -1).trim())
+        : listUnsub.split(',').map((item) => item.trim());
+
+      return candidates.find((item) => /^https?:\/\//i.test(item)) || '';
+    },
+    canAutoUnsubscribe() {
+      return Boolean(this.unsubscribeUrl);
+    },
+    unsubscribeTooltip() {
+      if (!this.canAutoUnsubscribe) return 'No unsubscribe link detected';
+      if (this.unsubscribeStatus === 'error' && this.unsubscribeError) return this.unsubscribeError;
+      return `Automatically unsubscribe via ${this.unsubscribeUrl}`;
+    },
+    unsubscribeButtonLabel() {
+      if (this.unsubscribing) return 'Unsubscribing…';
+      if (this.unsubscribeStatus === 'success') return 'Unsubscribed';
+      if (this.unsubscribeStatus === 'error') return 'Unsubscribe failed';
+      return 'Unsubscribe';
     }
   },
   watch: {
@@ -392,6 +445,8 @@ export default {
         this.resetTodoistState();
         this.updateSanitizedHtml(newMsg);
         this.cancelSnoozePicker();
+        this.unsubscribeStatus = 'idle';
+        this.unsubscribeError = '';
       }
     },
     senderEmail: {
@@ -601,6 +656,23 @@ export default {
         alert('Failed to unsnooze: ' + e.message);
       }
     },
+    async handleUnsubscribe() {
+      if (!this.message || !this.canAutoUnsubscribe || this.unsubscribing) return;
+      if (!confirm('Unsubscribe from this sender using the newsletter link?')) return;
+
+      this.unsubscribing = true;
+      this.unsubscribeStatus = 'idle';
+      this.unsubscribeError = '';
+      try {
+        await unsubscribeMessage(this.message.id);
+        this.unsubscribeStatus = 'success';
+      } catch (e) {
+        this.unsubscribeStatus = 'error';
+        this.unsubscribeError = e?.message || 'Failed to unsubscribe';
+      } finally {
+        this.unsubscribing = false;
+      }
+    },
     async updateSanitizedHtml(message) {
       if (!message || !message.htmlBody) {
         this.sanitizedHtml = '';
@@ -667,6 +739,24 @@ export default {
 .toolbar-btn.done-btn:hover:not(:disabled) {
   background: #e8f0fe;
   color: #1557b0;
+}
+
+.toolbar-btn.unsubscribe-btn.success {
+  color: #137333;
+}
+
+.toolbar-btn.unsubscribe-btn.success:hover:not(:disabled) {
+  background: #e6f4ea;
+  color: #137333;
+}
+
+.toolbar-btn.unsubscribe-btn.failed {
+  color: #b3261e;
+}
+
+.toolbar-btn.unsubscribe-btn.failed:hover:not(:disabled) {
+  background: #fce8e6;
+  color: #b3261e;
 }
 
 a.toolbar-btn.raw-btn {
