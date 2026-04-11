@@ -1,7 +1,6 @@
 <template>
   <div class="top-bar">
     <div class="top-bar-content">
-      <!-- Left section -->
       <div class="top-bar-left">
         <button
           v-if="isMobile"
@@ -22,7 +21,6 @@
         </div>
       </div>
 
-      <!-- Center section - Search -->
       <div class="top-bar-center">
         <div class="search-container">
           <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -39,15 +37,23 @@
         </div>
       </div>
 
-      <!-- Right section -->
       <div class="top-bar-right">
-        <div class="user-avatar">
-          <img
-            src="https://ui-avatars.com/api/?name=User&background=5865f2&color=fff&size=128"
-            alt="User avatar"
-            class="avatar-img"
-          />
-        </div>
+        <button class="action-btn" aria-label="Refresh" title="Refresh" @click="$emit('refresh')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M20 11a8 8 0 10.7 3.3M20 4v7h-7"/>
+          </svg>
+        </button>
+        <button class="action-btn action-btn-primary" aria-label="Compose" title="Compose" @click="$emit('compose')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14M5 12h14"/>
+          </svg>
+        </button>
+        <button class="action-btn" aria-label="Settings" title="Settings" @click="$emit('settings')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M10.3 3.8a1 1 0 011.4 0l.8.8a1 1 0 001 .24l1.1-.3a1 1 0 011.2.7l.3 1.1a1 1 0 00.7.7l1.1.3a1 1 0 01.7 1.2l-.3 1.1a1 1 0 00.24 1l.8.8a1 1 0 010 1.4l-.8.8a1 1 0 00-.24 1l.3 1.1a1 1 0 01-.7 1.2l-1.1.3a1 1 0 00-.7.7l-.3 1.1a1 1 0 01-1.2.7l-1.1-.3a1 1 0 00-1 .24l-.8.8a1 1 0 01-1.4 0l-.8-.8a1 1 0 00-1-.24l-1.1.3a1 1 0 01-1.2-.7l-.3-1.1a1 1 0 00-.7-.7l-1.1-.3a1 1 0 01-.7-1.2l.3-1.1a1 1 0 00-.24-1l-.8-.8a1 1 0 010-1.4l.8-.8a1 1 0 00.24-1l-.3-1.1a1 1 0 01.7-1.2l1.1-.3a1 1 0 00.7-.7l.3-1.1a1 1 0 011.2-.7l1.1.3a1 1 0 001-.24l.8-.8z"/>
+            <circle cx="12" cy="12" r="3.2" stroke-width="1.8"/>
+          </svg>
+        </button>
       </div>
     </div>
   </div>
@@ -69,20 +75,21 @@ export default {
       type: Boolean,
       default: false
     }
-  },
+  }
 };
 </script>
 
 <style scoped>
 .top-bar {
   height: 56px;
-  background: var(--color-topbar-bg);
+  background: color-mix(in srgb, var(--color-topbar-bg) 96%, transparent);
   border-bottom: 1px solid var(--color-topbar-border);
   display: flex;
   align-items: center;
   padding: 0 16px;
   flex-shrink: 0;
-  box-shadow: 0 1px 0 rgba(4, 4, 5, 0.1);
+  box-shadow: 0 1px 0 rgba(4, 4, 5, 0.08);
+  backdrop-filter: blur(10px);
 }
 
 .top-bar-content {
@@ -110,7 +117,7 @@ export default {
   background: transparent;
   color: var(--color-text);
   cursor: pointer;
-  border-radius: 8px;
+  border-radius: 10px;
   transition: background 0.15s;
 }
 
@@ -131,8 +138,8 @@ export default {
 }
 
 .logo-icon {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   color: var(--color-primary);
 }
 
@@ -154,7 +161,7 @@ export default {
 .search-container {
   position: relative;
   width: 100%;
-  max-width: 480px;
+  max-width: 520px;
 }
 
 .search-icon {
@@ -170,11 +177,11 @@ export default {
 
 .search-input {
   width: 100%;
-  height: 36px;
+  height: 38px;
   padding: 0 80px 0 40px;
-  background: var(--color-bg-secondary);
-  border: 1px solid transparent;
-  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-bg-secondary) 92%, var(--color-bg));
+  border: 1px solid color-mix(in srgb, var(--color-border) 82%, transparent);
+  border-radius: 10px;
   color: var(--color-text);
   font-size: 14px;
   outline: none;
@@ -183,7 +190,8 @@ export default {
 
 .search-input:focus {
   background: var(--color-bg);
-  border-color: var(--color-primary);
+  border-color: color-mix(in srgb, var(--color-primary) 70%, var(--color-border));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 16%, transparent);
 }
 
 .search-input::placeholder {
@@ -212,21 +220,27 @@ export default {
 }
 
 .action-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 36px;
   height: 36px;
-  border: none;
+  border: 1px solid transparent;
   background: transparent;
   color: var(--color-text-secondary);
   cursor: pointer;
-  border-radius: 8px;
+  border-radius: 10px;
   transition: all 0.15s;
+}
+
+.action-btn svg {
+  width: 18px;
+  height: 18px;
 }
 
 .action-btn:hover {
   background: var(--color-bg-hover);
+  border-color: var(--color-border);
   color: var(--color-text);
 }
 
@@ -234,21 +248,15 @@ export default {
   transform: scale(0.95);
 }
 
-.user-avatar {
-  margin-left: 4px;
-  cursor: pointer;
+.action-btn-primary {
+  background: color-mix(in srgb, var(--color-primary) 14%, transparent);
+  color: var(--color-primary);
 }
 
-.avatar-img {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: 2px solid transparent;
-  transition: border-color 0.15s;
-}
-
-.avatar-img:hover {
-  border-color: var(--color-primary);
+.action-btn-primary:hover {
+  background: color-mix(in srgb, var(--color-primary) 22%, transparent);
+  border-color: color-mix(in srgb, var(--color-primary) 36%, transparent);
+  color: var(--color-primary);
 }
 
 @media (max-width: 768px) {
@@ -258,8 +266,6 @@ export default {
     position: sticky;
     top: 0;
     z-index: 20;
-    background: color-mix(in srgb, var(--color-topbar-bg) 92%, transparent);
-    backdrop-filter: blur(10px);
   }
 
   .top-bar-left {
@@ -279,26 +285,38 @@ export default {
   .mobile-menu-btn {
     width: 38px;
     height: 38px;
-    border: 1px solid var(--color-border);
-    background: color-mix(in srgb, var(--color-bg-secondary) 76%, transparent);
-  }
-
-  .top-bar-right {
-    display: none;
   }
 
   .top-bar-center {
+    max-width: none;
+  }
+
+  .search-container {
+    max-width: none;
+  }
+
+  .search-input {
+    height: 36px;
+    font-size: 13px;
+    padding-right: 40px;
+  }
+
+  .search-shortcut {
     display: none;
   }
 
+  .top-bar-right {
+    gap: 6px;
+  }
+
   .action-btn {
-    width: 32px;
-    height: 32px;
+    width: 34px;
+    height: 34px;
   }
 
   .action-btn svg {
-    width: 18px;
-    height: 18px;
+    width: 17px;
+    height: 17px;
   }
 }
 </style>
