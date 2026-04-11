@@ -50,6 +50,7 @@
 <script>
 import { formatRelativeDate } from '../utils/dateFormat.js';
 import { addMessageTag, removeMessageTag } from '../services/api.js';
+import { normalizeKanbanLaneTag } from '../utils/kanban.js';
 
 export default {
   name: 'KanbanView',
@@ -97,14 +98,6 @@ export default {
     }
   },
   methods: {
-    normalizeLaneTag(tag) {
-      const raw = String(tag || '').trim().toLowerCase();
-      if (!raw) return null;
-      if (raw === 'todo' || raw === 'to-do') return 'todo';
-      if (raw === 'in-progress' || raw === 'in progress' || raw === 'inprogress') return 'in-progress';
-      if (raw === 'done') return 'done';
-      return null;
-    },
     getLaneTagBindings(message) {
       const rawTags = [];
       if (Array.isArray(message?.tags)) rawTags.push(...message.tags);
@@ -112,7 +105,7 @@ export default {
 
       const bindings = [];
       for (const rawTag of rawTags) {
-        const canonical = this.normalizeLaneTag(rawTag);
+        const canonical = normalizeKanbanLaneTag(rawTag);
         if (!canonical) continue;
         bindings.push({ raw: rawTag, canonical });
       }
@@ -196,12 +189,10 @@ export default {
       try {
         // Remove existing lane tags so each message appears in one swimlane.
         const message = this.messages.find((m) => m.id === messageId);
-        console.log('KanbanView: Message before tag update:', message);
 
         // If message is dragged from a different view (e.g. Inbox), it might not
         // be in the KanbanView's messages array yet, or might not have lane tags.
         const laneTagBindings = message ? this.getLaneTagBindings(message) : [];
-        console.log('KanbanView: Lane tag bindings:', laneTagBindings);
 
         const tagsToRemove = [...new Set(
           laneTagBindings
@@ -210,14 +201,11 @@ export default {
         )];
 
         if (tagsToRemove.length > 0) {
-          console.log('KanbanView: Removing tags:', tagsToRemove);
           await Promise.all(tagsToRemove.map((tag) => removeMessageTag(messageId, tag)));
         }
 
         // Add lane tag without removing non-kanban tags so the email stays in Inbox context.
-        console.log('KanbanView: Adding tag:', newTag);
-        const result = await addMessageTag(messageId, newTag);
-        console.log('KanbanView: Tag added, result:', result);
+        await addMessageTag(messageId, newTag);
 
         // Emit event to parent to refresh messages
         this.$emit('message-dropped', { messageId, newTag });

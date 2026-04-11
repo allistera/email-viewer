@@ -81,6 +81,11 @@ const readTodoistError = async (response) => {
   return await response.text();
 };
 
+const throwTodoistError = async (response) => {
+  const details = await readTodoistError(response);
+  throw new Error(details ? `Todoist request failed: ${details}` : 'Todoist request failed.');
+};
+
 export const fetchTodoistProjects = async (todoistToken) => {
   if (!todoistToken) return [];
 
@@ -99,11 +104,7 @@ export const fetchTodoistProjects = async (todoistToken) => {
   });
 
   if (!response.ok) {
-    const errorDetails = await readTodoistError(response);
-    const errorMessage = errorDetails
-      ? `Todoist request failed: ${errorDetails}`
-      : 'Todoist request failed.';
-    throw new Error(errorMessage);
+    await throwTodoistError(response);
   }
 
   const projects = await response.json();
@@ -130,8 +131,7 @@ export const fetchTodoistTasks = async (todoistToken, filter) => {
     headers: { 'Authorization': `Bearer ${todoistToken}` }
   });
   if (!response.ok) {
-    const errorDetails = await readTodoistError(response);
-    throw new Error(errorDetails ? `Todoist request failed: ${errorDetails}` : 'Todoist request failed.');
+    await throwTodoistError(response);
   }
   const tasks = await response.json();
   return Array.isArray(tasks) ? tasks : [];
@@ -143,8 +143,7 @@ export const closeTodoistTask = async (todoistToken, taskId) => {
     headers: { 'Authorization': `Bearer ${todoistToken}` }
   });
   if (!response.ok) {
-    const errorDetails = await readTodoistError(response);
-    throw new Error(errorDetails ? `Todoist request failed: ${errorDetails}` : 'Todoist request failed.');
+    await throwTodoistError(response);
   }
 };
 
@@ -159,11 +158,7 @@ export const createTodoistTask = async (todoistToken, payload) => {
   });
 
   if (!response.ok) {
-    const errorDetails = await readTodoistError(response);
-    const errorMessage = errorDetails
-      ? `Todoist request failed: ${errorDetails}`
-      : 'Todoist request failed.';
-    throw new Error(errorMessage);
+    await throwTodoistError(response);
   }
 
   return response.json();

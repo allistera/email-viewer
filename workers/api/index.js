@@ -6,13 +6,7 @@ import { handleRetention } from '../shared/retention.js';
 export { RealtimeHub } from '../shared/realtimeHub.js';
 
 import * as Sentry from "@sentry/cloudflare";
-
-const sentryOptions = (env) => ({
-  dsn: env.SENTRY_DSN,
-  tracesSampleRate: 1.0,
-  enableLogs: true,
-  sendDefaultPii: true,
-});
+import { sentryOptions } from '../shared/sentry.js';
 
 export default Sentry.withSentry(sentryOptions, {
   /**

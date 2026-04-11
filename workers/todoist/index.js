@@ -1,30 +1,9 @@
 import * as Sentry from "@sentry/cloudflare";
+import { sentryOptions } from '../shared/sentry.js';
 import { DB } from '../shared/db.js';
 import { TodoistProjectSelector } from '../shared/openai.js';
 import { buildTodoistTaskPayload, createTodoistTask, closeTodoistTask, fetchTodoistProjects, fetchTodoistTasks, findInboxProject } from '../shared/todoist.js';
-
-const MISSING_TABLE_PATTERN = /no such table/i;
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-const isMissingTableError = (error) =>
-  Boolean(error?.message && MISSING_TABLE_PATTERN.test(error.message));
-
-const jsonResponse = (payload, init = {}) =>
-  new Response(JSON.stringify(payload), {
-    headers: { 'Content-Type': 'application/json', ...(init.headers || {}) },
-    ...init
-  });
-
-const databaseNotInitializedResponse = () =>
-  jsonResponse(
-    {
-      error: 'Database not initialized.',
-      details: 'Run: npx wrangler d1 migrations apply maildb --remote'
-    },
-    { status: 500 }
-  );
-
-const isValidUUID = (id) => typeof id === 'string' && UUID_REGEX.test(id);
+import { jsonResponse, isValidUUID, isMissingTableError, databaseNotInitializedResponse } from '../shared/response.js';
 
 const resolveMessageUrl = (origin, messageId) => {
   if (!origin) return '';
@@ -54,12 +33,6 @@ const selectProject = (projects, selection) => {
   return null;
 };
 
-const sentryOptions = (env) => ({
-  dsn: env.SENTRY_DSN,
-  tracesSampleRate: 1.0,
-  enableLogs: true,
-  sendDefaultPii: true,
-});
 
 export default Sentry.withSentry(sentryOptions, {
   async fetch(request, env, _ctx) {

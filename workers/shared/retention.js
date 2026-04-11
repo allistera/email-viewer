@@ -22,14 +22,11 @@ export async function handleRetention(env) {
   }
 
   if (isNaN(retentionDays) || retentionDays <= 0) {
-    console.log('Retention policy disabled (retention_days <= 0)');
     return;
   }
 
   const cutoffTimestamp = Date.now() - (retentionDays * 24 * 60 * 60 * 1000);
-  console.log(`Starting retention cleanup. Cutoff: ${new Date(cutoffTimestamp).toISOString()} (${retentionDays} days)`);
 
-  let totalDeleted = 0;
   const BATCH_SIZE = 50; // Process in small batches
   const MAX_ITERATIONS = 20; // Prevent infinite loops or timeouts (max 1000 messages per run)
 
@@ -65,9 +62,5 @@ export async function handleRetention(env) {
     await DB.deleteMessages(env.DB, messageIds);
     await DB.deleteDedupeForMessages(env.DB, messageIds);
 
-    totalDeleted += messages.length;
-    console.log(`Deleted batch of ${messages.length} messages.`);
   }
-
-  console.log(`Retention cleanup complete. Total messages deleted: ${totalDeleted}`);
 }

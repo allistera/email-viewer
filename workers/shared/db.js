@@ -14,7 +14,7 @@ const SETTINGS_CACHE_TTL = 60 * 1000; // 60 seconds
 
 // Escapes special characters for SQL LIKE pattern
 // Uses backslash as the escape character
-const escapeLikePattern = (str) => {
+export const escapeLikePattern = (str) => {
   return str.replace(/[\\%_]/g, '\\$&');
 };
 

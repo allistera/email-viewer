@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/cloudflare";
+import { sentryOptions } from '../shared/sentry.js';
 import { DB } from '../shared/db.js';
 import { R2 } from '../shared/r2.js';
 import { MessageClassifier } from '../shared/openai.js';
@@ -116,12 +117,7 @@ async function processMessage(messageId, env, message = null) {
 }
 
 export default Sentry.withSentry(
-    (env) => ({
-        dsn: env.SENTRY_DSN,
-        tracesSampleRate: 1.0,
-        enableLogs: true,
-        sendDefaultPii: true,
-    }),
+    sentryOptions,
     {
     /**
      * Email Handler (Ingest)

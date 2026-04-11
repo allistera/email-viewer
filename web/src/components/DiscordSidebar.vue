@@ -187,14 +187,8 @@ export default {
     sentCount() {
       return this.messageCounts?.sent || 0;
     },
-    archiveCount() {
-      return this.messageCounts?.archive || 0;
-    },
     unreadArchiveCount() {
       return this.messageCounts?.unreadArchive || 0;
-    },
-    spamCount() {
-      return this.messageCounts?.spam || 0;
     },
     unreadSpamCount() {
       return this.messageCounts?.unreadSpam || 0;

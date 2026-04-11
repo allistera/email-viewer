@@ -179,6 +179,7 @@ import { getMessages, getMessage, getMessageCounts, archiveMessage } from './ser
 import { init as initTheme } from './services/theme.js';
 import { realtimeClient } from './services/realtime.js';
 import { debounce } from './utils/debounce.js';
+import { normalizeKanbanLaneTag, isKanbanLaneTag } from './utils/kanban.js';
 
 export default {
   name: 'App',
@@ -302,30 +303,17 @@ export default {
     }
   },
   methods: {
-    normalizeKanbanLaneTag(tag) {
-      const raw = String(tag || '').trim().toLowerCase();
-      if (!raw) return null;
-      if (raw === 'todo' || raw === 'to-do') return 'todo';
-      if (raw === 'in-progress' || raw === 'in progress' || raw === 'inprogress') return 'in-progress';
-      if (raw === 'done') return 'done';
-      return null;
-    },
-
-    isKanbanLaneTag(tag) {
-      return this.normalizeKanbanLaneTag(tag) !== null;
-    },
-
     applyKanbanLane(message, newTag) {
-      const canonicalNewTag = this.normalizeKanbanLaneTag(newTag);
+      const canonicalNewTag = normalizeKanbanLaneTag(newTag);
       if (!message || !canonicalNewTag) return;
 
       const existingTags = Array.isArray(message.tags) ? message.tags.filter(Boolean) : [];
-      const nonLaneTags = existingTags.filter((tag) => !this.isKanbanLaneTag(tag));
+      const nonLaneTags = existingTags.filter((tag) => !isKanbanLaneTag(tag));
       message.tags = [...new Set([...nonLaneTags, canonicalNewTag])];
 
       // Keep existing non-kanban primary tag. If the primary tag is a lane tag, switch it.
-      if (!message.tag || this.isKanbanLaneTag(message.tag)) {
-        const primaryNonLane = nonLaneTags.find((tag) => !this.isKanbanLaneTag(tag)) || null;
+      if (!message.tag || isKanbanLaneTag(message.tag)) {
+        const primaryNonLane = nonLaneTags.find((tag) => !isKanbanLaneTag(tag)) || null;
         message.tag = primaryNonLane || canonicalNewTag;
       }
     },
@@ -623,26 +611,17 @@ export default {
     },
 
     async handleMessageDropped({ messageId, newTag }) {
-      console.log('handleMessageDropped called:', { messageId, newTag });
-
       // Reload messages to get updated tags from database
       await this.loadMessages();
-
-      console.log('Messages after reload:', this.messages.length);
-      const droppedMessage = this.messages.find(m => m.id === messageId);
-      console.log('Dropped message after reload:', droppedMessage);
-
       await this.loadCounts();
 
       // If the dropped message is currently selected, reload it to show updated tags
       if (this.currentMessage && this.currentMessage.id === messageId) {
-        await this.loadMessage(messageId);
+        await this.handleSelectMessage(messageId);
       }
     },
 
     handleDropError({ messageId, error }) {
-      console.error('Failed to drop message:', error);
-      // Show error toast
       if (this.$refs.toast) {
         this.$refs.toast.show('Failed to move email. Please try again.', 'error');
       }

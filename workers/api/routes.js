@@ -1,22 +1,16 @@
-import { DB } from '../shared/db.js';
+import { DB, escapeLikePattern } from '../shared/db.js';
 import { sendNewEmailNotification } from '../shared/notifications.js';
-
-const MISSING_TABLE_PATTERN = /no such table/i;
-
-// UUID v4 validation regex
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+import { jsonResponse, isValidUUID, isMissingTableError, databaseNotInitializedResponse } from '../shared/response.js';
 
 // Tag name validation: alphanumeric, spaces, hyphens, underscores, slashes (for hierarchy)
 // Max 100 characters
 const TAG_NAME_REGEX = /^[\w\s\-/]+$/;
 const MAX_TAG_NAME_LENGTH = 100;
 
-const isValidUUID = (id) => typeof id === 'string' && UUID_REGEX.test(id);
-
-const isValidTagName = (name) => 
-  typeof name === 'string' && 
-  name.length > 0 && 
-  name.length <= MAX_TAG_NAME_LENGTH && 
+const isValidTagName = (name) =>
+  typeof name === 'string' &&
+  name.length > 0 &&
+  name.length <= MAX_TAG_NAME_LENGTH &&
   TAG_NAME_REGEX.test(name);
 
 // Rule name: same as tag name
@@ -35,12 +29,6 @@ const isValidMatchValue = (val) =>
 const isValidPriority = (p) => {
   const n = Number(p);
   return Number.isInteger(n) && n >= 0 && n <= 100;
-};
-
-// Escapes special characters for SQL LIKE pattern
-// Uses backslash as the escape character
-const escapeLikePattern = (str) => {
-  return str.replace(/[\\%_]/g, '\\$&');
 };
 
 
@@ -76,24 +64,6 @@ const arrayBufferToBase64 = (buffer) => {
   }
   return btoa(binary);
 };
-
-const jsonResponse = (payload, init = {}) =>
-  new Response(JSON.stringify(payload), {
-    headers: { 'Content-Type': 'application/json', ...(init.headers || {}) },
-    ...init
-  });
-
-const databaseNotInitializedResponse = () =>
-  jsonResponse(
-    {
-      error: 'Database not initialized.',
-      details: 'Run: npx wrangler d1 migrations apply maildb --remote'
-    },
-    { status: 500 }
-  );
-
-const isMissingTableError = (error) =>
-  Boolean(error?.message && MISSING_TABLE_PATTERN.test(error.message));
 
 // Cloudflare Workers only accepts status codes 200-599
 const clampStatus = (status) => {
@@ -1051,13 +1021,6 @@ export const ApiRouter = {
 
             const data = await response.json();
             resultId = data.id;
-          }
-          // 3. AWS SES (Placeholder for API call)
-          else if (env.AWS_SES_ACCESS_KEY_ID) {
-             // Note: Full AWS SigV4 implementation omitted for brevity,
-             // but this is where the SES Fetch call would go.
-             // See: https://docs.aws.amazon.com/ses/latest/APIReference/API_SendEmail.html
-             throw new Error('AWS SES integration is configured but SigV4 signing is not yet implemented.');
           }
           else {
             throw new Error('No email provider configured correctly');

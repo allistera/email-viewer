@@ -182,13 +182,6 @@ export default {
   gap: 12px;
 }
 
-.list-header h2 {
-  margin: 0;
-  font-size: 20px;
-  color: var(--color-text);
-  display: none; /* Hide title safely if still present in DOM or just remove selector */
-}
-
 .loading,
 .empty,
 .error-message {

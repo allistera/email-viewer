@@ -1,4 +1,5 @@
 import { instrumentDurableObjectWithSentry } from '@sentry/cloudflare';
+import { sentryOptions } from './sentry.js';
 
 /**
  * Durable Object: RealtimeHub
@@ -169,11 +170,6 @@ class RealtimeHubBase {
 }
 
 export const RealtimeHub = instrumentDurableObjectWithSentry(
-  (env) => ({
-    dsn: env.SENTRY_DSN,
-    tracesSampleRate: 1.0,
-    enableLogs: true,
-    sendDefaultPii: true,
-  }),
+  sentryOptions,
   RealtimeHubBase,
 );
