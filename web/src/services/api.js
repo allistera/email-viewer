@@ -215,6 +215,12 @@ export async function addTodoistTask(id, options = {}) {
   });
 }
 
+export async function unsubscribeMessage(id) {
+  return request(`/messages/${id}/unsubscribe`, {
+    method: 'POST'
+  });
+}
+
 export async function updateMessageTag(id, tag) {
   return request(`/messages/${id}`, {
     method: 'PATCH',
