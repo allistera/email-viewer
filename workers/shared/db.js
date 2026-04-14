@@ -18,6 +18,28 @@ const escapeLikePattern = (str) => {
   return str.replace(/[\\%_]/g, '\\$&');
 };
 
+
+const EMAIL_PATTERN = /([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})/ig;
+
+const normalizeEmail = (value) => String(value || '').trim().toLowerCase();
+
+const extractEmailAddresses = (input) => {
+  if (!input) return [];
+  const source = Array.isArray(input) ? input.join(',') : String(input);
+  const matches = source.match(EMAIL_PATTERN) || [];
+  const unique = [];
+  const seen = new Set();
+
+  for (const match of matches) {
+    const normalized = normalizeEmail(match);
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    unique.push(normalized);
+  }
+
+  return unique;
+};
+
 export const DB = {
   /**
    * Insert a new message
@@ -49,6 +71,49 @@ export const DB = {
       message.snoozed_until ?? null
     ).run();
   },
+
+  async upsertContacts(db, emails, { usedAt = Date.now(), direction = 'inbound' } = {}) {
+    const normalizedDirection = direction === 'outbound' ? 'outbound' : 'inbound';
+    const uniqueEmails = extractEmailAddresses(emails);
+    if (uniqueEmails.length === 0) return;
+
+    const stmt = db.prepare(`
+      INSERT INTO contacts (email, first_seen_at, last_used_at, last_direction)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT(email) DO UPDATE SET
+        first_seen_at = MIN(contacts.first_seen_at, excluded.first_seen_at),
+        last_used_at = MAX(contacts.last_used_at, excluded.last_used_at),
+        last_direction = CASE
+          WHEN excluded.last_used_at >= contacts.last_used_at THEN excluded.last_direction
+          ELSE contacts.last_direction
+        END
+    `);
+
+    await db.batch(
+      uniqueEmails.map((email) => stmt.bind(email, usedAt, usedAt, normalizedDirection))
+    );
+  },
+
+  async getContactSuggestions(db, { query = '', limit = 10 } = {}) {
+    const safeLimit = Math.min(Math.max(Number(limit) || 10, 1), 50);
+    const searchPattern = `${escapeLikePattern(String(query || '').trim().toLowerCase())}%`;
+
+    const { results } = await db.prepare(`
+      SELECT email, display_name, last_used_at, last_direction
+      FROM contacts
+      WHERE email LIKE ? ESCAPE '\\'
+      ORDER BY last_used_at DESC
+      LIMIT ?
+    `).bind(searchPattern, safeLimit).all();
+
+    return (results || []).map((row) => ({
+      email: row.email,
+      displayName: row.display_name || null,
+      lastUsed: row.last_used_at,
+      direction: row.last_direction
+    }));
+  },
+
 
   /**
    * Insert attachments
