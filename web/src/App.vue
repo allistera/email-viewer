@@ -396,7 +396,7 @@ export default {
           // Inbox view (no specific tag selected)
           // Exclude archived, spam, and sent emails
           params.archived = false;
-          params.excludeTag = 'Spam';
+          params.excludeTag = 'Spam,Sent';
           params.hideSnoozed = true;
         }
         

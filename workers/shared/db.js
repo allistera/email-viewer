@@ -18,6 +18,20 @@ const escapeLikePattern = (str) => {
   return str.replace(/[\\%_]/g, '\\$&');
 };
 
+const normalizeTagFilterList = (value) => {
+  if (!value) return [];
+  if (Array.isArray(value)) {
+    return value
+      .flatMap((item) => String(item).split(','))
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+  return String(value)
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+};
+
 export const DB = {
   /**
    * Insert a new message
@@ -107,10 +121,11 @@ export const DB = {
    * @param {Object} filters { limit, before, tag, excludeTag, archived }
    */
 
-  async listMessages(db, { limit = 50, before = null, tag = null, excludeTag = null, archived = false, search = null, hideSnoozed = false, snoozed = false } = {}) {
+  async listMessages(db, { limit = 50, before = null, tag = null, excludeTag = null, excludeTags = null, archived = false, search = null, hideSnoozed = false, snoozed = false } = {}) {
     let query = 'SELECT m.* FROM messages m';
     const params = [];
     const conditions = [];
+    const excludedTags = normalizeTagFilterList(excludeTags?.length ? excludeTags : excludeTag);
 
     // FTS Join
     if (search) {
@@ -133,10 +148,11 @@ export const DB = {
       params.push(tag, `${escapeLikePattern(tag)}/%`);
     }
 
-    if (excludeTag) {
-      conditions.push('NOT EXISTS (SELECT 1 FROM message_tags mt JOIN tags t ON mt.tag_id = t.id WHERE mt.message_id = m.id AND (t.name = ? OR t.name LIKE ? ESCAPE \'\\\'))');
-      params.push(excludeTag, `${escapeLikePattern(excludeTag)}/%`);
-
+    if (excludedTags.length > 0) {
+      for (const excludedTag of excludedTags) {
+        conditions.push('NOT EXISTS (SELECT 1 FROM message_tags mt JOIN tags t ON mt.tag_id = t.id WHERE mt.message_id = m.id AND (t.name = ? OR t.name LIKE ? ESCAPE \'\\\'))');
+        params.push(excludedTag, `${escapeLikePattern(excludedTag)}/%`);
+      }
     }
 
     // Archived filter:
@@ -201,10 +217,11 @@ export const DB = {
    * @param {D1Database} db
    * @param {Object} filters { tag, excludeTag, archived, includeArchived, search }
    */
-  async countMessages(db, { tag = null, excludeTag = null, archived = false, includeArchived = false, search = null } = {}) {
+  async countMessages(db, { tag = null, excludeTag = null, excludeTags = null, archived = false, includeArchived = false, search = null } = {}) {
     let query = 'SELECT COUNT(*) as count FROM messages m';
     const params = [];
     const conditions = [];
+    const excludedTags = normalizeTagFilterList(excludeTags?.length ? excludeTags : excludeTag);
 
     if (search) {
       query += ' JOIN messages_fts ON m.rowid = messages_fts.rowid';
@@ -219,10 +236,11 @@ export const DB = {
       params.push(tag, `${escapeLikePattern(tag)}/%`);
     }
 
-    if (excludeTag) {
-      conditions.push('NOT EXISTS (SELECT 1 FROM message_tags mt JOIN tags t ON mt.tag_id = t.id WHERE mt.message_id = m.id AND (t.name = ? OR t.name LIKE ? ESCAPE \'\\\'))');
-      params.push(excludeTag, `${escapeLikePattern(excludeTag)}/%`);
-
+    if (excludedTags.length > 0) {
+      for (const excludedTag of excludedTags) {
+        conditions.push('NOT EXISTS (SELECT 1 FROM message_tags mt JOIN tags t ON mt.tag_id = t.id WHERE mt.message_id = m.id AND (t.name = ? OR t.name LIKE ? ESCAPE \'\\\'))');
+        params.push(excludedTag, `${escapeLikePattern(excludedTag)}/%`);
+      }
     }
 
     if (!includeArchived) {
@@ -274,10 +292,13 @@ export const DB = {
           FROM messages m
           LEFT JOIN message_tags mt ON m.id = mt.message_id
           LEFT JOIN tags t ON mt.tag_id = t.id AND t.name = 'Spam'
+          LEFT JOIN message_tags mt_sent ON m.id = mt_sent.message_id
+          LEFT JOIN tags t_sent ON mt_sent.tag_id = t_sent.id AND t_sent.name = 'Sent'
           WHERE (m.is_archived = 0 OR m.is_archived IS NULL)
             AND (m.snoozed_until IS NULL OR m.snoozed_until <= strftime('%s','now') * 1000)
             AND (m.is_read = 0 OR m.is_read IS NULL)
             AND t.id IS NULL
+            AND t_sent.id IS NULL
         `),
         db.prepare(`
           SELECT t.name as tag_name, COUNT(m.id) as count
@@ -303,8 +324,8 @@ export const DB = {
 
     const spam = tagCounts['Spam'] || 0;
     const sent = tagCounts['Sent'] || 0;
-    // Inbox = Unarchived - Unarchived Spam
-    const inbox = Math.max(0, totalUnarchived - spam);
+    // Inbox = Unarchived - Unarchived Spam - Unarchived Sent
+    const inbox = Math.max(0, totalUnarchived - spam - sent);
 
     return {
       inbox,
@@ -335,14 +356,14 @@ export const DB = {
    */
   async archiveAllMessages(db, { tag } = {}) {
     if (tag === null || tag === undefined) {
-      // Inbox: archive all non-archived messages that are not tagged Spam
+      // Inbox: archive all non-archived messages that are not tagged Spam/Sent
       await db.prepare(`
         UPDATE messages SET is_archived = 1
         WHERE (is_archived = 0 OR is_archived IS NULL)
           AND id NOT IN (
             SELECT mt.message_id FROM message_tags mt
             JOIN tags t ON mt.tag_id = t.id
-            WHERE t.name = 'Spam'
+            WHERE t.name IN ('Spam', 'Sent')
           )
       `).run();
     } else {
@@ -411,7 +432,7 @@ export const DB = {
           AND id NOT IN (
             SELECT mt.message_id FROM message_tags mt
             JOIN tags t ON mt.tag_id = t.id
-            WHERE t.name = 'Spam'
+            WHERE t.name IN ('Spam', 'Sent')
           )
       `).run();
     } else {
