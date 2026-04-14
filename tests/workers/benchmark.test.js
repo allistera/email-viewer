@@ -172,9 +172,35 @@ describe("Benchmark FTS", () => {
         });
     }
 
-    // Insert in batches
-    for (const msg of messages) {
-         await DB.insertMessage(env.DB, msg);
+    // Insert in batches to keep worker runtime stable in CI.
+    const batchSize = 100;
+    const stmt = env.DB.prepare(`
+      INSERT INTO messages (
+        id, received_at, from_addr, to_addr, subject,
+        date_header, snippet, has_attachments, raw_r2_key,
+        text_body, html_body, headers_json, tag, snoozed_until
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    for (let i = 0; i < messages.length; i += batchSize) {
+      const chunk = messages.slice(i, i + batchSize);
+      const batch = chunk.map((msg) => stmt.bind(
+        msg.id,
+        msg.received_at,
+        msg.from_addr,
+        msg.to_addr,
+        msg.subject,
+        msg.date_header,
+        msg.snippet,
+        msg.has_attachments ? 1 : 0,
+        msg.raw_r2_key,
+        msg.text_body,
+        msg.html_body,
+        msg.headers_json,
+        msg.tag ?? null,
+        null
+      ));
+      await env.DB.batch(batch);
     }
   }, 60000); // 60s timeout for seeding
 
