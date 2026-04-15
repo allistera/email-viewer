@@ -118,10 +118,10 @@ describe("contacts search", () => {
 
     const response = await ApiRouter.handle(request.url, request, env);
     expect(response.status).toBe(200);
-    expect(state.sql).toContain("WHERE from_addr LIKE ?");
+    expect(state.sql).toContain("FROM contacts");
+    expect(state.sql).toContain("WHERE email LIKE ? ESCAPE '\\'");
     expect(state.bindings[0]).toBe("al%");
-    expect(state.bindings[1]).toBe("al%");
-    expect(state.bindings[2]).toBe(10);
+    expect(state.bindings[1]).toBe(10);
   });
 
   it("benchmark: prefix index seek outperforms contains scan on 5000 records", () => {

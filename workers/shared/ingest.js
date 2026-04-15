@@ -71,6 +71,10 @@ export async function ingestRawEmail(rawBuffer, env, options = {}) {
 
     await DB.insertMessage(env.DB, dbMessage);
 
+    // Track contacts for compose autocomplete
+    await DB.upsertContacts(env.DB, parsed.from, { usedAt: dbMessage.received_at, direction: 'inbound' });
+    await DB.upsertContacts(env.DB, parsed.to, { usedAt: dbMessage.received_at, direction: 'outbound' });
+
     // 4. Save attachments
     const attachmentInserts = await Promise.all(
         parsed.attachments.map(async (att) => {
