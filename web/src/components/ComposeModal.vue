@@ -147,13 +147,19 @@
         </div>
 
         <div class="compose-actions">
-          <button type="button" class="btn-secondary" @click="handleClose" :disabled="sending">
-            Cancel
-          </button>
-          <button type="submit" class="btn-primary" :disabled="sending || !hasRecipients" :aria-busy="sending">
-            <span v-if="sending" class="spinner" aria-hidden="true"></span>
-            {{ sending ? 'Sending...' : 'Send' }}
-          </button>
+          <div v-if="undoCountdown > 0" class="undo-send-bar">
+            <span>Sending in {{ undoCountdown }}s…</span>
+            <button type="button" class="btn-undo" @click="handleUndoSend">Undo</button>
+          </div>
+          <template v-else>
+            <button type="button" class="btn-secondary" @click="handleClose" :disabled="sending">
+              Cancel
+            </button>
+            <button type="submit" class="btn-primary" :disabled="sending || !hasRecipients" :aria-busy="sending">
+              <span v-if="sending" class="spinner" aria-hidden="true"></span>
+              {{ sending ? 'Sending...' : 'Send' }}
+            </button>
+          </template>
         </div>
       </form>
     </div>
@@ -193,6 +199,9 @@ export default {
       body: '',
       attachments: [],
       sending: false,
+      undoCountdown: 0,
+      undoTimer: null,
+      undoCancelled: false,
       error: null,
       suggestions: [],
       showSuggestions: false,
@@ -249,6 +258,12 @@ export default {
       this.attachments = [];
       this.error = null;
       this.sending = false;
+      this.undoCancelled = true;
+      if (this.undoTimer) {
+        clearInterval(this.undoTimer);
+        this.undoTimer = null;
+      }
+      this.undoCountdown = 0;
       this.suggestions = [];
       this.showSuggestions = false;
       this.selectedSuggestionIndex = -1;
@@ -515,7 +530,7 @@ export default {
       });
     },
     async handleSend() {
-      if (this.sending) return;
+      if (this.sending || this.undoCountdown > 0) return;
       this.error = null;
       this.finalizeRecipients();
       if (this.recipients.length === 0) {
@@ -529,8 +544,27 @@ export default {
         return;
       }
 
-      this.sending = true;
+      const UNDO_SECONDS = 5;
+      this.undoCancelled = false;
+      this.undoCountdown = UNDO_SECONDS;
 
+      await new Promise((resolve) => {
+        let remaining = UNDO_SECONDS;
+        this.undoTimer = setInterval(() => {
+          remaining -= 1;
+          this.undoCountdown = remaining;
+          if (remaining <= 0 || this.undoCancelled) {
+            clearInterval(this.undoTimer);
+            this.undoTimer = null;
+            this.undoCountdown = 0;
+            resolve();
+          }
+        }, 1000);
+      });
+
+      if (this.undoCancelled) return;
+
+      this.sending = true;
       try {
         await sendEmail({
           to: this.recipients,
@@ -547,6 +581,15 @@ export default {
       } finally {
         this.sending = false;
       }
+    },
+
+    handleUndoSend() {
+      this.undoCancelled = true;
+      if (this.undoTimer) {
+        clearInterval(this.undoTimer);
+        this.undoTimer = null;
+      }
+      this.undoCountdown = 0;
     }
   }
 };
@@ -903,6 +946,32 @@ export default {
   gap: 12px;
   padding: 16px 20px;
   border-top: 1px solid var(--color-border, #e0e0e0);
+}
+
+.undo-send-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  justify-content: space-between;
+  font-size: 14px;
+  color: var(--color-text-secondary, #808080);
+}
+
+.btn-undo {
+  padding: 6px 14px;
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: 4px;
+  background: var(--color-bg, #fff);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-primary, #e53e3e);
+  transition: background 0.15s;
+}
+
+.btn-undo:hover {
+  background: var(--color-bg-secondary, #f5f5f5);
 }
 
 .btn-primary,
