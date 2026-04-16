@@ -250,17 +250,32 @@
       <div v-if="message.attachments && message.attachments.length > 0" class="attachments">
         <h3>Attachments</h3>
         <div class="attachment-list">
-          <a
-            v-for="att in message.attachments"
-            :key="att.id"
-            :href="getAttachmentUrl(att.id)"
-            class="attachment-item"
-            :download="att.filename"
-          >
-            <span class="attachment-icon">📎</span>
-            <span class="attachment-name">{{ att.filename }}</span>
-            <span class="attachment-size">{{ formatBytes(att.sizeBytes) }}</span>
-          </a>
+          <template v-for="att in message.attachments" :key="att.id">
+            <div v-if="isImageAttachment(att)" class="attachment-image-preview">
+              <a :href="getAttachmentUrl(att.id)" :download="att.filename" class="attachment-image-link">
+                <img
+                  :src="getAttachmentUrl(att.id)"
+                  :alt="att.filename"
+                  class="attachment-thumbnail"
+                  loading="lazy"
+                />
+              </a>
+              <div class="attachment-image-meta">
+                <span class="attachment-name">{{ att.filename }}</span>
+                <span class="attachment-size">{{ formatBytes(att.sizeBytes) }}</span>
+              </div>
+            </div>
+            <a
+              v-else
+              :href="getAttachmentUrl(att.id)"
+              class="attachment-item"
+              :download="att.filename"
+            >
+              <span class="attachment-icon">📎</span>
+              <span class="attachment-name">{{ att.filename }}</span>
+              <span class="attachment-size">{{ formatBytes(att.sizeBytes) }}</span>
+            </a>
+          </template>
         </div>
       </div>
 
@@ -577,6 +592,14 @@ export default {
     },
     getAttachmentUrl(attachmentId) {
       return getAttachmentUrl(this.message.id, attachmentId);
+    },
+
+    isImageAttachment(att) {
+      if (att.contentType) {
+        return att.contentType.startsWith('image/');
+      }
+      const ext = (att.filename || '').split('.').pop().toLowerCase();
+      return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'avif'].includes(ext);
     },
     getRawEmailUrl(messageId) {
       return getRawEmailUrl(messageId);
@@ -1093,6 +1116,37 @@ a.toolbar-btn.raw-btn:hover {
 .attachment-size {
   color: var(--color-text-secondary);
   font-size: 12px;
+}
+
+.attachment-image-preview {
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--color-bg);
+}
+
+.attachment-image-link {
+  display: block;
+  max-height: 300px;
+  overflow: hidden;
+  background: var(--color-bg-secondary);
+}
+
+.attachment-thumbnail {
+  display: block;
+  max-width: 100%;
+  max-height: 300px;
+  object-fit: contain;
+  margin: 0 auto;
+}
+
+.attachment-image-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  border-top: 1px solid var(--color-border);
+  font-size: 13px;
 }
 
 .body-tabs {
