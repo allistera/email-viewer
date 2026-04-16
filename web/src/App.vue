@@ -75,6 +75,7 @@
             @load-more="handleLoadMore"
             @open-sidebar="openMobileSidebar"
             @bulk-archive="handleBulkArchive"
+            @toggle-select="handleToggleSelect"
           />
 
           <div
@@ -204,6 +205,7 @@ export default {
       currentMessage: null,
       selectedMessageId: null,
       selectedMessageIds: [],
+      lastBulkSelectIndex: -1,
       loadingMessages: false,
       loadingDetail: false,
       loadingMore: false,
@@ -589,6 +591,32 @@ export default {
 
       if (!this.isMobile && this.messages.length > 0 && !this.selectedMessageId) {
         this.handleSelectMessage(this.messages[0].id);
+      }
+    },
+
+    handleToggleSelect(messageId, event) {
+      const index = this.messages.findIndex(m => m.id === messageId);
+      const isSelected = this.selectedMessageIds.includes(messageId);
+
+      if (event?.shiftKey && this.lastBulkSelectIndex >= 0 && index >= 0) {
+        const start = Math.min(this.lastBulkSelectIndex, index);
+        const end = Math.max(this.lastBulkSelectIndex, index);
+        const rangeIds = this.messages.slice(start, end + 1).map(m => m.id);
+        const addToSelection = !isSelected;
+        if (addToSelection) {
+          const combined = new Set([...this.selectedMessageIds, ...rangeIds]);
+          this.selectedMessageIds = [...combined];
+        } else {
+          const rangeSet = new Set(rangeIds);
+          this.selectedMessageIds = this.selectedMessageIds.filter(id => !rangeSet.has(id));
+        }
+      } else {
+        if (isSelected) {
+          this.selectedMessageIds = this.selectedMessageIds.filter(id => id !== messageId);
+        } else {
+          this.selectedMessageIds = [...this.selectedMessageIds, messageId];
+        }
+        this.lastBulkSelectIndex = index;
       }
     },
 

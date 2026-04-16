@@ -27,7 +27,7 @@
 
     <VirtualList
       v-else
-      class="messages"
+      :class="['messages', { 'bulk-active': selectedIds.length > 0 }]"
       :items="messages"
       :item-height="itemHeight"
       ref="virtualList"
@@ -44,20 +44,34 @@
           @keydown.enter.prevent="$emit('select', message.id)"
           @keydown.space.prevent="$emit('select', message.id)"
         >
-          <div class="message-header">
-            <span class="from">{{ message.from }}</span>
-            <span class="time">{{ formatTime(message.receivedAt) }}</span>
-          </div>
-          <div class="message-subject" :title="message.subject">
-            {{ message.subject }}
-          </div>
-          <div class="message-footer">
-            <span class="snippet" :title="message.snippet">{{ message.snippet }}</span>
-            <div class="badges">
-              <TagBadge :tag="message.tag" />
-              <span v-if="message.hasAttachments" class="attachment-icon" title="Has attachments">
-                📎
-              </span>
+          <button
+            type="button"
+            class="message-checkbox"
+            :class="{ checked: selectedIds.includes(message.id) }"
+            :aria-label="selectedIds.includes(message.id) ? 'Deselect message' : 'Select message'"
+            :aria-pressed="selectedIds.includes(message.id)"
+            @click.stop="$emit('toggle-select', message.id, $event)"
+          >
+            <svg v-if="selectedIds.includes(message.id)" viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+              <path d="M3 8l3.5 3.5L13 4" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="message-body">
+            <div class="message-header">
+              <span class="from">{{ message.from }}</span>
+              <span class="time">{{ formatTime(message.receivedAt) }}</span>
+            </div>
+            <div class="message-subject" :title="message.subject">
+              {{ message.subject }}
+            </div>
+            <div class="message-footer">
+              <span class="snippet" :title="message.snippet">{{ message.snippet }}</span>
+              <div class="badges">
+                <TagBadge :tag="message.tag" />
+                <span v-if="message.hasAttachments" class="attachment-icon" title="Has attachments">
+                  📎
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -116,7 +130,7 @@ export default {
       default: null
     }
   },
-  emits: ['select', 'search', 'load-more', 'open-sidebar', 'bulk-archive'],
+  emits: ['select', 'search', 'load-more', 'open-sidebar', 'bulk-archive', 'toggle-select'],
   data() {
     return {
       itemHeight: 100 // Default fixed height
@@ -207,13 +221,55 @@ export default {
 }
 
 .message-item {
-  padding: 16px;
+  padding: 16px 16px 16px 10px;
   border-bottom: 1px solid var(--color-border);
   cursor: grab;
   transition: background 0.15s;
-  height: 100px; /* Enforce fixed height */
+  height: 100px;
   box-sizing: border-box;
   overflow: hidden;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.message-checkbox {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border: 1.5px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-bg);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s, background 0.15s, opacity 0.15s;
+  opacity: 0;
+  padding: 0;
+}
+
+.message-item:hover .message-checkbox,
+.message-item.bulk-selected .message-checkbox,
+.bulk-active .message-checkbox {
+  opacity: 1;
+}
+
+.message-checkbox.checked {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+  opacity: 1;
+}
+
+.message-checkbox:hover:not(.checked) {
+  border-color: var(--color-primary);
+}
+
+.message-body {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   justify-content: center;
