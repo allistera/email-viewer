@@ -133,6 +133,21 @@
           </button>
 
           <button
+            v-if="isSpam"
+            class="toolbar-btn not-spam-btn"
+            type="button"
+            @click="handleNotSpam"
+            :disabled="markingNotSpam"
+            title="Not spam — move to inbox"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" class="toolbar-icon">
+              <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.75"/>
+              <path d="M9 12l2 2 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span class="toolbar-label">Not Spam</span>
+          </button>
+
+          <button
             v-if="!isArchived"
             class="toolbar-btn done-btn"
             type="button"
@@ -338,7 +353,8 @@ export default {
       gravatarUrl: null,
       unsubscribing: false,
       unsubscribeStatus: 'idle',
-      unsubscribeError: ''
+      unsubscribeError: '',
+      markingNotSpam: false
     };
   },
   emits: ['archived', 'snoozed', 'back', 'reply', 'forward'],
@@ -406,6 +422,9 @@ export default {
     },
     isArchived() {
       return this.message?.is_archived === 1 || this.message?.isArchived === true;
+    },
+    isSpam() {
+      return this.currentTags.some(t => t.toLowerCase() === 'spam');
     },
     snoozedUntil() {
       return this.message?.snoozedUntil ?? this.message?.snoozed_until ?? null;
@@ -604,6 +623,25 @@ export default {
     getRawEmailUrl(messageId) {
       return getRawEmailUrl(messageId);
     },
+    async handleNotSpam() {
+      if (!this.message || this.markingNotSpam) return;
+      this.markingNotSpam = true;
+      try {
+        await removeMessageTag(this.message.id, 'Spam');
+        if (this.message.tags) {
+          this.message.tags = this.message.tags.filter(t => t.toLowerCase() !== 'spam');
+        }
+        if ((this.message.tag || '').toLowerCase() === 'spam') {
+          this.message.tag = this.message.tags?.[0] || null;
+        }
+        this.$emit('archived', this.message.id);
+      } catch (e) {
+        alert('Failed to mark as not spam: ' + e.message);
+      } finally {
+        this.markingNotSpam = false;
+      }
+    },
+
     async handleArchive() {
       if (!this.message || this.archiving) return;
 
