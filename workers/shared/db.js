@@ -453,6 +453,23 @@ export const DB = {
   },
 
   /**
+   * Get messages whose snooze time has passed and clear their snooze.
+   * Returns the woken messages so notifications can be sent.
+   * @param {D1Database} db
+   * @param {number} now - current timestamp in ms
+   */
+  async wakeUpSnoozedMessages(db, now) {
+    const { results } = await db.prepare(
+      'SELECT id, subject, from_addr, snippet FROM messages WHERE snoozed_until IS NOT NULL AND snoozed_until <= ?'
+    ).bind(now).all();
+    if (results.length > 0) {
+      const ids = results.map(m => `'${m.id}'`).join(',');
+      await db.prepare(`UPDATE messages SET snoozed_until = NULL WHERE id IN (${ids})`).run();
+    }
+    return results || [];
+  },
+
+  /**
    * Mark a message as read
    * @param {D1Database} db
    * @param {string} id

@@ -530,7 +530,13 @@ export default {
     connectRealtime() {
       realtimeClient.on('message.received', this.handleMessageReceived);
       realtimeClient.on('message.tagged', this.handleMessageTagged);
+      realtimeClient.on('snooze.wakeup', this.handleSnoozeWakeup);
       realtimeClient.connect();
+    },
+
+    handleSnoozeWakeup() {
+      this.debouncedRefresh();
+      this.loadCounts();
     },
 
     handleMessageReceived(event) {
