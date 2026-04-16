@@ -11,6 +11,7 @@ const TAGS_CACHE_TTL = 60 * 1000; // 60 seconds
 let settingsCache = {};
 let settingsCacheTime = 0;
 const SETTINGS_CACHE_TTL = 60 * 1000; // 60 seconds
+const messageColumnsCache = new WeakMap();
 
 // Escapes special characters for SQL LIKE pattern
 // Uses backslash as the escape character
@@ -40,6 +41,17 @@ const extractEmailAddresses = (input) => {
   return unique;
 };
 
+const getMessageColumns = async (db) => {
+  if (messageColumnsCache.has(db)) {
+    return messageColumnsCache.get(db);
+  }
+
+  const { results } = await db.prepare('PRAGMA table_info(messages)').all();
+  const columns = new Set((results || []).map((row) => row.name));
+  messageColumnsCache.set(db, columns);
+  return columns;
+};
+
 export const DB = {
   /**
    * Insert a new message
@@ -47,29 +59,46 @@ export const DB = {
    * @param {Object} message 
    */
   async insertMessage(db, message) {
+    const columns = await getMessageColumns(db);
+    const entries = [
+      ['id', message.id],
+      ['received_at', message.received_at],
+      ['from_addr', message.from_addr ?? null],
+      ['to_addr', message.to_addr ?? null],
+      ['subject', message.subject ?? null],
+      ['date_header', message.date_header ?? null],
+      ['snippet', message.snippet ?? null],
+      ['has_attachments', message.has_attachments ? 1 : 0],
+      ['raw_r2_key', message.raw_r2_key ?? null],
+      ['text_body', message.text_body ?? null],
+      ['html_body', message.html_body ?? null],
+      ['headers_json', message.headers_json ?? null],
+      ['snoozed_until', message.snoozed_until ?? null],
+      ['message_id_header', message.message_id_header ?? null],
+      ['in_reply_to', message.in_reply_to ?? null],
+      ['thread_id', message.thread_id ?? message.id]
+    ].filter(([column]) => columns.has(column));
+
     const query = `
-      INSERT INTO messages (
-        id, received_at, from_addr, to_addr, subject, 
-        date_header, snippet, has_attachments, raw_r2_key, 
-        text_body, html_body, headers_json, snoozed_until
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO messages (${entries.map(([column]) => column).join(', ')})
+      VALUES (${entries.map(() => '?').join(', ')})
     `;
 
-    await db.prepare(query).bind(
-      message.id,
-      message.received_at,
-      message.from_addr ?? null,
-      message.to_addr ?? null,
-      message.subject ?? null,
-      message.date_header ?? null,
-      message.snippet ?? null,
-      message.has_attachments ? 1 : 0,
-      message.raw_r2_key ?? null,
-      message.text_body ?? null,
-      message.html_body ?? null,
-      message.headers_json ?? null,
-      message.snoozed_until ?? null
-    ).run();
+    await db.prepare(query).bind(...entries.map(([, value]) => value)).run();
+  },
+
+  /**
+   * Find the thread_id for a new message based on its In-Reply-To header.
+   * Returns the thread_id of the parent, or null if this is a new thread.
+   */
+  async findThreadId(db, inReplyTo) {
+    if (!inReplyTo) return null;
+    const columns = await getMessageColumns(db);
+    if (!columns.has('message_id_header') || !columns.has('thread_id')) return null;
+    const parent = await db.prepare(
+      'SELECT thread_id FROM messages WHERE message_id_header = ? LIMIT 1'
+    ).bind(inReplyTo).first();
+    return parent?.thread_id ?? null;
   },
 
   async upsertContacts(db, emails, { usedAt = Date.now(), direction = 'inbound' } = {}) {
@@ -173,7 +202,11 @@ export const DB = {
    */
 
   async listMessages(db, { limit = 50, before = null, tag = null, excludeTag = null, archived = false, search = null, hideSnoozed = false, snoozed = false } = {}) {
-    let query = 'SELECT m.* FROM messages m';
+    const columns = await getMessageColumns(db);
+    const hasThreadId = columns.has('thread_id');
+    let query = hasThreadId
+      ? 'SELECT m.*, (SELECT COUNT(*) FROM messages m2 WHERE m2.thread_id = m.thread_id AND m2.thread_id IS NOT NULL AND m2.id != m.id) AS thread_reply_count FROM messages m'
+      : 'SELECT m.*, 0 AS thread_reply_count FROM messages m';
     const params = [];
     const conditions = [];
 
@@ -450,6 +483,23 @@ export const DB = {
    */
   async unsnoozeMessage(db, id) {
     await db.prepare('UPDATE messages SET snoozed_until = NULL WHERE id = ?').bind(id).run();
+  },
+
+  /**
+   * Get messages whose snooze time has passed and clear their snooze.
+   * Returns the woken messages so notifications can be sent.
+   * @param {D1Database} db
+   * @param {number} now - current timestamp in ms
+   */
+  async wakeUpSnoozedMessages(db, now) {
+    const { results } = await db.prepare(
+      'SELECT id, subject, from_addr, snippet FROM messages WHERE snoozed_until IS NOT NULL AND snoozed_until <= ?'
+    ).bind(now).all();
+    if (results.length > 0) {
+      const ids = results.map(m => `'${m.id}'`).join(',');
+      await db.prepare(`UPDATE messages SET snoozed_until = NULL WHERE id IN (${ids})`).run();
+    }
+    return results || [];
   },
 
   /**

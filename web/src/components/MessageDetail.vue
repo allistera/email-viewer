@@ -133,6 +133,21 @@
           </button>
 
           <button
+            v-if="isSpam"
+            class="toolbar-btn not-spam-btn"
+            type="button"
+            @click="handleNotSpam"
+            :disabled="markingNotSpam"
+            title="Not spam — move to inbox"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" class="toolbar-icon">
+              <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.75"/>
+              <path d="M9 12l2 2 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span class="toolbar-label">Not Spam</span>
+          </button>
+
+          <button
             v-if="!isArchived"
             class="toolbar-btn done-btn"
             type="button"
@@ -250,17 +265,32 @@
       <div v-if="message.attachments && message.attachments.length > 0" class="attachments">
         <h3>Attachments</h3>
         <div class="attachment-list">
-          <a
-            v-for="att in message.attachments"
-            :key="att.id"
-            :href="getAttachmentUrl(att.id)"
-            class="attachment-item"
-            :download="att.filename"
-          >
-            <span class="attachment-icon">📎</span>
-            <span class="attachment-name">{{ att.filename }}</span>
-            <span class="attachment-size">{{ formatBytes(att.sizeBytes) }}</span>
-          </a>
+          <template v-for="att in message.attachments" :key="att.id">
+            <div v-if="isImageAttachment(att)" class="attachment-image-preview">
+              <a :href="getAttachmentUrl(att.id)" :download="att.filename" class="attachment-image-link">
+                <img
+                  :src="getAttachmentUrl(att.id)"
+                  :alt="att.filename"
+                  class="attachment-thumbnail"
+                  loading="lazy"
+                />
+              </a>
+              <div class="attachment-image-meta">
+                <span class="attachment-name">{{ att.filename }}</span>
+                <span class="attachment-size">{{ formatBytes(att.sizeBytes) }}</span>
+              </div>
+            </div>
+            <a
+              v-else
+              :href="getAttachmentUrl(att.id)"
+              class="attachment-item"
+              :download="att.filename"
+            >
+              <span class="attachment-icon">📎</span>
+              <span class="attachment-name">{{ att.filename }}</span>
+              <span class="attachment-size">{{ formatBytes(att.sizeBytes) }}</span>
+            </a>
+          </template>
         </div>
       </div>
 
@@ -323,7 +353,8 @@ export default {
       gravatarUrl: null,
       unsubscribing: false,
       unsubscribeStatus: 'idle',
-      unsubscribeError: ''
+      unsubscribeError: '',
+      markingNotSpam: false
     };
   },
   emits: ['archived', 'snoozed', 'back', 'reply', 'forward'],
@@ -391,6 +422,9 @@ export default {
     },
     isArchived() {
       return this.message?.is_archived === 1 || this.message?.isArchived === true;
+    },
+    isSpam() {
+      return this.currentTags.some(t => t.toLowerCase() === 'spam');
     },
     snoozedUntil() {
       return this.message?.snoozedUntil ?? this.message?.snoozed_until ?? null;
@@ -578,9 +612,36 @@ export default {
     getAttachmentUrl(attachmentId) {
       return getAttachmentUrl(this.message.id, attachmentId);
     },
+
+    isImageAttachment(att) {
+      if (att.contentType) {
+        return att.contentType.startsWith('image/');
+      }
+      const ext = (att.filename || '').split('.').pop().toLowerCase();
+      return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'avif'].includes(ext);
+    },
     getRawEmailUrl(messageId) {
       return getRawEmailUrl(messageId);
     },
+    async handleNotSpam() {
+      if (!this.message || this.markingNotSpam) return;
+      this.markingNotSpam = true;
+      try {
+        await removeMessageTag(this.message.id, 'Spam');
+        if (this.message.tags) {
+          this.message.tags = this.message.tags.filter(t => t.toLowerCase() !== 'spam');
+        }
+        if ((this.message.tag || '').toLowerCase() === 'spam') {
+          this.message.tag = this.message.tags?.[0] || null;
+        }
+        this.$emit('archived', this.message.id);
+      } catch (e) {
+        alert('Failed to mark as not spam: ' + e.message);
+      } finally {
+        this.markingNotSpam = false;
+      }
+    },
+
     async handleArchive() {
       if (!this.message || this.archiving) return;
 
@@ -1093,6 +1154,37 @@ a.toolbar-btn.raw-btn:hover {
 .attachment-size {
   color: var(--color-text-secondary);
   font-size: 12px;
+}
+
+.attachment-image-preview {
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--color-bg);
+}
+
+.attachment-image-link {
+  display: block;
+  max-height: 300px;
+  overflow: hidden;
+  background: var(--color-bg-secondary);
+}
+
+.attachment-thumbnail {
+  display: block;
+  max-width: 100%;
+  max-height: 300px;
+  object-fit: contain;
+  margin: 0 auto;
+}
+
+.attachment-image-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  border-top: 1px solid var(--color-border);
+  font-size: 13px;
 }
 
 .body-tabs {

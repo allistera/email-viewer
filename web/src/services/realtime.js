@@ -13,17 +13,29 @@ export class RealtimeClient {
     this.maxReconnectAttempts = 5;
     this.reconnectDelay = 1000;
     this.reconnectTimeoutId = null;
+    this.recoveryTimeoutId = null;
     this.isDisconnecting = false;
     // Heartbeat monitoring: reconnect if no event received in 60s.
     // The DO sends a heartbeat every 25s, so two missed beats trigger this.
     this.heartbeatTimeoutId = null;
     this.heartbeatTimeout = 60000;
+    this._onOnline = () => {
+      if (!this.isDisconnecting && !this.eventSource && !this.webSocket) {
+        console.log('Realtime: network online, reconnecting');
+        this.reconnectAttempts = 0;
+        this.connect();
+      }
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('online', this._onOnline);
+    }
   }
 
   connect() {
-    // Don't connect if we're in the process of disconnecting
-    if (this.isDisconnecting) {
-      return;
+    if (this.isDisconnecting) return;
+    if (this.recoveryTimeoutId) {
+      clearTimeout(this.recoveryTimeoutId);
+      this.recoveryTimeoutId = null;
     }
     this.connectSSE();
   }
@@ -132,22 +144,25 @@ export class RealtimeClient {
   }
 
   attemptReconnect() {
-    // Don't reconnect if we're disconnecting
-    if (this.isDisconnecting) {
-      return;
-    }
-    
+    if (this.isDisconnecting) return;
+
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error('Max reconnection attempts reached');
+      console.error('Realtime: max reconnection attempts reached, will retry in 30s');
+      this.recoveryTimeoutId = setTimeout(() => {
+        this.recoveryTimeoutId = null;
+        if (!this.isDisconnecting) {
+          console.log('Realtime: recovery attempt');
+          this.reconnectAttempts = 0;
+          this.connect();
+        }
+      }, 30000);
       return;
     }
 
     this.reconnectAttempts++;
     const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
+    console.log(`Realtime: reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`);
 
-    console.log(`Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`);
-
-    // Store the timeout ID so we can cancel it on disconnect
     this.reconnectTimeoutId = setTimeout(() => {
       this.reconnectTimeoutId = null;
       this.connect();
@@ -189,21 +204,21 @@ export class RealtimeClient {
   }
 
   disconnect() {
-    // Set flag to prevent any pending reconnection attempts
     this.isDisconnecting = true;
 
-    // Cancel heartbeat watchdog
     this.clearHeartbeatTimeout();
 
-    // Cancel any pending reconnection timeout
     if (this.reconnectTimeoutId) {
       clearTimeout(this.reconnectTimeoutId);
       this.reconnectTimeoutId = null;
     }
-    
-    // Reset reconnect attempts
+    if (this.recoveryTimeoutId) {
+      clearTimeout(this.recoveryTimeoutId);
+      this.recoveryTimeoutId = null;
+    }
+
     this.reconnectAttempts = 0;
-    
+
     if (this.eventSource) {
       this.eventSource.close();
       this.eventSource = null;
@@ -213,8 +228,11 @@ export class RealtimeClient {
       this.webSocket = null;
     }
     this.listeners.clear();
-    
-    // Reset disconnecting flag after cleanup (allow future connections)
+
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('online', this._onOnline);
+    }
+
     this.isDisconnecting = false;
   }
 }
