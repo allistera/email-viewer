@@ -68,6 +68,9 @@
               <span class="snippet" :title="message.snippet">{{ message.snippet }}</span>
               <div class="badges">
                 <TagBadge :tag="message.tag" />
+                <span v-if="message.threadReplyCount > 0" class="thread-count" :title="`${message.threadReplyCount} more in thread`">
+                  {{ message.threadReplyCount + 1 }}
+                </span>
                 <span v-if="message.hasAttachments" class="attachment-icon" title="Has attachments">
                   📎
                 </span>
@@ -352,6 +355,21 @@ export default {
   gap: 6px;
   align-items: center;
   flex-shrink: 0;
+}
+
+.thread-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 9px;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  font-weight: 600;
 }
 
 .attachment-icon {

@@ -49,10 +49,11 @@ export const DB = {
   async insertMessage(db, message) {
     const query = `
       INSERT INTO messages (
-        id, received_at, from_addr, to_addr, subject, 
-        date_header, snippet, has_attachments, raw_r2_key, 
-        text_body, html_body, headers_json, snoozed_until
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        id, received_at, from_addr, to_addr, subject,
+        date_header, snippet, has_attachments, raw_r2_key,
+        text_body, html_body, headers_json, snoozed_until,
+        message_id_header, in_reply_to, thread_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     await db.prepare(query).bind(
@@ -68,8 +69,23 @@ export const DB = {
       message.text_body ?? null,
       message.html_body ?? null,
       message.headers_json ?? null,
-      message.snoozed_until ?? null
+      message.snoozed_until ?? null,
+      message.message_id_header ?? null,
+      message.in_reply_to ?? null,
+      message.thread_id ?? message.id
     ).run();
+  },
+
+  /**
+   * Find the thread_id for a new message based on its In-Reply-To header.
+   * Returns the thread_id of the parent, or null if this is a new thread.
+   */
+  async findThreadId(db, inReplyTo) {
+    if (!inReplyTo) return null;
+    const parent = await db.prepare(
+      'SELECT thread_id FROM messages WHERE message_id_header = ? LIMIT 1'
+    ).bind(inReplyTo).first();
+    return parent?.thread_id ?? null;
   },
 
   async upsertContacts(db, emails, { usedAt = Date.now(), direction = 'inbound' } = {}) {
@@ -173,7 +189,7 @@ export const DB = {
    */
 
   async listMessages(db, { limit = 50, before = null, tag = null, excludeTag = null, archived = false, search = null, hideSnoozed = false, snoozed = false } = {}) {
-    let query = 'SELECT m.* FROM messages m';
+    let query = 'SELECT m.*, (SELECT COUNT(*) FROM messages m2 WHERE m2.thread_id = m.thread_id AND m2.thread_id IS NOT NULL AND m2.id != m.id) AS thread_reply_count FROM messages m';
     const params = [];
     const conditions = [];
 
