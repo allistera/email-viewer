@@ -822,6 +822,13 @@ export default {
         return;
       }
 
+      // Cmd+N (Mac) or Ctrl+N: open compose window
+      if (event.key === 'n' && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault();
+        this.openCompose();
+        return;
+      }
+
       // Skip if modal is open or no messages
       if (this.showAuthModal || this.messages.length === 0) {
         return;
