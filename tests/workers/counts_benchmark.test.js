@@ -175,7 +175,7 @@ describe("Benchmark Counts", () => {
 
     for (let i = 0; i < iterations; i++) {
         const [inboxCount, archiveCount, spamCount, sentCount, ...tagCounts] = await Promise.all([
-          DB.countMessages(env.DB, { archived: false, excludeTag: 'Spam' }),
+          DB.countMessages(env.DB, { archived: false, excludeTag: 'Spam,Sent' }),
           DB.countMessages(env.DB, { archived: true }),
           DB.countMessages(env.DB, { tag: 'Spam' }),
           DB.countMessages(env.DB, { tag: 'Sent' }),
@@ -204,12 +204,12 @@ describe("Benchmark Counts", () => {
   });
 
   it("verifies correctness of counts", async () => {
-      // Legacy behavior note:
-      // Legacy code implicitly excludes archived messages from spam, sent, and tag counts
-      // because DB.countMessages defaults archived=false if not specified.
-      // Our test data includes archived spam/sent/tags, so this test confirms that behavior.
+      // Baseline behavior note:
+      // DB.countMessages defaults archived=false if not specified, so spam/sent/tag
+      // counts below are all unarchived-only values.
+      // Inbox excludes both Spam and Sent to match mailbox semantics.
       const [inboxCount, archiveCount, spamCount, sentCount, ...tagCounts] = await Promise.all([
-          DB.countMessages(env.DB, { archived: false, excludeTag: 'Spam' }),
+          DB.countMessages(env.DB, { archived: false, excludeTag: 'Spam,Sent' }),
           DB.countMessages(env.DB, { archived: true }),
           DB.countMessages(env.DB, { tag: 'Spam' }),
           DB.countMessages(env.DB, { tag: 'Sent' }),

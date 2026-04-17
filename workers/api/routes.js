@@ -128,7 +128,10 @@ export const ApiRouter = {
 
         const before = parseInt(url.searchParams.get('before')) || null;
         const tag = url.searchParams.get('tag') || null;
-        const excludeTag = url.searchParams.get('excludeTag') || null;
+        const excludeTagParams = url.searchParams.getAll('excludeTag');
+        const excludeTag = excludeTagParams.length > 0
+          ? excludeTagParams
+          : (url.searchParams.get('excludeTag') || null);
         // Parse 'archived'; 'true' -> true, else false
         const archived = url.searchParams.get('archived') === 'true';
         const hideSnoozed = url.searchParams.get('hideSnoozed') === 'true';
