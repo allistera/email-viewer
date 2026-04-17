@@ -1,13 +1,5 @@
 <template>
   <aside class="discord-sidebar">
-    <!-- Compose Button -->
-    <button class="compose-btn-main" @click="$emit('compose')">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-      </svg>
-      <span>Compose</span>
-    </button>
-
     <!-- Navigation -->
     <nav class="sidebar-nav">
       <!-- Main folders -->
@@ -260,33 +252,6 @@ export default {
   height: 100vh;
   border-right: 1px solid var(--color-border);
   overflow: hidden;
-}
-
-.compose-btn-main {
-  margin: 16px;
-  height: 40px;
-  background: var(--color-primary);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  cursor: pointer;
-  transition: all 0.15s;
-  flex-shrink: 0;
-}
-
-.compose-btn-main:hover {
-  background: var(--color-primary-dark);
-  transform: translateY(-1px);
-}
-
-.compose-btn-main:active {
-  transform: translateY(0);
 }
 
 .sidebar-nav {

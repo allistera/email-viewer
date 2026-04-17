@@ -125,6 +125,19 @@
         />
       </div>
 
+      <button
+        v-if="!showAuthModal"
+        class="compose-fab"
+        aria-label="Compose new email"
+        title="Compose (⌘N)"
+        @click="openCompose"
+      >
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        </svg>
+      </button>
+
       <nav v-if="isMobile" class="mobile-tab-bar" aria-label="App navigation">
         <button
           class="tab-btn"
@@ -136,16 +149,6 @@
             <path d="M3 6h18M3 12h18M3 18h18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
           </svg>
           <span>Menu</span>
-        </button>
-        <button
-          class="tab-btn tab-btn-compose"
-          @click="openCompose"
-          aria-label="Compose new email"
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true" width="22" height="22">
-            <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-          </svg>
-          <span>Compose</span>
         </button>
         <button
           class="tab-btn"
@@ -957,12 +960,37 @@ export default {
   color: var(--color-primary);
 }
 
-.tab-btn-compose {
-  color: var(--color-primary);
-}
-
 .tab-btn svg {
   flex-shrink: 0;
+}
+
+.compose-fab {
+  position: fixed;
+  bottom: 24px;
+  right: 96px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+  transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+
+.compose-fab:hover {
+  background: var(--color-primary-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.compose-fab:active {
+  transform: translateY(0);
 }
 
 @media (max-width: 768px) {
@@ -1023,17 +1051,9 @@ export default {
     text-shadow: 0 0 0.01px currentColor;
   }
 
-  .tab-btn-compose {
-    position: relative;
-  }
-
-  .tab-btn-compose::before {
-    content: '';
-    position: absolute;
-    inset: 6px 20px;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--color-primary) 14%, transparent);
-    z-index: -1;
+  .compose-fab {
+    right: 24px;
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
   }
 }
 </style>
