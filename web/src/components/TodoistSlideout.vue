@@ -1,6 +1,6 @@
 <template>
   <Transition name="slideout">
-    <div v-if="show" class="todoist-slideout" role="complementary" aria-label="Todoist Tasks" @mouseleave="onMouseLeave">
+    <div v-if="show" class="todoist-slideout" role="complementary" aria-label="Todoist Tasks" @mouseleave="onMouseLeave" @pointerdown="isPointerDown = true" @pointerup="isPointerDown = false" @pointercancel="isPointerDown = false">
       <div class="slideout-header">
         <div class="slideout-title">
           <svg class="todoist-logo" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
@@ -164,7 +164,8 @@ export default {
       loadingProjects: false,
       projectsExpanded: false,
       expandedProjects: new Set(),
-      pinned: false
+      pinned: false,
+      isPointerDown: false
     };
   },
   computed: {
@@ -223,7 +224,7 @@ export default {
   },
   methods: {
     onMouseLeave() {
-      if (!this.pinned) {
+      if (!this.pinned && !this.isPointerDown) {
         this.$emit('close');
       }
     },
