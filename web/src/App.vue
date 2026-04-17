@@ -60,7 +60,7 @@
         </template>
         <template v-else>
           <MessageList
-            v-show="rightRailView !== 'calendar' || isMobile"
+            v-show="(rightRailView !== 'calendar' && rightRailView !== 'settings') || isMobile"
             :messages="messages"
             :selected-id="selectedMessageId"
             :selected-ids="selectedMessageIds"
@@ -85,8 +85,13 @@
             @mousedown.prevent="startResize('list', $event)"
           />
 
+          <SettingsView
+            v-if="rightRailView === 'settings' && !isMobile"
+            class="settings-panel"
+            @close="rightRailView = 'email'"
+          />
           <CalendarView
-            v-if="rightRailView === 'calendar' && !isMobile"
+            v-else-if="rightRailView === 'calendar' && !isMobile"
             class="calendar-panel"
           />
           <KanbanView
@@ -115,10 +120,8 @@
           class="right-sidebar-panel"
           :active-view="rightRailView"
           :todoist-open="showTodoistSlideout"
-          :settings-open="showSettingsModal"
           @select="rightRailView = $event"
           @toggle-todoist="showTodoistSlideout = !showTodoistSlideout"
-          @toggle-settings="showSettingsModal = !showSettingsModal"
         />
       </div>
 
@@ -245,7 +248,7 @@ export default {
           gridTemplateColumns: `${this.sidebarWidth}px 1fr 4px ${this.rightSidebarWidth}px`
         };
       }
-      if (this.rightRailView === 'calendar') {
+      if (this.rightRailView === 'calendar' || this.rightRailView === 'settings') {
         return {
           gridTemplateColumns: `${this.sidebarWidth}px 1fr ${this.rightSidebarWidth}px`
         };
