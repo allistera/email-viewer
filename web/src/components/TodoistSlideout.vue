@@ -1,6 +1,6 @@
 <template>
   <Transition name="slideout">
-    <div v-if="show" class="todoist-slideout" role="complementary" aria-label="Todoist Tasks">
+    <div v-if="show" class="todoist-slideout" role="complementary" aria-label="Todoist Tasks" @mouseleave="onMouseLeave">
       <div class="slideout-header">
         <div class="slideout-title">
           <svg class="todoist-logo" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
@@ -9,11 +9,18 @@
           </svg>
           <h2>Todoist</h2>
         </div>
-        <button type="button" class="close-btn" @click="$emit('close')" aria-label="Close Todoist panel">
-          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-            <path d="M18 6L6 18M6 6l12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-          </svg>
-        </button>
+        <div class="header-actions">
+          <button type="button" class="pin-btn" :class="{ active: pinned }" @click="pinned = !pinned" :aria-label="pinned ? 'Unpin panel' : 'Pin panel'" :title="pinned ? 'Unpin panel' : 'Pin panel'">
+            <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+              <path d="M12 2l2.5 6.5H21l-5.5 4 2 6.5L12 15l-5.5 4 2-6.5L3 8.5h6.5L12 2z" :fill="pinned ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <button type="button" class="close-btn" @click="$emit('close')" aria-label="Close Todoist panel">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+              <path d="M18 6L6 18M6 6l12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
       </div>
 
       <div class="slideout-body">
@@ -156,7 +163,8 @@ export default {
       projects: [],
       loadingProjects: false,
       projectsExpanded: false,
-      expandedProjects: new Set()
+      expandedProjects: new Set(),
+      pinned: false
     };
   },
   computed: {
@@ -214,6 +222,11 @@ export default {
     }
   },
   methods: {
+    onMouseLeave() {
+      if (!this.pinned) {
+        this.$emit('close');
+      }
+    },
     async load() {
       if (!hasTodoistToken()) return;
       await this.loadTasks();
@@ -367,6 +380,35 @@ export default {
 .todoist-logo {
   color: var(--color-primary, #db4c3f);
   flex-shrink: 0;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.pin-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.pin-btn:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text);
+}
+
+.pin-btn.active {
+  color: var(--color-primary, #db4c3f);
 }
 
 .close-btn {

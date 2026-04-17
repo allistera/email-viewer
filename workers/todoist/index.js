@@ -84,7 +84,7 @@ export default Sentry.withSentry(sentryOptions, {
           return jsonResponse({ error: 'Todoist token missing.' }, { status: 400 });
         }
         const [todayTasks, inboxTasks] = await Promise.all([
-          fetchTodoistTasks(todoistToken, 'today | overdue'),
+          fetchTodoistTasks(todoistToken, 'today'),
           fetchTodoistTasks(todoistToken, 'no date & #Inbox'),
         ]);
         const todayIds = new Set(todayTasks.map(t => t.id));
