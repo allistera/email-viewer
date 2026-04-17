@@ -60,10 +60,11 @@ test.describe('Compose Modal - UX Improvements', () => {
     });
 
     test('should show spinner and aria-busy when sending', async ({ page }) => {
-        // Mock send API with delay
+        // Keep the send pending until we explicitly resolve it
+        let resolveSend;
         await page.route('**/api/send**', async route => {
             if (route.request().method() === 'POST') {
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                await new Promise(resolve => { resolveSend = resolve; });
                 await route.fulfill({
                     status: 200,
                     body: JSON.stringify({ success: true })
@@ -78,18 +79,28 @@ test.describe('Compose Modal - UX Improvements', () => {
         await page.locator('#compose-subject').fill('Test Subject');
         await page.locator('#compose-body').fill('Test Body');
 
-        // Click send
+        // Install fake clock before clicking Send so we can control the
+        // 5-second undo countdown (setInterval inside handleSend).
+        await page.clock.install();
+
+        // Click send — starts the undo countdown
+        await page.locator('button[type="submit"]').click();
+
+        // Undo bar should appear while countdown runs
+        await expect(page.locator('.undo-send-bar')).toBeVisible();
+
+        // Tick through the 5-second countdown (runFor fires periodic timers
+        // multiple times, unlike fastForward which only fires each timer once)
+        await page.clock.runFor(5100);
+
+        // Now the actual send is in-flight — verify the loading state
         const sendBtn = page.locator('button[type="submit"]');
-        const sendPromise = sendBtn.click();
+        await expect(sendBtn).toHaveAttribute('aria-busy', 'true', { timeout: 3000 });
+        await expect(sendBtn).toHaveText(/Sending\.\.\./);
+        await expect(sendBtn.locator('.spinner')).toBeVisible();
 
-        // Verify loading state
-        await expect(sendBtn).toHaveAttribute('aria-busy', 'true');
-        await expect(sendBtn).toHaveText(/Sending.../);
-        const spinner = sendBtn.locator('.spinner');
-        await expect(spinner).toBeVisible();
-        await sendPromise;
-
-        // Wait for completion
-        await expect(page.locator('.compose-modal')).toBeHidden();
+        // Let the send complete and verify the modal closes
+        resolveSend();
+        await expect(page.locator('.compose-modal')).toBeHidden({ timeout: 10000 });
     });
 });
