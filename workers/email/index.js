@@ -181,6 +181,8 @@ export default Sentry.withSentry(
                     headers_json: '{}'
                 };
                 await DB.insertMessage(env.DB, minimalMessage);
+                await DB.upsertContacts(env.DB, minimalMessage.from_addr, { usedAt: minimalMessage.received_at, direction: 'inbound' });
+                await DB.upsertContacts(env.DB, minimalMessage.to_addr, { usedAt: minimalMessage.received_at, direction: 'outbound' });
                 console.log('Saved minimal record for failed email:', failedMessageId);
             } catch (fallbackError) {
                 console.error('Failed to save minimal record:', fallbackError.message || fallbackError);

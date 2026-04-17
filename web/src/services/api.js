@@ -260,6 +260,8 @@ function normalizeMessage(message) {
     tagReason: message.tag_reason ?? message.tagReason,
     todoistProjectName: message.todoist_project_name ?? message.todoistProjectName,
     todoistProjectUrl: message.todoist_project_url ?? message.todoistProjectUrl,
+    threadReplyCount: message.thread_reply_count ?? message.threadReplyCount ?? 0,
+    threadId: message.thread_id ?? message.threadId ?? null,
     textBody: message.text_body ?? message.textBody,
     htmlBody: message.html_body ?? message.htmlBody,
     snoozedUntil: message.snoozed_until ?? message.snoozedUntil,

@@ -14,6 +14,7 @@ vi.mock("../../workers/shared/db.js", () => ({
     checkDedupe: vi.fn(async () => true),
     insertMessage: vi.fn(async () => {}),
     insertAttachments: vi.fn(async () => {}),
+    upsertContacts: vi.fn(async () => {}),
     getMessage: vi.fn(async (db, messageId) => ({
       id: messageId,
       received_at: Date.now(),

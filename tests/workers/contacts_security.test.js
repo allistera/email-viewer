@@ -35,13 +35,14 @@ describe("contacts security", () => {
     const response = await ApiRouter.handle(request.url, request, env);
     expect(response.status).toBe(200);
 
-    // New behavior: The SQL uses ESCAPE clause
-    expect(state.sql).toContain("WHERE from_addr LIKE ? ESCAPE '\\'");
+    // New behavior: The SQL uses contacts table and ESCAPE clause
+    expect(state.sql).toContain("FROM contacts");
+    expect(state.sql).toContain("WHERE email LIKE ? ESCAPE '\\'");
 
     // The binding escapes the % in the input
     // Input: a%l -> Binding: a\%l% (escaped % + wildcard suffix)
     expect(state.bindings[0]).toBe("a\\%l%");
-    expect(state.bindings[1]).toBe("a\\%l%");
+    expect(state.bindings[1]).toBe(10);
   });
 
   it("should escape special characters in LIKE query", async () => {

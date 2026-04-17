@@ -3,6 +3,7 @@ import { ApiRouter } from './routes.js';
 import { StreamRouter } from './stream.js';
 import { handleOptions, withCors } from '../shared/cors.js';
 import { handleRetention } from '../shared/retention.js';
+import { handleSnoozeWakeup } from '../shared/snoozeWakeup.js';
 export { RealtimeHub } from '../shared/realtimeHub.js';
 
 import * as Sentry from "@sentry/cloudflare";
@@ -96,6 +97,9 @@ export default Sentry.withSentry(sentryOptions, {
    * Scheduled Handler
    */
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(handleRetention(env));
+    ctx.waitUntil(handleSnoozeWakeup(env));
+    if (event.cron === '0 0 * * *') {
+      ctx.waitUntil(handleRetention(env));
+    }
   }
 });

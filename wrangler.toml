@@ -5,7 +5,8 @@ compatibility_flags = ["nodejs_compat"]
 
 # Triggers
 [triggers]
-crons = ["0 0 * * *"] # Run daily at midnight UTC
+# Every 15 minutes for snooze wake-up; daily at midnight for retention cleanup
+crons = ["*/15 * * * *", "0 0 * * *"]
 
 # D1 Database
 [[d1_databases]]

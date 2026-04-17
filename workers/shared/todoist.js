@@ -106,8 +106,9 @@ export const fetchTodoistProjects = async (todoistToken) => {
     throw new Error(errorMessage);
   }
 
-  const projects = await response.json();
-  const data = Array.isArray(projects) ? projects : [];
+  const body = await response.json();
+  // API v1 returns { results: [...], next_cursor: ... }; v2 returned a flat array
+  const data = Array.isArray(body) ? body : (Array.isArray(body?.results) ? body.results : []);
 
   projectsCache.set(todoistToken, {
     data,
@@ -133,8 +134,11 @@ export const fetchTodoistTasks = async (todoistToken, filter) => {
     const errorDetails = await readTodoistError(response);
     throw new Error(errorDetails ? `Todoist request failed: ${errorDetails}` : 'Todoist request failed.');
   }
-  const tasks = await response.json();
-  return Array.isArray(tasks) ? tasks : [];
+  const body = await response.json();
+  // API v1 returns { results: [...], next_cursor: ... }; v2 returned a flat array
+  if (Array.isArray(body)) return body;
+  if (Array.isArray(body?.results)) return body.results;
+  return [];
 };
 
 export const closeTodoistTask = async (todoistToken, taskId) => {

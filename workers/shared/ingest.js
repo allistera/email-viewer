@@ -54,6 +54,10 @@ export async function ingestRawEmail(rawBuffer, env, options = {}) {
     }
 
     // 3. Insert message metadata
+    const msgIdHeader = parsed.allHeaders['message-id'] || parsed.messageId || null;
+    const inReplyTo = parsed.allHeaders['in-reply-to'] || null;
+    const parentThreadId = inReplyTo ? await DB.findThreadId(env.DB, inReplyTo) : null;
+
     const dbMessage = {
         id: messageId,
         received_at: Date.now(),
@@ -66,10 +70,17 @@ export async function ingestRawEmail(rawBuffer, env, options = {}) {
         raw_r2_key: rawKey,
         text_body: parsed.textBody,
         html_body: parsed.htmlBody,
-        headers_json: JSON.stringify(parsed.allHeaders)
+        headers_json: JSON.stringify(parsed.allHeaders),
+        message_id_header: msgIdHeader,
+        in_reply_to: inReplyTo,
+        thread_id: parentThreadId || messageId
     };
 
     await DB.insertMessage(env.DB, dbMessage);
+
+    // Track contacts for compose autocomplete
+    await DB.upsertContacts(env.DB, parsed.from, { usedAt: dbMessage.received_at, direction: 'inbound' });
+    await DB.upsertContacts(env.DB, parsed.to, { usedAt: dbMessage.received_at, direction: 'outbound' });
 
     // 4. Save attachments
     const attachmentInserts = await Promise.all(
