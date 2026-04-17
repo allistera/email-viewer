@@ -127,6 +127,14 @@ export default Sentry.withSentry(
      * Email Handler (Ingest)
      */
     async email(message, env, ctx) {
+        // Reject oversized emails before buffering to avoid Worker OOM
+        const MAX_EMAIL_BYTES = 25 * 1024 * 1024; // 25MB
+        if (message.rawSize > MAX_EMAIL_BYTES) {
+            console.error(`Email rejected: rawSize ${message.rawSize} bytes exceeds ${MAX_EMAIL_BYTES} limit`);
+            message.setReject('Message too large');
+            return;
+        }
+
         // Forward to personal inbox before any other processing
         try {
             await message.forward('allisteraall@gmail.com');

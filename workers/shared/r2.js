@@ -30,7 +30,9 @@ export const R2 = {
   async saveAttachment(bucket, messageId, attachmentId, filename, content) {
     const safeFilename = filename.replace(/[^a-zA-Z0-9.\-_]/g, '_');
     const key = `att/${messageId}/${attachmentId}/${safeFilename}`;
-    await bucket.put(key, content);
+    const contentLength = content?.byteLength;
+    const options = Number.isFinite(contentLength) ? { contentLength } : undefined;
+    await bucket.put(key, content, options);
     return key;
   }
 };
