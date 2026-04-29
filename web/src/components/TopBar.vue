@@ -41,6 +41,20 @@
 
       <!-- Right section -->
       <div class="top-bar-right">
+        <button
+          class="action-btn"
+          :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
+          :aria-label="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
+          @click="toggleTheme"
+        >
+          <svg v-if="isDark" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="5"/>
+            <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+          </svg>
+          <svg v-else viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
         <div class="user-avatar">
           <img
             src="https://ui-avatars.com/api/?name=User&background=5865f2&color=fff&size=128"
@@ -54,6 +68,8 @@
 </template>
 
 <script>
+import { getPreference, setPreference } from '../services/theme.js';
+
 export default {
   name: 'TopBar',
   props: {
@@ -70,6 +86,28 @@ export default {
       default: false
     }
   },
+  data() {
+    return {
+      isDark: document.documentElement.classList.contains('dark-mode')
+    };
+  },
+  mounted() {
+    this.themeObserver = new MutationObserver(() => {
+      this.isDark = document.documentElement.classList.contains('dark-mode');
+    });
+    this.themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+  },
+  beforeUnmount() {
+    if (this.themeObserver) this.themeObserver.disconnect();
+  },
+  methods: {
+    toggleTheme() {
+      const current = getPreference();
+      const isCurrentlyDark = current === 'dark'
+        || (current === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      setPreference(isCurrentlyDark ? 'light' : 'dark');
+    }
+  }
 };
 </script>
 
