@@ -31,6 +31,36 @@
       </div>
     </div>
 
+    <!-- Signature Section -->
+    <div class="settings-card">
+      <h3>Email Signature</h3>
+      <p class="field-help">
+        This signature will be appended to new outgoing emails.
+      </p>
+      <div class="signature-toolbar" role="toolbar" aria-label="Signature formatting">
+        <button type="button" class="sig-tool-btn" title="Bold (Ctrl+B)" @mousedown.prevent="execSig('bold')"><strong>B</strong></button>
+        <button type="button" class="sig-tool-btn" title="Italic (Ctrl+I)" @mousedown.prevent="execSig('italic')"><em>I</em></button>
+        <button type="button" class="sig-tool-btn" title="Underline (Ctrl+U)" @mousedown.prevent="execSig('underline')"><u>U</u></button>
+        <button type="button" class="sig-tool-btn" title="Insert link" @mousedown.prevent="insertSigLink">Link</button>
+        <button type="button" class="sig-tool-btn" title="Remove formatting" @mousedown.prevent="execSig('removeFormat')">Clear</button>
+      </div>
+      <div
+        ref="signatureEditor"
+        class="signature-editor"
+        contenteditable="true"
+        role="textbox"
+        aria-multiline="true"
+        aria-label="Email signature editor"
+        @input="handleSignatureInput"
+        @blur="saveSignature"
+      ></div>
+      <div class="actions" style="margin-top: 12px;">
+        <button class="btn-primary" type="button" @click="saveSignature">Save signature</button>
+        <button class="btn-secondary" type="button" @click="clearSignature">Clear</button>
+      </div>
+      <p v-if="signatureStatus" class="status">{{ signatureStatus }}</p>
+    </div>
+
     <!-- Retention Policy Section -->
     <div class="settings-card">
       <h3>Retention Policy</h3>
@@ -330,6 +360,11 @@ export default {
   data() {
     return {
       themePreference: getPreference(),
+
+      // Signature
+      signatureHtml: '',
+      signatureStatus: '',
+
       // Retention Policy
       retentionDays: 0,
       loadingRetention: false,
@@ -392,11 +427,66 @@ export default {
     this.loadTags();
     this.loadNotificationStatus();
     this.loadRetention();
+    this.loadSignature();
   },
   methods: {
     handleThemeChange() {
       setPreference(this.themePreference);
     },
+
+    // Signature methods
+    loadSignature() {
+      try {
+        this.signatureHtml = localStorage.getItem('emailSignature') || '';
+      } catch {
+        this.signatureHtml = '';
+      }
+      this.$nextTick(() => {
+        if (this.$refs.signatureEditor) {
+          this.$refs.signatureEditor.innerHTML = this.signatureHtml;
+        }
+      });
+    },
+    handleSignatureInput() {
+      if (this.$refs.signatureEditor) {
+        this.signatureHtml = this.$refs.signatureEditor.innerHTML;
+      }
+    },
+    execSig(command) {
+      this.$refs.signatureEditor?.focus();
+      document.execCommand(command, false, null);
+      this.handleSignatureInput();
+    },
+    insertSigLink() {
+      const url = window.prompt('Enter URL:', 'https://');
+      if (!url) return;
+      this.$refs.signatureEditor?.focus();
+      document.execCommand('createLink', false, url);
+      this.handleSignatureInput();
+    },
+    saveSignature() {
+      try {
+        const html = this.$refs.signatureEditor?.innerHTML || '';
+        this.signatureHtml = html;
+        localStorage.setItem('emailSignature', html);
+        this.signatureStatus = 'Signature saved.';
+        setTimeout(() => { this.signatureStatus = ''; }, 2000);
+      } catch (e) {
+        this.signatureStatus = e.message || 'Failed to save signature.';
+      }
+    },
+    clearSignature() {
+      this.signatureHtml = '';
+      if (this.$refs.signatureEditor) {
+        this.$refs.signatureEditor.innerHTML = '';
+      }
+      try {
+        localStorage.removeItem('emailSignature');
+        this.signatureStatus = 'Signature cleared.';
+        setTimeout(() => { this.signatureStatus = ''; }, 2000);
+      } catch { /* ignore */ }
+    },
+
     // Retention methods
     async loadRetention() {
       this.loadingRetention = true;
@@ -795,6 +885,50 @@ export default {
 
 .status.error {
   color: var(--color-primary);
+}
+
+/* Signature Editor */
+.signature-toolbar {
+  display: flex;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid var(--color-border);
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  background: var(--color-bg-secondary);
+}
+
+.sig-tool-btn {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--color-text);
+  min-width: 32px;
+}
+
+.sig-tool-btn:hover {
+  background: var(--color-bg-secondary);
+  border-color: var(--color-primary);
+}
+
+.signature-editor {
+  min-height: 120px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 0 0 6px 6px;
+  font-size: 14px;
+  font-family: inherit;
+  background: var(--color-bg);
+  color: var(--color-text);
+  outline: none;
+  overflow-y: auto;
+}
+
+.signature-editor:focus {
+  border-color: var(--color-primary);
 }
 
 /* Tagging Rules Styles */
