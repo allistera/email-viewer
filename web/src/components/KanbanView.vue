@@ -134,13 +134,18 @@ export default {
       return formatRelativeDate(timestamp);
     },
     onCardDragStart(event, message) {
-      event.dataTransfer.effectAllowed = 'move';
+      // Use 'copyMove' so dragging the same card works regardless of whether
+      // the destination expects 'copy' (e.g. tag sidebar) or 'move'.
+      event.dataTransfer.effectAllowed = 'copyMove';
       event.dataTransfer.setData('application/x-message-id', message.id);
       event.dataTransfer.setData('text/plain', message.id);
     },
     onDragOver(event, laneId) {
       event.preventDefault();
-      event.dataTransfer.dropEffect = 'move';
+      // Match the source's effectAllowed. MessageList uses 'copy', so the
+      // browser will cancel the drop if we force 'move' here.
+      const allowed = event.dataTransfer.effectAllowed;
+      event.dataTransfer.dropEffect = allowed === 'copy' ? 'copy' : 'move';
       this.dragOverLane = laneId;
     },
     onDragLeave(event, laneId) {
