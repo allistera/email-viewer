@@ -231,6 +231,7 @@ export default {
           });
         } else {
           this.loadDraft();
+          this.applySignature();
           this.$nextTick(() => {
             this.$refs.toInput?.focus();
           });
@@ -319,6 +320,21 @@ export default {
       } catch { /* ignore corrupt drafts */ }
     },
 
+    applySignature() {
+      try {
+        const sigHtml = localStorage.getItem('emailSignature') || '';
+        if (!sigHtml) return;
+        // Convert HTML signature to plain text for textarea body
+        const tmp = document.createElement('div');
+        tmp.innerHTML = sigHtml;
+        const sigText = (tmp.textContent || tmp.innerText || '').trim();
+        if (!sigText) return;
+        // Only append if body doesn't already contain it (avoid double-append on draft load)
+        if (!this.body.includes(sigText)) {
+          this.body = `${this.body || ''}\n\n--\n${sigText}`;
+        }
+      } catch { /* ignore */ }
+    },
     clearDraft() {
       try { localStorage.removeItem('compose_draft'); } catch { /* ignore */ }
       this.hasDraft = false;
