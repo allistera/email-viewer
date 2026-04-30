@@ -53,19 +53,6 @@
           <li>
             <button
               class="nav-item"
-              :class="{ active: selectedTag === 'all' }"
-              @click="$emit('select', 'all')"
-            >
-              <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-              </svg>
-              <span class="nav-label">Show All</span>
-            </button>
-          </li>
-
-          <li>
-            <button
-              class="nav-item"
               :class="{ active: selectedTag === 'spam' }"
               @click="$emit('select', 'spam')"
             >
@@ -74,6 +61,19 @@
               </svg>
               <span class="nav-label">Spam</span>
               <span v-if="unreadSpamCount > 0" class="nav-badge danger">{{ unreadSpamCount }}</span>
+            </button>
+          </li>
+
+          <li>
+            <button
+              class="nav-item"
+              :class="{ active: selectedTag === 'all' }"
+              @click="$emit('select', 'all')"
+            >
+              <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+              </svg>
+              <span class="nav-label">Show All</span>
             </button>
           </li>
         </ul>
