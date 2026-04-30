@@ -1,6 +1,6 @@
 <template>
   <Transition name="slideout">
-    <div v-if="show" class="todoist-slideout" role="complementary" aria-label="Todoist Tasks" @mouseleave="onMouseLeave" @pointerdown="isPointerDown = true" @pointerup="isPointerDown = false" @pointercancel="isPointerDown = false">
+    <div v-if="show" class="todoist-slideout" role="complementary" aria-label="Todoist Tasks" @mouseleave="onMouseLeave" @pointerdown="onPointerDown" @pointerup="isPointerDown = false" @pointercancel="isPointerDown = false">
       <div class="slideout-header">
         <div class="slideout-title">
           <svg class="todoist-logo" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
@@ -165,7 +165,8 @@ export default {
       projectsExpanded: false,
       expandedProjects: new Set(),
       pinned: false,
-      isPointerDown: false
+      isPointerDown: false,
+      suppressLeaveUntil: 0
     };
   },
   computed: {
@@ -223,10 +224,19 @@ export default {
     }
   },
   methods: {
-    onMouseLeave() {
-      if (!this.pinned && !this.isPointerDown) {
-        this.$emit('close');
-      }
+    onPointerDown() {
+      this.isPointerDown = true;
+      // Suppress spurious mouseleave events that can fire immediately after a
+      // click triggers window.open() / focus loss / new-tab navigation.
+      this.suppressLeaveUntil = Date.now() + 400;
+    },
+    onMouseLeave(event) {
+      if (this.pinned || this.isPointerDown) return;
+      // Ignore mouseleave with no relatedTarget (window blur, new tab opened,
+      // devtools focus, etc.) — these are not real "user moved away" events.
+      if (event && event.relatedTarget === null) return;
+      if (this.suppressLeaveUntil && Date.now() < this.suppressLeaveUntil) return;
+      this.$emit('close');
     },
     async load() {
       if (!hasTodoistToken()) return;
