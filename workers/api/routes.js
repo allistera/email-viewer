@@ -730,6 +730,138 @@ export const ApiRouter = {
         return jsonResponse({ ok: true });
       }
 
+      // ==================
+      // Auto Response Rules API
+      // ==================
+
+      // GET /api/auto-response-rules
+      if (path === 'auto-response-rules' && request.method === 'GET') {
+        const rules = await DB.getAutoResponseRules(env.DB);
+        return jsonResponse(rules);
+      }
+
+      // POST /api/auto-response-rules
+      if (path === 'auto-response-rules' && request.method === 'POST') {
+        let body;
+        try {
+          body = await readJsonBody(request);
+        } catch (error) {
+          return jsonResponse({ error: error.message || 'Invalid JSON body' }, { status: 400 });
+        }
+
+        const { name, matchTag, matchText, replySubject, replyBody, isEnabled } = body;
+
+        if (!name) return jsonResponse({ error: 'Rule name is required' }, { status: 400 });
+        if (!isValidRuleName(name)) {
+          return jsonResponse({ error: 'Invalid rule name. Use alphanumeric characters, spaces, hyphens, underscores, or slashes. Max 100 characters.' }, { status: 400 });
+        }
+        if (!replyBody || typeof replyBody !== 'string' || replyBody.trim().length === 0) {
+          return jsonResponse({ error: 'Reply body is required' }, { status: 400 });
+        }
+        if (replyBody.length > 10000) {
+          return jsonResponse({ error: 'Reply body must be 10000 characters or less' }, { status: 400 });
+        }
+        if (matchTag && !isValidTagName(matchTag)) {
+          return jsonResponse({ error: 'Invalid match tag format' }, { status: 400 });
+        }
+        if (!isValidMatchValue(matchText)) {
+          return jsonResponse({ error: 'Match text must be 1000 characters or less' }, { status: 400 });
+        }
+        if (replySubject !== undefined && replySubject !== null && replySubject !== '' &&
+            (typeof replySubject !== 'string' || replySubject.length > 500)) {
+          return jsonResponse({ error: 'Reply subject must be 500 characters or less' }, { status: 400 });
+        }
+        if (!matchTag && !matchText) {
+          return jsonResponse({ error: 'At least one match condition (match tag or match text) is required' }, { status: 400 });
+        }
+
+        const rule = await DB.createAutoResponseRule(env.DB, {
+          name,
+          matchTag,
+          matchText,
+          replySubject,
+          replyBody,
+          isEnabled: isEnabled !== false
+        });
+
+        return jsonResponse(rule, { status: 201 });
+      }
+
+      // PUT /api/auto-response-rules/:id
+      if (path.startsWith('auto-response-rules/') && request.method === 'PUT') {
+        const id = path.split('/')[1];
+        if (!isValidUUID(id)) {
+          return jsonResponse({ error: 'Invalid rule ID format' }, { status: 400 });
+        }
+
+        let body;
+        try {
+          body = await readJsonBody(request);
+        } catch (error) {
+          return jsonResponse({ error: error.message || 'Invalid JSON body' }, { status: 400 });
+        }
+
+        const existing = await DB.getAutoResponseRule(env.DB, id);
+        if (!existing) {
+          return jsonResponse({ error: 'Auto-response rule not found' }, { status: 404 });
+        }
+
+        const { name, matchTag, matchText, replySubject, replyBody, isEnabled } = body;
+
+        const newName = name !== undefined ? name : existing.name;
+        const newMatchTag = matchTag !== undefined ? matchTag : existing.match_tag;
+        const newMatchText = matchText !== undefined ? matchText : existing.match_text;
+        const newReplyBody = replyBody !== undefined ? replyBody : existing.reply_body;
+
+        if (newName && !isValidRuleName(newName)) {
+          return jsonResponse({ error: 'Invalid rule name. Use alphanumeric characters, spaces, hyphens, underscores, or slashes. Max 100 characters.' }, { status: 400 });
+        }
+        if (!newReplyBody || typeof newReplyBody !== 'string' || newReplyBody.trim().length === 0) {
+          return jsonResponse({ error: 'Reply body is required' }, { status: 400 });
+        }
+        if (newReplyBody.length > 10000) {
+          return jsonResponse({ error: 'Reply body must be 10000 characters or less' }, { status: 400 });
+        }
+        if (newMatchTag && !isValidTagName(newMatchTag)) {
+          return jsonResponse({ error: 'Invalid match tag format' }, { status: 400 });
+        }
+        if (!isValidMatchValue(newMatchText)) {
+          return jsonResponse({ error: 'Match text must be 1000 characters or less' }, { status: 400 });
+        }
+        if (replySubject !== undefined && replySubject !== null && replySubject !== '' &&
+            (typeof replySubject !== 'string' || replySubject.length > 500)) {
+          return jsonResponse({ error: 'Reply subject must be 500 characters or less' }, { status: 400 });
+        }
+        if (!newMatchTag && !newMatchText) {
+          return jsonResponse({ error: 'At least one match condition (match tag or match text) is required' }, { status: 400 });
+        }
+
+        await DB.updateAutoResponseRule(env.DB, id, {
+          name,
+          matchTag,
+          matchText,
+          replySubject,
+          replyBody,
+          isEnabled
+        });
+
+        return jsonResponse({ ok: true });
+      }
+
+      // DELETE /api/auto-response-rules/:id
+      if (path.startsWith('auto-response-rules/') && request.method === 'DELETE') {
+        const id = path.split('/')[1];
+        if (!isValidUUID(id)) {
+          return jsonResponse({ error: 'Invalid rule ID format' }, { status: 400 });
+        }
+        const existing = await DB.getAutoResponseRule(env.DB, id);
+        if (!existing) {
+          return jsonResponse({ error: 'Auto-response rule not found' }, { status: 404 });
+        }
+        await DB.deleteAutoResponseRule(env.DB, id);
+        return jsonResponse({ ok: true });
+      }
+
       // GET /api/notifications/status - check ntfy notification configuration
       if (path === 'notifications/status' && request.method === 'GET') {
         const topic = (env.NTFY_TOPIC || '').trim();

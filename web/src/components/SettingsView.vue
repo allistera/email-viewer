@@ -239,6 +239,148 @@
       </div>
     </div>
 
+    <!-- Auto Responses Section -->
+    <div class="settings-card">
+      <div class="card-header">
+        <h3>Auto Responses</h3>
+        <button class="btn-primary btn-small" type="button" @click="showAutoForm = true" v-if="!showAutoForm">
+          Add Auto Response
+        </button>
+      </div>
+      <p class="field-help">
+        Automatically reply to incoming emails that match a tag or contain specific text. Replies are skipped for spam, no-reply senders, and self-loops.
+      </p>
+
+      <div v-if="showAutoForm" class="rule-form">
+        <h4>{{ editingAutoRule ? 'Edit Auto Response' : 'New Auto Response' }}</h4>
+
+        <label class="field-label" for="auto-name">Name</label>
+        <input
+          id="auto-name"
+          v-model.trim="autoForm.name"
+          type="text"
+          placeholder="e.g., Out-of-office reply"
+        />
+
+        <div class="conditions-section">
+          <label class="field-label">Match Conditions (at least one required)</label>
+
+          <div class="condition-row">
+            <label for="auto-match-tag">Match tag:</label>
+            <select id="auto-match-tag" v-model="autoForm.matchTag">
+              <option value="">(any)</option>
+              <option v-for="tag in availableTags" :key="tag.id" :value="tag.name">
+                {{ tag.name }}
+              </option>
+            </select>
+          </div>
+
+          <div class="condition-row">
+            <label for="auto-match-text">Match text (in subject or body):</label>
+            <input
+              id="auto-match-text"
+              v-model.trim="autoForm.matchText"
+              type="text"
+              placeholder="e.g., invoice"
+            />
+          </div>
+        </div>
+
+        <div class="action-section">
+          <label class="field-label" for="auto-reply-subject">Reply subject (optional)</label>
+          <input
+            id="auto-reply-subject"
+            v-model.trim="autoForm.replySubject"
+            type="text"
+            placeholder="Defaults to: Re: <original subject>"
+          />
+        </div>
+
+        <div class="action-section">
+          <label class="field-label" for="auto-reply-body">Reply body</label>
+          <textarea
+            id="auto-reply-body"
+            v-model="autoForm.replyBody"
+            rows="6"
+            placeholder="Write the auto-reply message..."
+            class="auto-reply-body"
+          ></textarea>
+        </div>
+
+        <div class="enabled-section">
+          <label class="checkbox-label">
+            <input type="checkbox" v-model="autoForm.isEnabled" />
+            <span>Auto response is enabled</span>
+          </label>
+        </div>
+
+        <div class="form-actions">
+          <button class="btn-primary" type="button" :disabled="!isAutoFormValid || savingAutoRule" @click="saveAutoRule">
+            {{ savingAutoRule ? 'Saving...' : (editingAutoRule ? 'Update' : 'Create') }}
+          </button>
+          <button class="btn-secondary" type="button" @click="cancelAutoForm">Cancel</button>
+        </div>
+        <p v-if="autoRuleError" class="status error">{{ autoRuleError }}</p>
+      </div>
+
+      <div v-if="!showAutoForm" class="rules-list">
+        <div v-if="loadingAutoRules" class="loading">Loading auto responses...</div>
+        <div v-else-if="autoRules.length === 0" class="empty-state">
+          No auto responses yet. Click "Add Auto Response" to create one.
+        </div>
+        <div v-else>
+          <div v-for="rule in autoRules" :key="rule.id" class="rule-item" :class="{ disabled: !rule.is_enabled }">
+            <div class="rule-info">
+              <div class="rule-name">
+                {{ rule.name }}
+                <span v-if="!rule.is_enabled" class="disabled-badge">Disabled</span>
+              </div>
+              <div class="rule-conditions">
+                <span v-if="rule.match_tag" class="condition">Tag: {{ rule.match_tag }}</span>
+                <span v-if="rule.match_text" class="condition">Text: {{ rule.match_text }}</span>
+              </div>
+              <div class="rule-action">
+                Reply: <strong>{{ truncate(rule.reply_body, 80) }}</strong>
+              </div>
+            </div>
+            <div class="rule-actions">
+              <button class="btn-icon" type="button" @click="editAutoRule(rule)" title="Edit" aria-label="Edit auto response">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                </svg>
+              </button>
+              <button class="btn-icon btn-danger" type="button" @click="confirmDeleteAutoRule(rule)" title="Delete" aria-label="Delete auto response">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="3 6 5 6 21 6" />
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Auto Response Delete Confirmation -->
+      <div
+        v-if="autoDeleteConfirm"
+        class="modal-overlay"
+        @click.self="closeAutoDeleteModal"
+        @keydown.esc="closeAutoDeleteModal"
+        tabindex="-1"
+      >
+        <div class="modal">
+          <h4>Delete Auto Response</h4>
+          <p>Are you sure you want to delete "{{ autoDeleteConfirm.name }}"?</p>
+          <p v-if="autoDeleteError" class="status error">{{ autoDeleteError }}</p>
+          <div class="modal-actions">
+            <button class="btn-danger" type="button" @click="deleteAutoRule">Delete</button>
+            <button class="btn-secondary" type="button" @click="closeAutoDeleteModal">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Push Notifications Section -->
     <div class="settings-card">
       <h3>Push Notifications</h3>
@@ -351,7 +493,7 @@
 
 <script>
 import { getTodoistToken, setTodoistToken, clearTodoistToken } from '../services/auth.js';
-import { getTaggingRules, createTaggingRule, updateTaggingRule, deleteTaggingRule, getTags, getNotificationStatus, sendTestNotification, getSettings, updateSettings } from '../services/api.js';
+import { getTaggingRules, createTaggingRule, updateTaggingRule, deleteTaggingRule, getTags, getNotificationStatus, sendTestNotification, getSettings, updateSettings, getAutoResponseRules, createAutoResponseRule, updateAutoResponseRule, deleteAutoResponseRule } from '../services/api.js';
 import { getPreference, setPreference } from '../services/theme.js';
 
 export default {
@@ -408,6 +550,24 @@ export default {
         tagName: '',
         priority: 0,
         isEnabled: true
+      },
+
+      // Auto Response Rules
+      autoRules: [],
+      loadingAutoRules: true,
+      showAutoForm: false,
+      editingAutoRule: null,
+      savingAutoRule: false,
+      autoRuleError: '',
+      autoDeleteConfirm: null,
+      autoDeleteError: '',
+      autoForm: {
+        name: '',
+        matchTag: '',
+        matchText: '',
+        replySubject: '',
+        replyBody: '',
+        isEnabled: true
       }
     };
   },
@@ -418,6 +578,12 @@ export default {
       const hasCondition = this.ruleForm.matchFrom || this.ruleForm.matchTo ||
                           this.ruleForm.matchSubject || this.ruleForm.matchBody;
       return hasName && hasTag && hasCondition;
+    },
+    isAutoFormValid() {
+      const hasName = this.autoForm.name.trim().length > 0;
+      const hasReply = this.autoForm.replyBody.trim().length > 0;
+      const hasCondition = this.autoForm.matchTag || this.autoForm.matchText.trim().length > 0;
+      return hasName && hasReply && hasCondition;
     }
   },
   mounted() {
@@ -428,6 +594,7 @@ export default {
     this.loadNotificationStatus();
     this.loadRetention();
     this.loadSignature();
+    this.loadAutoRules();
   },
   methods: {
     handleThemeChange() {
@@ -681,6 +848,98 @@ export default {
       } catch (e) {
         console.error('Failed to delete rule:', e);
         this.deleteError = e.message || 'Failed to delete rule. Please try again.';
+      }
+    },
+
+    // Auto Response Rules methods
+    truncate(text, len) {
+      if (!text) return '';
+      return text.length > len ? `${text.slice(0, len)}...` : text;
+    },
+    async loadAutoRules() {
+      this.loadingAutoRules = true;
+      try {
+        this.autoRules = await getAutoResponseRules();
+      } catch (e) {
+        console.error('Failed to load auto-response rules:', e);
+      } finally {
+        this.loadingAutoRules = false;
+      }
+    },
+    resetAutoForm() {
+      this.autoForm = {
+        name: '',
+        matchTag: '',
+        matchText: '',
+        replySubject: '',
+        replyBody: '',
+        isEnabled: true
+      };
+      this.editingAutoRule = null;
+      this.autoRuleError = '';
+    },
+    cancelAutoForm() {
+      this.showAutoForm = false;
+      this.resetAutoForm();
+    },
+    editAutoRule(rule) {
+      this.editingAutoRule = rule;
+      this.autoForm = {
+        name: rule.name,
+        matchTag: rule.match_tag || '',
+        matchText: rule.match_text || '',
+        replySubject: rule.reply_subject || '',
+        replyBody: rule.reply_body || '',
+        isEnabled: Boolean(rule.is_enabled)
+      };
+      this.showAutoForm = true;
+      this.autoRuleError = '';
+    },
+    async saveAutoRule() {
+      if (!this.isAutoFormValid) return;
+      this.savingAutoRule = true;
+      this.autoRuleError = '';
+      try {
+        const payload = {
+          name: this.autoForm.name,
+          matchTag: this.autoForm.matchTag || null,
+          matchText: this.autoForm.matchText || null,
+          replySubject: this.autoForm.replySubject || null,
+          replyBody: this.autoForm.replyBody,
+          isEnabled: this.autoForm.isEnabled
+        };
+        if (this.editingAutoRule) {
+          await updateAutoResponseRule(this.editingAutoRule.id, payload);
+        } else {
+          await createAutoResponseRule(payload);
+        }
+        await this.loadAutoRules();
+        this.showAutoForm = false;
+        this.resetAutoForm();
+      } catch (e) {
+        this.autoRuleError = e.message || 'Failed to save auto response';
+      } finally {
+        this.savingAutoRule = false;
+      }
+    },
+    confirmDeleteAutoRule(rule) {
+      this.autoDeleteConfirm = rule;
+      this.autoDeleteError = '';
+    },
+    closeAutoDeleteModal() {
+      this.autoDeleteConfirm = null;
+      this.autoDeleteError = '';
+    },
+    async deleteAutoRule() {
+      if (!this.autoDeleteConfirm) return;
+      this.autoDeleteError = '';
+      try {
+        await deleteAutoResponseRule(this.autoDeleteConfirm.id);
+        await this.loadAutoRules();
+        this.closeAutoDeleteModal();
+      } catch (e) {
+        console.error('Failed to delete auto response:', e);
+        this.autoDeleteError = e.message || 'Failed to delete. Please try again.';
       }
     }
   }
@@ -944,6 +1203,24 @@ export default {
   margin: 0 0 16px 0;
   font-size: 14px;
   color: var(--color-text);
+}
+
+.rule-form textarea.auto-reply-body {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  font-size: 14px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  margin-bottom: 12px;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.rule-form textarea.auto-reply-body:focus {
+  outline: none;
+  border-color: var(--color-primary);
 }
 
 .rule-form input[type="text"],
