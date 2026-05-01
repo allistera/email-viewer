@@ -4,6 +4,7 @@ import { R2 } from '../shared/r2.js';
 import { MessageClassifier } from '../shared/openai.js';
 import { sendNewEmailNotification } from '../shared/notifications.js';
 import { ingestRawEmail } from '../shared/ingest.js';
+import { processAutoResponses } from '../shared/autoResponse.js';
 
 /**
  * Async Background Processor
@@ -99,7 +100,14 @@ async function processMessage(messageId, env, message = null) {
         // Await initial broadcast before continuing to notification
         await broadcastPromise;
 
-        // 4. Send push notification (after tagging so we can skip spam)
+        // 4. Auto-response rules (after tagging so we can match against tags and skip spam)
+        try {
+            await processAutoResponses(message, env);
+        } catch (autoErr) {
+            console.error(`Auto-response error: ${autoErr.message || autoErr}`);
+        }
+
+        // 5. Send push notification (after tagging so we can skip spam)
         try {
             // Optimization: Use local message object instead of re-fetching from DB
             const notifyResult = await sendNewEmailNotification(message, env);

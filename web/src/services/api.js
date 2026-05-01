@@ -383,6 +383,36 @@ export async function deleteTaggingRule(id) {
 }
 
 // ==================
+// Auto Response Rules API
+// ==================
+
+export async function getAutoResponseRules() {
+  return request('/auto-response-rules');
+}
+
+export async function createAutoResponseRule(rule) {
+  return request('/auto-response-rules', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(rule)
+  });
+}
+
+export async function updateAutoResponseRule(id, updates) {
+  return request(`/auto-response-rules/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updates)
+  });
+}
+
+export async function deleteAutoResponseRule(id) {
+  return request(`/auto-response-rules/${id}`, {
+    method: 'DELETE'
+  });
+}
+
+// ==================
 // Calendar Events API
 // ==================
 
