@@ -263,7 +263,7 @@ export default {
   background: var(--color-sidebar-bg);
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100%;
   border-right: 1px solid var(--color-border);
   overflow: hidden;
 }
