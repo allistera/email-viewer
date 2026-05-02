@@ -72,6 +72,83 @@
                   </select>
                 </div>
               </div>
+
+              <div v-else-if="activeCategory === 'templates'" class="sm-content">
+                <div class="tpl-toolbar">
+                  <p class="tpl-hint">Reusable subject and body snippets you can apply when composing.</p>
+                  <button type="button" class="tpl-new-btn" @click="startNewTemplate">+ New Template</button>
+                </div>
+
+                <ul v-if="templates.length > 0" class="tpl-list">
+                  <li
+                    v-for="tpl in templates"
+                    :key="tpl.id"
+                    :class="['tpl-row', { active: editingId === tpl.id }]"
+                  >
+                    <button type="button" class="tpl-row-main" @click="editTemplate(tpl)">
+                      <span class="tpl-row-name">{{ tpl.name }}</span>
+                      <span class="tpl-row-subject">{{ tpl.subject || '(no subject)' }}</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="tpl-row-delete"
+                      :aria-label="`Delete template: ${tpl.name}`"
+                      title="Delete template"
+                      @click="removeTemplate(tpl.id)"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+                      </svg>
+                    </button>
+                  </li>
+                </ul>
+                <p v-else class="tpl-empty">No templates yet.</p>
+
+                <div v-if="editingId !== null" class="tpl-editor">
+                  <div class="field-group">
+                    <label class="field-label" for="tpl-name">Name</label>
+                    <input
+                      id="tpl-name"
+                      v-model="editName"
+                      type="text"
+                      class="field-input"
+                      placeholder="e.g. Status update"
+                    />
+                  </div>
+                  <div class="field-group">
+                    <label class="field-label" for="tpl-subject">Subject</label>
+                    <input
+                      id="tpl-subject"
+                      v-model="editSubject"
+                      type="text"
+                      class="field-input"
+                      placeholder="Subject line"
+                    />
+                  </div>
+                  <div class="field-group">
+                    <label class="field-label" for="tpl-body">Body</label>
+                    <textarea
+                      id="tpl-body"
+                      v-model="editBody"
+                      class="field-input tpl-body-input"
+                      rows="6"
+                      placeholder="Template body…"
+                    ></textarea>
+                  </div>
+                  <div class="tpl-editor-actions">
+                    <button type="button" class="tpl-btn-secondary" @click="cancelEdit">Cancel</button>
+                    <button
+                      type="button"
+                      class="tpl-btn-primary"
+                      :disabled="!editName.trim()"
+                      @click="commitEdit"
+                    >
+                      Save
+                    </button>
+                  </div>
+                </div>
+              </div>
             </section>
           </div>
         </Transition>
@@ -82,6 +159,7 @@
 
 <script>
 import { getPreference, setPreference } from '../services/theme.js';
+import { listTemplates, saveTemplate, deleteTemplate } from '../services/templates.js';
 
 const FULL_NAME_KEY = 'userFullName';
 
@@ -96,10 +174,16 @@ export default {
     return {
       activeCategory: 'general',
       categories: [
-        { id: 'general', label: 'General' }
+        { id: 'general', label: 'General' },
+        { id: 'templates', label: 'Templates' }
       ],
       fullName: localStorage.getItem(FULL_NAME_KEY) || '',
-      colourMode: getPreference()
+      colourMode: getPreference(),
+      templates: [],
+      editingId: null,
+      editName: '',
+      editSubject: '',
+      editBody: ''
     };
   },
 
@@ -115,6 +199,8 @@ export default {
       if (val) {
         this.fullName = localStorage.getItem(FULL_NAME_KEY) || '';
         this.colourMode = getPreference();
+        this.refreshTemplates();
+        this.cancelEdit();
         this.$nextTick(() => this.$refs.overlay?.focus());
       }
     }
@@ -126,6 +212,43 @@ export default {
     },
     saveColourMode() {
       setPreference(this.colourMode);
+    },
+    refreshTemplates() {
+      this.templates = listTemplates();
+    },
+    startNewTemplate() {
+      this.editingId = '';
+      this.editName = '';
+      this.editSubject = '';
+      this.editBody = '';
+    },
+    editTemplate(tpl) {
+      this.editingId = tpl.id;
+      this.editName = tpl.name || '';
+      this.editSubject = tpl.subject || '';
+      this.editBody = tpl.body || '';
+    },
+    cancelEdit() {
+      this.editingId = null;
+      this.editName = '';
+      this.editSubject = '';
+      this.editBody = '';
+    },
+    commitEdit() {
+      const id = saveTemplate({
+        id: this.editingId || null,
+        name: this.editName,
+        subject: this.editSubject,
+        body: this.editBody
+      });
+      if (!id) return;
+      this.refreshTemplates();
+      this.cancelEdit();
+    },
+    removeTemplate(id) {
+      deleteTemplate(id);
+      if (this.editingId === id) this.cancelEdit();
+      this.refreshTemplates();
     }
   }
 };
@@ -281,6 +404,167 @@ export default {
 .field-input:focus {
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+.tpl-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tpl-hint {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.tpl-new-btn {
+  padding: 7px 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.tpl-new-btn:hover {
+  background: var(--color-bg-hover);
+}
+
+.tpl-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.tpl-row {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tpl-row:last-child {
+  border-bottom: none;
+}
+
+.tpl-row.active {
+  background: var(--color-bg-hover);
+}
+
+.tpl-row-main {
+  flex: 1;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 10px 12px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.tpl-row-main:hover {
+  background: var(--color-bg-hover);
+}
+
+.tpl-row-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tpl-row-subject {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tpl-row-delete {
+  background: none;
+  border: none;
+  padding: 8px 12px;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  border-radius: 6px;
+}
+
+.tpl-row-delete:hover {
+  color: var(--color-primary, #db4c3f);
+}
+
+.tpl-empty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.tpl-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 14px;
+  background: var(--color-bg-secondary);
+}
+
+.tpl-body-input {
+  max-width: none;
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.4;
+}
+
+.tpl-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.tpl-btn-secondary,
+.tpl-btn-primary {
+  padding: 7px 14px;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s, opacity 0.12s;
+}
+
+.tpl-btn-secondary {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+.tpl-btn-secondary:hover {
+  background: var(--color-bg-hover);
+}
+
+.tpl-btn-primary {
+  background: var(--color-primary, #1a73e8);
+  border: none;
+  color: #fff;
+}
+
+.tpl-btn-primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 /* Transitions */
