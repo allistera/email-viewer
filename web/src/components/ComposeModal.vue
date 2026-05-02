@@ -14,7 +14,6 @@
 
       <form @submit.prevent="handleSend" class="compose-form">
         <div class="form-field to-field">
-          <label for="compose-to">To</label>
           <div class="to-input-wrapper">
             <div class="to-input-container" @click="focusToInput">
               <span
@@ -38,7 +37,7 @@
                 ref="toInput"
                 v-model="toInput"
                 type="text"
-                placeholder="recipient@example.com"
+                placeholder="To"
                 :disabled="sending"
                 autocomplete="off"
                 @input="handleToInput"
@@ -74,8 +73,7 @@
           </div>
         </div>
 
-        <div class="form-field">
-          <label for="compose-subject">Subject</label>
+        <div class="form-field subject-field">
           <input
             id="compose-subject"
             ref="subjectInput"
@@ -87,40 +85,19 @@
         </div>
 
         <div class="form-field body-field">
-          <label for="compose-body">Message</label>
           <textarea
             id="compose-body"
             ref="bodyInput"
             v-model="body"
             placeholder="Write your message..."
             :disabled="sending"
+            @keydown="handleBodyKeydown"
           ></textarea>
         </div>
 
-        <div class="form-field attachments-field">
-          <label>Attachments</label>
+        <div v-if="attachments.length > 0" class="form-field attachments-field">
           <div class="attachments-row">
-            <input
-              ref="fileInput"
-              type="file"
-              class="file-input-hidden"
-              multiple
-              accept="*/*"
-              @change="handleFileSelect"
-              aria-label="Attach files"
-            />
-            <button
-              type="button"
-              class="btn-attach"
-              :disabled="sending"
-              @click="triggerFileInput"
-              title="Attach files"
-              aria-label="Attach files"
-            >
-              <span class="attach-icon" aria-hidden="true">📎</span>
-              <span class="attach-label">Attach</span>
-            </button>
-            <div v-if="attachments.length > 0" class="attachment-chips">
+            <div class="attachment-chips">
               <div
                 v-for="(file, index) in attachments"
                 :key="`${file.name}-${file.size}-${index}`"
@@ -142,11 +119,21 @@
           </div>
         </div>
 
+        <input
+          ref="fileInput"
+          type="file"
+          class="file-input-hidden"
+          multiple
+          accept="*/*"
+          @change="handleFileSelect"
+          aria-label="Attach files"
+        />
+
         <div v-if="error" class="error-message">
           {{ error }}
         </div>
 
-        <div class="ai-compose-bar" :class="{ 'ai-busy': aiLoading }">
+        <div v-if="aiBarOpen" class="ai-compose-bar" :class="{ 'ai-busy': aiLoading }">
           <span class="ai-icon" aria-hidden="true">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M15 4V2"/>
@@ -161,20 +148,21 @@
             </svg>
           </span>
           <input
+            ref="aiPromptInput"
             v-model="aiPrompt"
             type="text"
             class="ai-prompt-input"
             :placeholder="aiPlaceholder"
             :disabled="aiLoading || sending"
             @keydown.enter.prevent="handleAiCreate"
+            @keydown.esc.prevent="closeAiBar"
             aria-label="AI compose prompt"
           />
           <button
-            v-if="aiPrompt"
             type="button"
             class="ai-cancel-btn"
             :disabled="aiLoading"
-            @click="aiPrompt = ''"
+            @click="closeAiBar"
           >
             Cancel
           </button>
@@ -189,18 +177,68 @@
           </button>
         </div>
 
-        <div class="compose-actions">
+        <div v-else class="compose-actions">
           <div v-if="undoCountdown > 0" class="undo-send-bar">
             <span>Sending in {{ undoCountdown }}s…</span>
             <button type="button" class="btn-undo" @click="handleUndoSend">Undo</button>
           </div>
           <template v-else>
-            <button type="button" class="btn-secondary" @click="handleClose" :disabled="sending">
-              Cancel
-            </button>
-            <button type="submit" class="btn-primary" :disabled="sending || !hasRecipients" :aria-busy="sending">
+            <button
+              type="submit"
+              class="btn-send"
+              :disabled="sending || !hasRecipients"
+              :aria-busy="sending"
+            >
               <span v-if="sending" class="spinner" aria-hidden="true"></span>
               {{ sending ? 'Sending...' : 'Send' }}
+            </button>
+            <button
+              type="button"
+              class="icon-btn"
+              :disabled="sending"
+              @click="triggerFileInput"
+              title="Attach files"
+              aria-label="Attach files"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
+              </svg>
+            </button>
+            <button
+              type="button"
+              class="icon-btn"
+              :disabled="sending"
+              @click="openAiBar"
+              title="AI compose (or type / in body)"
+              aria-label="AI compose"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M15 4V2"/>
+                <path d="M15 16v-2"/>
+                <path d="M8 9h2"/>
+                <path d="M20 9h2"/>
+                <path d="M17.8 11.8 19 13"/>
+                <path d="M15 9h.01"/>
+                <path d="M17.8 6.2 19 5"/>
+                <path d="m3 21 9-9"/>
+                <path d="M12.2 6.2 11 5"/>
+              </svg>
+            </button>
+            <button
+              type="button"
+              class="icon-btn icon-btn-trailing"
+              :disabled="sending"
+              @click="handleClose"
+              title="Discard draft"
+              aria-label="Discard draft"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+                <path d="M10 11v6"/>
+                <path d="M14 11v6"/>
+                <path d="M9 6V4a2 2 0 012-2h2a2 2 0 012 2v2"/>
+              </svg>
             </button>
           </template>
         </div>
@@ -248,7 +286,8 @@ export default {
       autosaveTimer: null,
       hasDraft: false,
       aiPrompt: '',
-      aiLoading: false
+      aiLoading: false,
+      aiBarOpen: false
     };
   },
   computed: {
@@ -321,6 +360,7 @@ export default {
       this.hasDraft = false;
       this.aiPrompt = '';
       this.aiLoading = false;
+      this.aiBarOpen = false;
       if (this.debounceTimer) {
         clearTimeout(this.debounceTimer);
         this.debounceTimer = null;
@@ -651,6 +691,25 @@ export default {
       }
     },
 
+    handleBodyKeydown(event) {
+      if (event.key === '/' && !this.aiBarOpen && !this.aiLoading && !this.sending) {
+        event.preventDefault();
+        this.openAiBar();
+      }
+    },
+
+    openAiBar() {
+      this.aiBarOpen = true;
+      this.$nextTick(() => {
+        this.$refs.aiPromptInput?.focus();
+      });
+    },
+
+    closeAiBar() {
+      this.aiBarOpen = false;
+      this.aiPrompt = '';
+    },
+
     async handleAiCreate() {
       const prompt = this.aiPrompt.trim();
       if (!prompt || this.aiLoading || this.sending) return;
@@ -683,6 +742,7 @@ export default {
           }
         }
         this.aiPrompt = '';
+        this.aiBarOpen = false;
       } catch (e) {
         this.error = e?.message || 'Failed to generate message';
       } finally {
@@ -717,15 +777,16 @@ export default {
   position: fixed;
   bottom: 0;
   right: 24px;
-  width: 500px;
-  height: 500px;
+  width: 540px;
+  height: 560px;
   background: var(--color-bg, #fff);
-  border-radius: 8px 8px 0 0;
+  border-radius: 12px 12px 0 0;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 -2px 20px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
   pointer-events: auto;
   animation: slideUp 0.2s ease-out;
+  overflow: hidden;
 }
 
 @keyframes slideUp {
@@ -741,14 +802,15 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 20px;
+  padding: 10px 16px;
+  background: var(--color-bg-secondary, #f2f6fc);
   border-bottom: 1px solid var(--color-border, #e0e0e0);
 }
 
 .compose-header h2 {
   margin: 0;
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 500;
   color: var(--color-text, #202020);
 }
 
@@ -783,38 +845,29 @@ export default {
 .form-field {
   display: flex;
   flex-direction: column;
-  padding: 0 20px;
+  padding: 0 16px;
 }
 
-.form-field:first-child {
-  padding-top: 16px;
-}
-
-.form-field label {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-text-secondary, #808080);
-  margin-bottom: 4px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+.to-field {
+  padding-top: 4px;
 }
 
 .form-field input,
 .form-field textarea {
-  padding: 10px 12px;
-  border: 1px solid var(--color-border, #e0e0e0);
-  border-radius: 4px;
+  padding: 10px 0;
+  border: none;
+  border-bottom: 1px solid var(--color-border, #e0e0e0);
+  border-radius: 0;
   font-size: 14px;
   font-family: inherit;
   color: var(--color-text, #202020);
-  background: var(--color-bg, #fff);
-  margin-bottom: 12px;
+  background: transparent;
 }
 
 .form-field input:focus,
 .form-field textarea:focus {
   outline: none;
-  border-color: var(--color-primary, #db4c3f);
+  border-bottom-color: var(--color-border, #e0e0e0);
 }
 
 .to-input-container {
@@ -822,16 +875,15 @@ export default {
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
-  min-height: 40px;
-  padding: 6px 8px;
-  border: 1px solid var(--color-border, #e0e0e0);
-  border-radius: 4px;
-  background: var(--color-bg, #fff);
-  margin-bottom: 12px;
+  min-height: 38px;
+  padding: 4px 0;
+  border: none;
+  border-bottom: 1px solid var(--color-border, #e0e0e0);
+  background: transparent;
 }
 
 .to-input-container:focus-within {
-  border-color: var(--color-primary, #db4c3f);
+  border-bottom-color: var(--color-border, #e0e0e0);
 }
 
 .to-input-container input {
@@ -934,12 +986,15 @@ export default {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  padding-top: 8px;
 }
 
 .body-field textarea {
   flex: 1;
   min-height: 0;
   resize: none;
+  border-bottom: none;
+  padding: 4px 0;
 }
 
 .attachments-field {
@@ -960,35 +1015,6 @@ export default {
   height: 0;
   opacity: 0;
   overflow: hidden;
-}
-
-.btn-attach {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  border: 1px solid var(--color-border, #e0e0e0);
-  border-radius: 4px;
-  background: var(--color-bg, #fff);
-  color: var(--color-text-secondary, #808080);
-  font-size: 13px;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
-}
-
-.btn-attach:hover:not(:disabled) {
-  background: var(--color-bg-secondary, #f5f5f5);
-  border-color: var(--color-primary, #db4c3f);
-  color: var(--color-primary, #db4c3f);
-}
-
-.btn-attach:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.attach-icon {
-  font-size: 14px;
 }
 
 .attachment-chips {
@@ -1049,17 +1075,68 @@ export default {
 
 .compose-actions {
   display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  padding: 16px 20px;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 16px;
   border-top: 1px solid var(--color-border, #e0e0e0);
+}
+
+.btn-send {
+  padding: 8px 24px;
+  border-radius: 9999px;
+  background: #1a73e8;
+  color: #fff;
+  border: none;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s, opacity 0.15s;
+  margin-right: 8px;
+}
+
+.btn-send:hover:not(:disabled) {
+  background: #1765cc;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+.btn-send:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  color: var(--color-text-secondary, #5f6368);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.icon-btn:hover:not(:disabled) {
+  background: var(--color-bg-secondary, #f1f3f4);
+  color: var(--color-text, #202020);
+}
+
+.icon-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.icon-btn-trailing {
+  margin-left: auto;
 }
 
 .ai-compose-bar {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 0 20px 12px 20px;
+  margin: 10px 16px;
   padding: 6px 6px 6px 14px;
   background: var(--color-bg-secondary, #f3f3f5);
   border: 1px solid var(--color-border, #e0e0e0);
@@ -1179,31 +1256,6 @@ export default {
   background: var(--color-bg-secondary, #f5f5f5);
 }
 
-.btn-primary,
-.btn-secondary {
-  padding: 10px 20px;
-  border-radius: 4px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.15s, opacity 0.15s;
-}
-
-.btn-primary {
-  background: var(--color-primary, #db4c3f);
-  color: #fff;
-  border: none;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: var(--color-primary-dark, #c53727);
-}
-
-.btn-primary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
 .spinner {
   display: inline-block;
   width: 14px;
@@ -1218,21 +1270,6 @@ export default {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
-}
-
-.btn-secondary {
-  background: var(--color-bg, #fff);
-  color: var(--color-text, #202020);
-  border: 1px solid var(--color-border, #e0e0e0);
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background: var(--color-bg-secondary, #f9f9f9);
-}
-
-.btn-secondary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 @media (max-width: 768px) {
