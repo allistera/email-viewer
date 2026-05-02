@@ -417,7 +417,6 @@ export const ApiRouter = {
 
           if (!response.ok) {
             return jsonResponse({
-              ok: false,
               error: `Unsubscribe endpoint returned ${response.status}.`,
               method,
               target: httpTarget,
@@ -909,7 +908,7 @@ export const ApiRouter = {
           return jsonResponse({ ok: true, provider: 'ntfy' });
         } else {
           return jsonResponse(
-            { ok: false, error: result.error, provider: 'ntfy' },
+            { error: result.error, provider: 'ntfy' },
             { status: 502 }
           );
         }

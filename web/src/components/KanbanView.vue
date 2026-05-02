@@ -193,20 +193,11 @@ export default {
       };
       const newTag = tagMap[laneId];
 
-      if (!newTag) {
-        console.error('Unknown lane:', laneId);
-        return;
-      }
+      if (!newTag) return;
 
       try {
-        // Remove existing lane tags so each message appears in one swimlane.
         const message = this.messages.find((m) => m.id === messageId);
-        console.log('KanbanView: Message before tag update:', message);
-
-        // If message is dragged from a different view (e.g. Inbox), it might not
-        // be in the KanbanView's messages array yet, or might not have lane tags.
         const laneTagBindings = message ? this.getLaneTagBindings(message) : [];
-        console.log('KanbanView: Lane tag bindings:', laneTagBindings);
 
         const tagsToRemove = [...new Set(
           laneTagBindings
@@ -215,19 +206,12 @@ export default {
         )];
 
         if (tagsToRemove.length > 0) {
-          console.log('KanbanView: Removing tags:', tagsToRemove);
           await Promise.all(tagsToRemove.map((tag) => removeMessageTag(messageId, tag)));
         }
 
-        // Add lane tag without removing non-kanban tags so the email stays in Inbox context.
-        console.log('KanbanView: Adding tag:', newTag);
-        const result = await addMessageTag(messageId, newTag);
-        console.log('KanbanView: Tag added, result:', result);
-
-        // Emit event to parent to refresh messages
+        await addMessageTag(messageId, newTag);
         this.$emit('message-dropped', { messageId, newTag });
       } catch (error) {
-        console.error('Failed to update message tag:', error);
         this.$emit('drop-error', { messageId, error });
       }
     }

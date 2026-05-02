@@ -495,6 +495,7 @@
 import { getTodoistToken, setTodoistToken, clearTodoistToken } from '../services/auth.js';
 import { getTaggingRules, createTaggingRule, updateTaggingRule, deleteTaggingRule, getTags, getNotificationStatus, sendTestNotification, getSettings, updateSettings, getAutoResponseRules, createAutoResponseRule, updateAutoResponseRule, deleteAutoResponseRule } from '../services/api.js';
 import { getPreference, setPreference } from '../services/theme.js';
+import { getEmailSignature, setEmailSignature, clearEmailSignature } from '../services/signature.js';
 
 export default {
   name: 'SettingsView',
@@ -603,11 +604,7 @@ export default {
 
     // Signature methods
     loadSignature() {
-      try {
-        this.signatureHtml = localStorage.getItem('emailSignature') || '';
-      } catch {
-        this.signatureHtml = '';
-      }
+      this.signatureHtml = getEmailSignature();
       this.$nextTick(() => {
         if (this.$refs.signatureEditor) {
           this.$refs.signatureEditor.innerHTML = this.signatureHtml;
@@ -632,26 +629,20 @@ export default {
       this.handleSignatureInput();
     },
     saveSignature() {
-      try {
-        const html = this.$refs.signatureEditor?.innerHTML || '';
-        this.signatureHtml = html;
-        localStorage.setItem('emailSignature', html);
-        this.signatureStatus = 'Signature saved.';
-        setTimeout(() => { this.signatureStatus = ''; }, 2000);
-      } catch (e) {
-        this.signatureStatus = e.message || 'Failed to save signature.';
-      }
+      const html = this.$refs.signatureEditor?.innerHTML || '';
+      this.signatureHtml = html;
+      setEmailSignature(html);
+      this.signatureStatus = 'Signature saved.';
+      setTimeout(() => { this.signatureStatus = ''; }, 2000);
     },
     clearSignature() {
       this.signatureHtml = '';
       if (this.$refs.signatureEditor) {
         this.$refs.signatureEditor.innerHTML = '';
       }
-      try {
-        localStorage.removeItem('emailSignature');
-        this.signatureStatus = 'Signature cleared.';
-        setTimeout(() => { this.signatureStatus = ''; }, 2000);
-      } catch { /* ignore */ }
+      clearEmailSignature();
+      this.signatureStatus = 'Signature cleared.';
+      setTimeout(() => { this.signatureStatus = ''; }, 2000);
     },
 
     // Retention methods

@@ -41,6 +41,13 @@ class RealtimeHubBase {
     }
   }
 
+  // Idempotent: removes the session from its collection and adjusts the heartbeat.
+  removeSession(set, session) {
+    if (set.delete(session)) {
+      this.checkHeartbeat();
+    }
+  }
+
   async fetch(request) {
     try {
       const url = new URL(request.url);
@@ -85,25 +92,14 @@ class RealtimeHubBase {
     this.sseSessions.add(writer);
     this.checkHeartbeat();
 
-    // Cleanup when writer closes (client disconnect)
-    // Note: We use both writer.closed and request.signal for redundant cleanup.
-    // This "belt and suspenders" approach ensures cleanup happens regardless of
-    // how the connection ends. Duplicate delete calls are safe (Set.delete is idempotent).
-    writer.closed
-      .then(() => {
-        this.sseSessions.delete(writer);
-        this.checkHeartbeat();
-      })
-      .catch(() => {
-        this.sseSessions.delete(writer);
-        this.checkHeartbeat();
-      });
+    // Belt-and-suspenders: writer.closed and request.signal both clean up.
+    // removeSession is idempotent so duplicates are safe.
+    const cleanup = () => this.removeSession(this.sseSessions, writer);
+    writer.closed.then(cleanup, cleanup);
 
-    // Also handle abort signal if available
     if (request.signal) {
       request.signal.addEventListener('abort', () => {
-        this.sseSessions.delete(writer);
-        this.checkHeartbeat();
+        cleanup();
         writer.close().catch(() => { });
       });
     }
@@ -131,15 +127,9 @@ class RealtimeHubBase {
     this.wsSessions.add(server);
     this.checkHeartbeat();
 
-    server.addEventListener('close', () => {
-      this.wsSessions.delete(server);
-      this.checkHeartbeat();
-    });
-
-    server.addEventListener('error', () => {
-      this.wsSessions.delete(server);
-      this.checkHeartbeat();
-    });
+    const cleanup = () => this.removeSession(this.wsSessions, server);
+    server.addEventListener('close', cleanup);
+    server.addEventListener('error', cleanup);
 
     return new Response(null, {
       status: 101,
@@ -154,15 +144,15 @@ class RealtimeHubBase {
     const encoder = new TextEncoder();
     const ssePayload = encoder.encode(`data: ${data}\n\n`);
     for (const writer of this.sseSessions) {
-      writer.write(ssePayload).catch(() => this.sseSessions.delete(writer));
+      writer.write(ssePayload).catch(() => this.removeSession(this.sseSessions, writer));
     }
 
     // 2. Broadcast to WebSockets
     for (const ws of this.wsSessions) {
       try {
         ws.send(data);
-      } catch (e) {
-        this.wsSessions.delete(ws);
+      } catch {
+        this.removeSession(this.wsSessions, ws);
       }
     }
   }
