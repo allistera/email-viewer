@@ -58,7 +58,7 @@
           </button>
           <div class="message-body">
             <div class="message-header">
-              <span class="from">{{ message.from }}</span>
+              <span class="from" :title="message.from">{{ formatSender(message.from) }}</span>
               <span class="time">{{ formatTime(message.receivedAt) }}</span>
             </div>
             <div class="message-subject" :title="message.subject">
@@ -154,6 +154,21 @@ export default {
   methods: {
     formatTime(timestamp) {
       return formatRelativeDate(timestamp);
+    },
+
+    formatSender(from) {
+      if (!from) return '';
+      const raw = String(from).trim();
+      // "Name" <addr@host> | Name <addr@host>
+      const named = raw.match(/^\s*"?([^"<]+?)"?\s*<[^>]+>\s*$/);
+      if (named && named[1]) {
+        const name = named[1].trim();
+        if (name) return name;
+      }
+      // Fall back to the local-part of a bare email
+      const bare = raw.match(/^[^\s<>@]+@/);
+      if (bare) return raw.split('@')[0];
+      return raw;
     },
 
     onDragStart(event, message) {
