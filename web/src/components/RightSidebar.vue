@@ -59,21 +59,6 @@
       </button>
     </nav>
 
-    <div class="rail-spacer" aria-hidden="true" />
-
-    <button
-      class="rail-app rail-settings"
-      type="button"
-      title="Settings"
-      aria-label="Settings"
-      :data-active="activeView === 'settings'"
-      @click="$emit('select', 'settings')"
-    >
-      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7">
-        <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-    </button>
   </aside>
 </template>
 
@@ -111,14 +96,6 @@ export default {
   padding: 18px 10px 20px;
   background: linear-gradient(180deg, var(--color-rail-bg), var(--color-rail-bg-alt));
   border-left: 1px solid var(--color-rail-border);
-}
-
-.rail-spacer {
-  flex: 1;
-}
-
-.rail-settings {
-  margin-top: auto;
 }
 
 .rail-nav {
@@ -161,12 +138,4 @@ export default {
   outline-offset: 2px;
 }
 
-@keyframes gear-spin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
-}
-
-.rail-settings:hover svg {
-  animation: gear-spin 0.6s ease;
-}
 </style>
