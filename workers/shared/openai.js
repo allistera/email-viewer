@@ -139,13 +139,17 @@ export const EmailComposer = {
    * @param {string} [params.model]
    * @returns {Promise<{subject: string, body: string}|null>}
    */
-  async compose({ prompt, context = null, mode = 'compose', apiKey, model = 'google/gemini-2.0-flash-lite-001' }) {
+  async compose({ prompt, context = null, mode = 'compose', senderName = '', apiKey, model = 'google/gemini-2.0-flash-lite-001' }) {
     if (!apiKey || !prompt || !prompt.trim()) return null;
 
+    const cleanSender = (senderName || '').trim().slice(0, 120);
     const userPayload = {
       mode,
       instruction: prompt.substring(0, 1000)
     };
+    if (cleanSender) {
+      userPayload.sender_name = cleanSender;
+    }
 
     if (context) {
       const original = {
@@ -175,6 +179,7 @@ Given a short instruction (and optionally an original message when replying), wr
 Keep the tone friendly and human. Do not include greetings like "Dear Sir/Madam" unless the instruction implies formality.
 Do not invent specific facts (names, dates, links) that weren't given.
 For replies, address the original sender's points directly.
+If a "sender_name" is provided, sign the email with that name (e.g. "Best,\\n<sender_name>"). Do not fabricate a sender name when none is provided.
 Return JSON in this schema:
 {
   "subject": "string",

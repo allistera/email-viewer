@@ -340,11 +340,11 @@ export async function sendEmail({ to, subject, body, replyToId, attachments }) {
   });
 }
 
-export async function aiComposeMessage({ prompt, mode = 'compose', context = null }) {
+export async function aiComposeMessage({ prompt, mode = 'compose', context = null, senderName = '' }) {
   return request('/ai/compose', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt, mode, context })
+    body: JSON.stringify({ prompt, mode, context, senderName })
   });
 }
 

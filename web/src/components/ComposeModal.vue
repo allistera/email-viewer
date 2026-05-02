@@ -846,9 +846,13 @@ export default {
             body: this.replyTo.textBody || ''
           }
         : null;
+      let senderName = '';
+      try {
+        senderName = (localStorage.getItem('userFullName') || '').trim();
+      } catch { /* ignore */ }
 
       try {
-        const result = await aiComposeMessage({ prompt, mode, context });
+        const result = await aiComposeMessage({ prompt, mode, context, senderName });
         if (result?.subject && !this.replyTo && !this.forwardFrom) {
           this.subject = result.subject;
         } else if (result?.subject && !this.subject) {

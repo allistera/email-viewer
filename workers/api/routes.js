@@ -985,11 +985,13 @@ export const ApiRouter = {
         }
         const mode = body.mode === 'reply' ? 'reply' : 'compose';
         const context = body.context && typeof body.context === 'object' ? body.context : null;
+        const senderName = typeof body.senderName === 'string' ? body.senderName.trim().slice(0, 120) : '';
 
         const result = await EmailComposer.compose({
           prompt,
           context,
           mode,
+          senderName,
           apiKey: env.OPENROUTER_API_KEY,
           model: env.OPENROUTER_MODEL || 'google/gemini-2.0-flash-lite-001'
         });
