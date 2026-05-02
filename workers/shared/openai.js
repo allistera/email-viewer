@@ -127,6 +127,90 @@ export const MessageClassifier = {
   }
 };
 
+export const EmailComposer = {
+  /**
+   * Generate a subject and body for an email from a short user prompt.
+   * Optionally uses an original message (reply context) to ground the response.
+   * @param {Object} params
+   * @param {string} params.prompt - User's instruction (e.g. "Wish my friend a speedy recovery").
+   * @param {Object|null} [params.context] - Optional original message for replies.
+   * @param {string} [params.mode] - 'compose' or 'reply'.
+   * @param {string} params.apiKey
+   * @param {string} [params.model]
+   * @returns {Promise<{subject: string, body: string}|null>}
+   */
+  async compose({ prompt, context = null, mode = 'compose', apiKey, model = 'google/gemini-2.0-flash-lite-001' }) {
+    if (!apiKey || !prompt || !prompt.trim()) return null;
+
+    const userPayload = {
+      mode,
+      instruction: prompt.substring(0, 1000)
+    };
+
+    if (context) {
+      const original = {
+        from: (context.from || '').substring(0, 200),
+        subject: (context.subject || '').substring(0, 200),
+        body: (context.body || '').substring(0, 3000)
+      };
+      userPayload.original_message = original;
+    }
+
+    try {
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+          'HTTP-Referer': 'https://email-viewer.local',
+          'X-Title': 'Email Viewer'
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            {
+              role: 'system',
+              content: `You draft email messages on behalf of the user.
+Given a short instruction (and optionally an original message when replying), write a clear, natural-sounding email.
+Keep the tone friendly and human. Do not include greetings like "Dear Sir/Madam" unless the instruction implies formality.
+Do not invent specific facts (names, dates, links) that weren't given.
+For replies, address the original sender's points directly.
+Return JSON in this schema:
+{
+  "subject": "string",
+  "body": "string"
+}
+For replies you may leave subject as an empty string to keep the existing one.`
+            },
+            {
+              role: 'user',
+              content: JSON.stringify(userPayload)
+            }
+          ],
+          response_format: { type: 'json_object' }
+        })
+      });
+
+      if (!response.ok) {
+        console.error('OpenRouter compose error:', await response.text());
+        return null;
+      }
+
+      const data = await response.json();
+      const content = data?.choices?.[0]?.message?.content;
+      if (!content) return null;
+      const parsed = JSON.parse(content);
+      return {
+        subject: typeof parsed?.subject === 'string' ? parsed.subject : '',
+        body: typeof parsed?.body === 'string' ? parsed.body : ''
+      };
+    } catch (e) {
+      console.error('Email compose failed:', e);
+      return null;
+    }
+  }
+};
+
 export const TodoistProjectSelector = {
   /**
    * Select best Todoist project for a message.

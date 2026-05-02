@@ -340,6 +340,14 @@ export async function sendEmail({ to, subject, body, replyToId, attachments }) {
   });
 }
 
+export async function aiComposeMessage({ prompt, mode = 'compose', context = null }) {
+  return request('/ai/compose', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt, mode, context })
+  });
+}
+
 export async function getContactSuggestions(query = '', limit = 10) {
   const params = new URLSearchParams();
   if (query) params.set('q', query);

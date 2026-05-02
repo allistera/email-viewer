@@ -146,6 +146,49 @@
           {{ error }}
         </div>
 
+        <div class="ai-compose-bar" :class="{ 'ai-busy': aiLoading }">
+          <span class="ai-icon" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M15 4V2"/>
+              <path d="M15 16v-2"/>
+              <path d="M8 9h2"/>
+              <path d="M20 9h2"/>
+              <path d="M17.8 11.8 19 13"/>
+              <path d="M15 9h.01"/>
+              <path d="M17.8 6.2 19 5"/>
+              <path d="m3 21 9-9"/>
+              <path d="M12.2 6.2 11 5"/>
+            </svg>
+          </span>
+          <input
+            v-model="aiPrompt"
+            type="text"
+            class="ai-prompt-input"
+            :placeholder="aiPlaceholder"
+            :disabled="aiLoading || sending"
+            @keydown.enter.prevent="handleAiCreate"
+            aria-label="AI compose prompt"
+          />
+          <button
+            v-if="aiPrompt"
+            type="button"
+            class="ai-cancel-btn"
+            :disabled="aiLoading"
+            @click="aiPrompt = ''"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            class="ai-create-btn"
+            :disabled="!aiPrompt.trim() || aiLoading || sending"
+            @click="handleAiCreate"
+          >
+            <span v-if="aiLoading" class="ai-spinner" aria-hidden="true"></span>
+            {{ aiLoading ? 'Creating…' : 'Create' }}
+          </button>
+        </div>
+
         <div class="compose-actions">
           <div v-if="undoCountdown > 0" class="undo-send-bar">
             <span>Sending in {{ undoCountdown }}s…</span>
@@ -167,7 +210,7 @@
 </template>
 
 <script>
-import { sendEmail, getContactSuggestions } from '../services/api.js';
+import { sendEmail, getContactSuggestions, aiComposeMessage } from '../services/api.js';
 
 export default {
   name: 'ComposeModal',
@@ -186,11 +229,6 @@ export default {
     }
   },
   emits: ['close', 'sent'],
-  computed: {
-    hasRecipients() {
-      return this.recipients.length > 0 || this.toInput.trim().length > 0;
-    }
-  },
   data() {
     return {
       recipients: [],
@@ -208,8 +246,20 @@ export default {
       selectedSuggestionIndex: -1,
       debounceTimer: null,
       autosaveTimer: null,
-      hasDraft: false
+      hasDraft: false,
+      aiPrompt: '',
+      aiLoading: false
     };
+  },
+  computed: {
+    aiPlaceholder() {
+      return this.replyTo
+        ? 'Ask AI to draft a reply…'
+        : 'Ask AI to write a message…';
+    },
+    hasRecipients() {
+      return this.recipients.length > 0 || this.toInput.trim().length > 0;
+    }
   },
   watch: {
     show(newVal) {
@@ -269,6 +319,8 @@ export default {
       this.showSuggestions = false;
       this.selectedSuggestionIndex = -1;
       this.hasDraft = false;
+      this.aiPrompt = '';
+      this.aiLoading = false;
       if (this.debounceTimer) {
         clearTimeout(this.debounceTimer);
         this.debounceTimer = null;
@@ -596,6 +648,45 @@ export default {
         this.error = e.message || 'Failed to send email';
       } finally {
         this.sending = false;
+      }
+    },
+
+    async handleAiCreate() {
+      const prompt = this.aiPrompt.trim();
+      if (!prompt || this.aiLoading || this.sending) return;
+
+      this.aiLoading = true;
+      this.error = null;
+
+      const mode = this.replyTo ? 'reply' : 'compose';
+      const context = this.replyTo
+        ? {
+            from: this.replyTo.from || '',
+            subject: this.replyTo.subject || '',
+            body: this.replyTo.textBody || ''
+          }
+        : null;
+
+      try {
+        const result = await aiComposeMessage({ prompt, mode, context });
+        if (result?.subject && !this.replyTo && !this.forwardFrom) {
+          this.subject = result.subject;
+        } else if (result?.subject && !this.subject) {
+          this.subject = result.subject;
+        }
+        if (result?.body) {
+          if (this.replyTo) {
+            // Prepend AI body above the quoted original
+            this.body = `${result.body}\n${this.body}`;
+          } else {
+            this.body = result.body;
+          }
+        }
+        this.aiPrompt = '';
+      } catch (e) {
+        this.error = e?.message || 'Failed to generate message';
+      } finally {
+        this.aiLoading = false;
       }
     },
 
@@ -962,6 +1053,104 @@ export default {
   gap: 12px;
   padding: 16px 20px;
   border-top: 1px solid var(--color-border, #e0e0e0);
+}
+
+.ai-compose-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 20px 12px 20px;
+  padding: 6px 6px 6px 14px;
+  background: var(--color-bg-secondary, #f3f3f5);
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: 9999px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.ai-compose-bar:focus-within {
+  border-color: var(--color-primary, #db4c3f);
+  box-shadow: 0 0 0 3px rgba(219, 76, 63, 0.12);
+}
+
+.ai-compose-bar.ai-busy {
+  opacity: 0.85;
+}
+
+.ai-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary, #808080);
+  flex-shrink: 0;
+}
+
+.ai-prompt-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--color-text, #202020);
+  padding: 8px 4px;
+  outline: none;
+}
+
+.ai-prompt-input::placeholder {
+  color: var(--color-text-secondary, #808080);
+}
+
+.ai-prompt-input:disabled {
+  cursor: not-allowed;
+}
+
+.ai-cancel-btn {
+  background: none;
+  border: none;
+  font-size: 14px;
+  color: var(--color-text-secondary, #808080);
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 9999px;
+}
+
+.ai-cancel-btn:hover:not(:disabled) {
+  color: var(--color-text, #202020);
+}
+
+.ai-create-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 9999px;
+  background: var(--color-bg, #fff);
+  color: var(--color-text, #202020);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, opacity 0.15s;
+}
+
+.ai-create-btn:hover:not(:disabled) {
+  background: var(--color-primary, #db4c3f);
+  color: #fff;
+}
+
+.ai-create-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ai-spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  border-radius: 50%;
+  border-top-color: currentColor;
+  animation: spin 1s ease-in-out infinite;
 }
 
 .undo-send-bar {

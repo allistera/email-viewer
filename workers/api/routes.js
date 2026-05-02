@@ -1,5 +1,6 @@
 import { DB } from '../shared/db.js';
 import { sendNewEmailNotification } from '../shared/notifications.js';
+import { EmailComposer } from '../shared/openai.js';
 
 const MISSING_TABLE_PATTERN = /no such table/i;
 
@@ -962,6 +963,41 @@ export const ApiRouter = {
 
         const contacts = await DB.getContactSuggestions(env.DB, { query, limit });
         return jsonResponse({ contacts });
+      }
+
+      // POST /api/ai/compose
+      if (path === 'ai/compose' && request.method === 'POST') {
+        if (!env.OPENROUTER_API_KEY) {
+          return jsonResponse({ error: 'AI compose is not configured' }, { status: 503 });
+        }
+        let body;
+        try {
+          body = await readJsonBody(request);
+        } catch (error) {
+          return jsonResponse({ error: error.message || 'Invalid JSON body' }, { status: 400 });
+        }
+        const prompt = typeof body.prompt === 'string' ? body.prompt.trim() : '';
+        if (!prompt) {
+          return jsonResponse({ error: 'Prompt is required' }, { status: 400 });
+        }
+        if (prompt.length > 1000) {
+          return jsonResponse({ error: 'Prompt is too long (max 1000 characters)' }, { status: 400 });
+        }
+        const mode = body.mode === 'reply' ? 'reply' : 'compose';
+        const context = body.context && typeof body.context === 'object' ? body.context : null;
+
+        const result = await EmailComposer.compose({
+          prompt,
+          context,
+          mode,
+          apiKey: env.OPENROUTER_API_KEY,
+          model: env.OPENROUTER_MODEL || 'google/gemini-2.0-flash-lite-001'
+        });
+
+        if (!result) {
+          return jsonResponse({ error: 'Failed to generate message' }, { status: 502 });
+        }
+        return jsonResponse(result);
       }
 
       // POST /api/send
