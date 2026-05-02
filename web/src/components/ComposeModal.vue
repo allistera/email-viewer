@@ -204,6 +204,41 @@
                 <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
               </svg>
             </button>
+            <div class="template-picker">
+              <button
+                type="button"
+                class="icon-btn"
+                :disabled="sending"
+                @click="toggleTemplateMenu"
+                :aria-expanded="templateMenuOpen"
+                aria-haspopup="menu"
+                title="Insert template"
+                aria-label="Insert template"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="8" y1="13" x2="16" y2="13"/>
+                  <line x1="8" y1="17" x2="13" y2="17"/>
+                </svg>
+              </button>
+              <div v-if="templateMenuOpen" class="template-menu" role="menu">
+                <p v-if="templates.length === 0" class="template-empty">
+                  No templates yet. Add some in Settings → Templates.
+                </p>
+                <button
+                  v-for="tpl in templates"
+                  :key="tpl.id"
+                  type="button"
+                  role="menuitem"
+                  class="template-menu-item"
+                  @click="applyTemplate(tpl)"
+                >
+                  <span class="template-menu-name">{{ tpl.name }}</span>
+                  <span v-if="tpl.subject" class="template-menu-subject">{{ tpl.subject }}</span>
+                </button>
+              </div>
+            </div>
             <button
               type="button"
               class="icon-btn"
@@ -264,6 +299,7 @@
 <script>
 import { sendEmail, getContactSuggestions, aiComposeMessage } from '../services/api.js';
 import { saveDraft as persistDraft, deleteDraft } from '../services/drafts.js';
+import { listTemplates } from '../services/templates.js';
 
 export default {
   name: 'ComposeModal',
@@ -307,7 +343,9 @@ export default {
       draftId: null,
       aiPrompt: '',
       aiLoading: false,
-      aiBarOpen: false
+      aiBarOpen: false,
+      templates: [],
+      templateMenuOpen: false
     };
   },
   computed: {
@@ -359,8 +397,10 @@ export default {
           });
         }
         document.addEventListener('keydown', this.handleEscapeKey);
+        document.addEventListener('mousedown', this.handleDocumentClick);
       } else {
         document.removeEventListener('keydown', this.handleEscapeKey);
+        document.removeEventListener('mousedown', this.handleDocumentClick);
         this.cancelAutosave();
         this.flushDraft();
       }
@@ -371,6 +411,7 @@ export default {
   },
   beforeUnmount() {
     document.removeEventListener('keydown', this.handleEscapeKey);
+    document.removeEventListener('mousedown', this.handleDocumentClick);
     this.cancelAutosave();
   },
   methods: {
@@ -396,6 +437,7 @@ export default {
       this.aiPrompt = '';
       this.aiLoading = false;
       this.aiBarOpen = false;
+      this.templateMenuOpen = false;
       if (this.debounceTimer) {
         clearTimeout(this.debounceTimer);
         this.debounceTimer = null;
@@ -667,6 +709,36 @@ export default {
       this.cancelAutosave();
       this.discardDraft();
       this.$emit('close');
+    },
+    toggleTemplateMenu() {
+      if (this.templateMenuOpen) {
+        this.templateMenuOpen = false;
+        return;
+      }
+      this.templates = listTemplates();
+      this.templateMenuOpen = true;
+    },
+    applyTemplate(tpl) {
+      if (!tpl) return;
+      if (!this.subject && tpl.subject) {
+        this.subject = tpl.subject;
+      }
+      if (tpl.body) {
+        if (this.body && this.body.trim().length > 0) {
+          this.body = `${tpl.body}\n${this.body}`;
+        } else {
+          this.body = tpl.body;
+        }
+      }
+      this.templateMenuOpen = false;
+      this.$nextTick(() => this.$refs.bodyInput?.focus());
+    },
+    handleDocumentClick(event) {
+      if (!this.templateMenuOpen) return;
+      const picker = this.$el?.querySelector?.('.template-picker');
+      if (picker && !picker.contains(event.target)) {
+        this.templateMenuOpen = false;
+      }
     },
     handleSaveDraft() {
       if (this.sending || this.replyTo || this.forwardFrom) return;
@@ -1179,6 +1251,73 @@ export default {
 
 .icon-btn-trailing {
   margin-left: auto;
+}
+
+.template-picker {
+  position: relative;
+  display: inline-flex;
+}
+
+.template-menu {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  min-width: 240px;
+  max-width: 320px;
+  max-height: 280px;
+  overflow-y: auto;
+  background: var(--color-bg, #fff);
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  padding: 4px;
+  z-index: 10;
+}
+
+.template-empty {
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--color-text-secondary, #5f6368);
+}
+
+.template-menu-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  background: transparent;
+  border: none;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.template-menu-item:hover,
+.template-menu-item:focus-visible {
+  background: var(--color-bg-secondary, #f1f3f4);
+  outline: none;
+}
+
+.template-menu-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text, #202020);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.template-menu-subject {
+  font-size: 12px;
+  color: var(--color-text-secondary, #5f6368);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
 .ai-compose-bar {
