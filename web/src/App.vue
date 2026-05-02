@@ -10,6 +10,7 @@
       :show="showComposeModal"
       :reply-to="replyToMessage"
       :forward-from="forwardMessage"
+      :draft="composeDraft"
       @close="handleComposeClose"
       @sent="handleEmailSent"
     />
@@ -45,7 +46,7 @@
         <DiscordSidebar
           ref="sidebar"
           :selected-tag="selectedTag"
-          :message-counts="messageCounts"
+          :message-counts="sidebarCounts"
           :settings-active="showSettingsModal"
           class="sidebar-panel"
           @select="handleTagSelect"
@@ -59,7 +60,17 @@
           <SettingsView class="settings-panel" @close="closeSettings" />
         </template>
         <template v-else>
+          <DraftsList
+            v-if="selectedTag === 'drafts'"
+            v-show="(rightRailView !== 'calendar' && rightRailView !== 'settings') || isMobile"
+            :drafts="drafts"
+            class="list-panel"
+            @open="openDraft"
+            @delete="handleDeleteDraft"
+            @open-sidebar="openMobileSidebar"
+          />
           <MessageList
+            v-else
             v-show="(rightRailView !== 'calendar' && rightRailView !== 'settings') || isMobile"
             :messages="messages"
             :selected-id="selectedMessageId"
@@ -175,6 +186,7 @@ import MessageList from './components/MessageList.vue';
 import MessageDetail from './components/MessageDetail.vue';
 import SettingsView from './components/SettingsView.vue';
 import ComposeModal from './components/ComposeModal.vue';
+import DraftsList from './components/DraftsList.vue';
 import ToastNotification from './components/ToastNotification.vue';
 import RightSidebar from './components/RightSidebar.vue';
 import KanbanView from './components/KanbanView.vue';
@@ -183,6 +195,7 @@ import TodoistSlideout from './components/TodoistSlideout.vue';
 import SettingsModal from './components/SettingsModal.vue';
 import { hasToken, setToken, clearToken } from './services/auth.js';
 import { getMessages, getMessage, getMessageCounts, archiveMessage } from './services/api.js';
+import { listDrafts, deleteDraft, migrateLegacyDraft } from './services/drafts.js';
 import { init as initTheme } from './services/theme.js';
 import { realtimeClient } from './services/realtime.js';
 import { debounce } from './utils/debounce.js';
@@ -197,6 +210,7 @@ export default {
     MessageDetail,
     SettingsView,
     ComposeModal,
+    DraftsList,
     ToastNotification,
     RightSidebar,
     KanbanView,
@@ -230,6 +244,8 @@ export default {
       showComposeModal: false,
       replyToMessage: null,
       forwardMessage: null,
+      composeDraft: null,
+      drafts: [],
       messageCounts: null,
       rightRailView: 'email',
       showTodoistSlideout: false,
@@ -266,6 +282,10 @@ export default {
     },
     pageTitle() {
       return 'Email';
+    },
+    sidebarCounts() {
+      const base = this.messageCounts || {};
+      return { ...base, drafts: this.drafts.length };
     }
   },
   watch: {
@@ -284,6 +304,8 @@ export default {
   },
   mounted() {
     initTheme();
+    migrateLegacyDraft();
+    this.refreshDrafts();
     if (!this.showAuthModal) {
       this.pendingDeepLinkId = this.getDeepLinkMessageId();
       this.init();
@@ -374,6 +396,17 @@ export default {
     },
 
     async loadMessages(reset = true) {
+      if (this.selectedTag === 'drafts') {
+        if (reset) {
+          this.messages = [];
+          this.nextBefore = null;
+          this.hasMore = false;
+          this.listError = null;
+        }
+        this.loadingMessages = false;
+        this.loadingMore = false;
+        return;
+      }
       if (reset) {
         this.loadingMessages = true;
         this.listError = null;
@@ -699,6 +732,7 @@ export default {
     openCompose() {
       this.replyToMessage = null;
       this.forwardMessage = null;
+      this.composeDraft = null;
       this.showComposeModal = true;
       // Close mobile sidebar if open
       if (this.isMobile) {
@@ -706,15 +740,36 @@ export default {
       }
     },
 
+    openDraft(draft) {
+      this.replyToMessage = null;
+      this.forwardMessage = null;
+      this.composeDraft = draft;
+      this.showComposeModal = true;
+      if (this.isMobile) {
+        this.mobileView = 'list';
+      }
+    },
+
+    handleDeleteDraft(id) {
+      deleteDraft(id);
+      this.refreshDrafts();
+    },
+
+    refreshDrafts() {
+      this.drafts = listDrafts();
+    },
+
     handleReply(message) {
       this.replyToMessage = message;
       this.forwardMessage = null;
+      this.composeDraft = null;
       this.showComposeModal = true;
     },
 
     handleForward(message) {
       this.forwardMessage = message;
       this.replyToMessage = null;
+      this.composeDraft = null;
       this.showComposeModal = true;
     },
 
@@ -722,6 +777,8 @@ export default {
       this.showComposeModal = false;
       this.replyToMessage = null;
       this.forwardMessage = null;
+      this.composeDraft = null;
+      this.refreshDrafts();
     },
 
     handleEmailSent() {
@@ -731,6 +788,7 @@ export default {
         this.loadMessages(true);
       }
       this.loadCounts();
+      this.refreshDrafts();
     },
 
     handleTodoistAdded({ messageId, projectName }) {

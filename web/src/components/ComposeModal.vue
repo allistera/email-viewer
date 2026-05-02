@@ -228,7 +228,7 @@
               type="button"
               class="icon-btn icon-btn-trailing"
               :disabled="sending"
-              @click="handleClose"
+              @click="handleDiscard"
               title="Discard draft"
               aria-label="Discard draft"
             >
@@ -249,6 +249,7 @@
 
 <script>
 import { sendEmail, getContactSuggestions, aiComposeMessage } from '../services/api.js';
+import { saveDraft as persistDraft, deleteDraft } from '../services/drafts.js';
 
 export default {
   name: 'ComposeModal',
@@ -262,6 +263,10 @@ export default {
       default: null
     },
     forwardFrom: {
+      type: Object,
+      default: null
+    },
+    draft: {
       type: Object,
       default: null
     }
@@ -285,6 +290,7 @@ export default {
       debounceTimer: null,
       autosaveTimer: null,
       hasDraft: false,
+      draftId: null,
       aiPrompt: '',
       aiLoading: false,
       aiBarOpen: false
@@ -318,8 +324,12 @@ export default {
           this.$nextTick(() => {
             this.$refs.toInput?.focus();
           });
+        } else if (this.draft) {
+          this.prefillFromDraft();
+          this.$nextTick(() => {
+            this.$refs.toInput?.focus();
+          });
         } else {
-          this.loadDraft();
           this.applySignature();
           this.$nextTick(() => {
             this.$refs.toInput?.focus();
@@ -329,6 +339,7 @@ export default {
       } else {
         document.removeEventListener('keydown', this.handleEscapeKey);
         this.cancelAutosave();
+        this.flushDraft();
       }
     },
     subject() { this.scheduleDraftSave(); },
@@ -358,6 +369,7 @@ export default {
       this.showSuggestions = false;
       this.selectedSuggestionIndex = -1;
       this.hasDraft = false;
+      this.draftId = null;
       this.aiPrompt = '';
       this.aiLoading = false;
       this.aiBarOpen = false;
@@ -384,32 +396,30 @@ export default {
     },
 
     saveDraft() {
-      const draft = {
+      if (this.replyTo || this.forwardFrom) return;
+      const id = persistDraft({
+        id: this.draftId,
         recipients: this.recipients,
         subject: this.subject,
         body: this.body
-      };
-      const hasContent = draft.recipients.length > 0 || draft.subject || draft.body;
-      if (hasContent) {
-        try {
-          localStorage.setItem('compose_draft', JSON.stringify(draft));
-          this.hasDraft = true;
-        } catch { /* ignore storage errors */ }
-      } else {
-        this.clearDraft();
-      }
+      });
+      this.draftId = id;
+      this.hasDraft = !!id;
     },
 
-    loadDraft() {
-      try {
-        const raw = localStorage.getItem('compose_draft');
-        if (!raw) return;
-        const draft = JSON.parse(raw);
-        if (draft.recipients?.length) this.recipients = draft.recipients;
-        if (draft.subject) this.subject = draft.subject;
-        if (draft.body) this.body = draft.body;
-        this.hasDraft = !!(draft.recipients?.length || draft.subject || draft.body);
-      } catch { /* ignore corrupt drafts */ }
+    flushDraft() {
+      if (this.replyTo || this.forwardFrom) return;
+      this.saveDraft();
+    },
+
+    prefillFromDraft() {
+      const d = this.draft;
+      if (!d) return;
+      this.draftId = d.id || null;
+      this.recipients = Array.isArray(d.recipients) ? [...d.recipients] : [];
+      this.subject = d.subject || '';
+      this.body = d.body || '';
+      this.hasDraft = !!this.draftId;
     },
 
     applySignature() {
@@ -427,8 +437,11 @@ export default {
         }
       } catch { /* ignore */ }
     },
-    clearDraft() {
-      try { localStorage.removeItem('compose_draft'); } catch { /* ignore */ }
+    discardDraft() {
+      if (this.draftId) {
+        deleteDraft(this.draftId);
+      }
+      this.draftId = null;
       this.hasDraft = false;
     },
     triggerFileInput() {
@@ -626,6 +639,12 @@ export default {
       if (this.sending) return;
       this.$emit('close');
     },
+    handleDiscard() {
+      if (this.sending) return;
+      this.cancelAutosave();
+      this.discardDraft();
+      this.$emit('close');
+    },
     handleEscapeKey(event) {
       if (event.key === 'Escape' && !this.sending) {
         this.handleClose();
@@ -681,7 +700,7 @@ export default {
           replyToId: this.replyTo?.id,
           attachments: this.attachments.length > 0 ? this.attachments : undefined
         });
-        this.clearDraft();
+        this.discardDraft();
         this.$emit('sent');
         this.$emit('close');
       } catch (e) {
