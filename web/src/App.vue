@@ -937,7 +937,7 @@ export default {
 
 <style scoped>
 #app {
-  height: 100vh;
+  height: 100%;
   overflow: hidden;
   background: var(--color-bg);
 }
@@ -945,7 +945,7 @@ export default {
 .app-layout {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100%;
 }
 
 .app-container {

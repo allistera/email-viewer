@@ -91,9 +91,8 @@
   box-sizing: border-box;
 }
 
-html {
-  /* Effective ~90% zoom — equivalent to one ⌘− tap. Scales fonts and layout uniformly. */
-  zoom: 0.9;
+html, body, #app {
+  height: 100%;
 }
 
 body {
@@ -102,6 +101,8 @@ body {
   color: var(--color-text);
   line-height: 1.5;
   overflow: hidden;
+  /* Effective ~90% zoom — equivalent to one ⌘− tap. Scales fonts and layout uniformly. */
+  zoom: 0.9;
 }
 
 /* Scrollbar styling - Discord-like */
