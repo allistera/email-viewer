@@ -91,6 +91,11 @@
   box-sizing: border-box;
 }
 
+html {
+  /* Effective ~90% zoom — equivalent to one ⌘− tap. Scales fonts and layout uniformly. */
+  zoom: 0.9;
+}
+
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background: var(--color-bg);
