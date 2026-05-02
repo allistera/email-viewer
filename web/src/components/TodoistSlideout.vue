@@ -214,6 +214,7 @@ export default {
   watch: {
     show(val) {
       if (val) {
+        this.suppressLeaveUntil = Date.now() + 600;
         this.load();
       }
     },
