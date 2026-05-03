@@ -11,14 +11,11 @@ export const setPreference = (pref) => {
 export const applyTheme = (pref) => {
   const root = document.documentElement;
   if (pref === 'dark') {
-    root.classList.add('dark-mode');
+    root.setAttribute('data-theme', 'dark');
   } else if (pref === 'light') {
-    root.classList.remove('dark-mode');
+    root.setAttribute('data-theme', 'light');
   } else {
-    // System
-    const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    if (isDark) root.classList.add('dark-mode');
-    else root.classList.remove('dark-mode');
+    root.removeAttribute('data-theme');
   }
 };
 

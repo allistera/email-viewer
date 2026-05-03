@@ -88,19 +88,31 @@ export default {
   },
   data() {
     return {
-      isDark: document.documentElement.classList.contains('dark-mode')
+      isDark: this.computeIsDark()
     };
   },
   mounted() {
     this.themeObserver = new MutationObserver(() => {
-      this.isDark = document.documentElement.classList.contains('dark-mode');
+      this.isDark = this.computeIsDark();
     });
-    this.themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    this.themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    this.systemThemeMedia = window.matchMedia('(prefers-color-scheme: dark)');
+    this.systemThemeListener = () => { this.isDark = this.computeIsDark(); };
+    this.systemThemeMedia.addEventListener('change', this.systemThemeListener);
   },
   beforeUnmount() {
     if (this.themeObserver) this.themeObserver.disconnect();
+    if (this.systemThemeMedia && this.systemThemeListener) {
+      this.systemThemeMedia.removeEventListener('change', this.systemThemeListener);
+    }
   },
   methods: {
+    computeIsDark() {
+      const attr = document.documentElement.getAttribute('data-theme');
+      if (attr === 'dark') return true;
+      if (attr === 'light') return false;
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    },
     toggleTheme() {
       const current = getPreference();
       const isCurrentlyDark = current === 'dark'
