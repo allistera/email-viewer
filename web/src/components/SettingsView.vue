@@ -10,6 +10,21 @@
       </button>
     </header>
 
+    <nav class="settings-tabs">
+      <button
+        class="tab-btn"
+        :class="{ active: activeTab === 'general' }"
+        @click="activeTab = 'general'"
+      >General</button>
+      <button
+        class="tab-btn"
+        :class="{ active: activeTab === 'integrations' }"
+        @click="activeTab = 'integrations'"
+      >Integrations</button>
+    </nav>
+
+    <template v-if="activeTab === 'general'">
+
     <!-- Appearance Section -->
     <div class="settings-card">
       <h3>Appearance</h3>
@@ -438,10 +453,23 @@
       <div v-else-if="notifyError" class="status error">{{ notifyError }}</div>
     </div>
 
+    </template>
+
+    <template v-if="activeTab === 'integrations'">
+
     <!-- Todoist Section -->
     <div class="settings-card">
-      <h3>Todoist</h3>
-      <label class="field-label" for="todoist-token">Todoist API token</label>
+      <div class="integration-header">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" class="integration-icon">
+          <path d="M21.5 2h-19C1.67 2 1 2.67 1 3.5v17c0 .83.67 1.5 1.5 1.5h19c.83 0 1.5-.67 1.5-1.5v-17c0-.83-.67-1.5-1.5-1.5z" fill="#db4c3f"/>
+          <path d="M6 11.5l3.5 3.5 8.5-8.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div>
+          <h3>Todoist</h3>
+          <p class="field-help" style="margin:0">Create tasks from emails using your Todoist account.</p>
+        </div>
+      </div>
+      <label class="field-label" for="todoist-token">API Token</label>
       <div class="input-row">
         <input
           id="todoist-token"
@@ -455,7 +483,7 @@
         </button>
       </div>
       <p class="field-help">
-        Stored locally in your browser. This token is sent with Todoist requests.
+        Stored locally in your browser. Find your token in Todoist → Settings → Integrations → API token.
       </p>
       <div class="actions">
         <button class="btn-primary" type="button" :disabled="saving" @click="handleSave">
@@ -469,6 +497,8 @@
         {{ statusMessage }}
       </p>
     </div>
+
+    </template>
 
     <!-- Delete Confirmation Modal -->
     <div
@@ -502,6 +532,7 @@ export default {
   emits: ['close'],
   data() {
     return {
+      activeTab: 'general',
       themePreference: getPreference(),
 
       // Signature
@@ -1508,5 +1539,51 @@ export default {
   margin-top: 0;
   padding: 1px 5px;
   font-size: 12px;
+}
+
+.settings-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 24px;
+}
+
+.tab-btn {
+  padding: 10px 16px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.tab-btn:hover {
+  color: var(--color-text);
+}
+
+.tab-btn.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+.integration-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.integration-header h3 {
+  margin: 0 0 2px;
+}
+
+.integration-icon {
+  flex-shrink: 0;
+  border-radius: 6px;
 }
 </style>

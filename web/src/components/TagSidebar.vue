@@ -562,6 +562,7 @@ export default {
   display: flex;
   flex-direction: column;
   height: 100%;
+  position: relative;
 }
 
 .app-title {
@@ -585,7 +586,10 @@ export default {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  margin: 12px 16px;
+  position: absolute;
+  bottom: 96px;
+  left: 16px;
+  right: 16px;
   padding: 10px 16px;
   background: var(--color-primary, #db4c3f);
   color: #fff;

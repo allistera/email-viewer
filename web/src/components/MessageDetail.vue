@@ -89,6 +89,7 @@
           </button>
 
           <button
+            v-if="todoistEnabled"
             class="toolbar-btn toolbar-btn-todoist"
             type="button"
             @click="handleTodoistAction"
@@ -316,6 +317,7 @@
 import TagBadge from './TagBadge.vue';
 import { sanitize } from '../services/htmlSanitizer.js';
 import { getAttachmentUrl, getRawEmailUrl, addMessageTag, removeMessageTag, getTags, archiveMessage, addTodoistTask, snoozeMessage, unsnoozeMessage, unsubscribeMessage } from '../services/api.js';
+import { clearTodoistToken } from '../services/auth.js';
 import { formatRelativeDate } from '../utils/dateFormat.js';
 
 export default {
@@ -335,6 +337,10 @@ export default {
     error: {
       type: String,
       default: null
+    },
+    todoistEnabled: {
+      type: Boolean,
+      default: false
     }
   },
   data() {
@@ -357,7 +363,7 @@ export default {
       markingNotSpam: false
     };
   },
-  emits: ['archived', 'snoozed', 'back', 'reply', 'forward'],
+  emits: ['archived', 'snoozed', 'back', 'reply', 'forward', 'todoist-failed'],
   computed: {
     currentTags() {
       if (!this.message) return [];
@@ -534,7 +540,8 @@ export default {
           console.warn(response.warning);
         }
       } catch (e) {
-        alert('Failed to add to Todoist: ' + e.message);
+        clearTodoistToken();
+        this.$emit('todoist-failed');
       } finally {
         this.addingTodoist = false;
       }

@@ -25,7 +25,7 @@
 
     <SettingsModal
       :show="showSettingsModal"
-      @close="showSettingsModal = false"
+      @close="showSettingsModal = false; todoistEnabled = hasTodoistToken()"
     />
 
     <div v-if="!showAuthModal" class="app-layout">
@@ -118,12 +118,14 @@
             :message="currentMessage"
             :loading="loadingDetail"
             :error="detailError"
+            :todoist-enabled="todoistEnabled"
             class="detail-panel"
             @archived="handleMessageArchived"
             @snoozed="handleMessageSnoozed"
             @back="handleMobileBack"
             @reply="handleReply"
             @forward="handleForward"
+            @todoist-failed="todoistEnabled = false"
           />
         </template>
 
@@ -131,6 +133,7 @@
           class="right-sidebar-panel"
           :active-view="rightRailView"
           :todoist-open="showTodoistSlideout"
+          :todoist-enabled="todoistEnabled"
           @select="rightRailView = $event"
           @toggle-todoist="showTodoistSlideout = !showTodoistSlideout"
         />
@@ -193,7 +196,7 @@ import KanbanView from './components/KanbanView.vue';
 import CalendarView from './components/CalendarView.vue';
 import TodoistSlideout from './components/TodoistSlideout.vue';
 import SettingsModal from './components/SettingsModal.vue';
-import { hasToken, setToken, clearToken } from './services/auth.js';
+import { hasToken, setToken, clearToken, hasTodoistToken } from './services/auth.js';
 import { getMessages, getMessage, getMessageCounts, archiveMessage } from './services/api.js';
 import { listDrafts, deleteDraft, migrateLegacyDraft } from './services/drafts.js';
 import { init as initTheme } from './services/theme.js';
@@ -248,6 +251,7 @@ export default {
       drafts: [],
       messageCounts: null,
       rightRailView: 'email',
+      todoistEnabled: hasTodoistToken(),
       showTodoistSlideout: false,
       showSettingsModal: false,
       sidebarWidth: 220,
@@ -1024,7 +1028,7 @@ export default {
 
 .compose-fab {
   position: fixed;
-  bottom: 24px;
+  bottom: 96px;
   right: 96px;
   width: 56px;
   height: 56px;

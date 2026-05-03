@@ -63,8 +63,6 @@
 </template>
 
 <script>
-import { hasTodoistToken } from '../services/auth.js';
-
 export default {
   name: 'RightSidebar',
   props: {
@@ -75,12 +73,16 @@ export default {
     todoistOpen: {
       type: Boolean,
       default: false
+    },
+    todoistEnabled: {
+      type: Boolean,
+      default: false
     }
   },
   emits: ['select', 'toggle-todoist'],
   computed: {
     hasTodoist() {
-      return hasTodoistToken();
+      return this.todoistEnabled;
     }
   }
 };

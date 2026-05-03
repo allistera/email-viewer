@@ -149,6 +149,51 @@
                   </div>
                 </div>
               </div>
+              <div v-else-if="activeCategory === 'integrations'" class="sm-content">
+                <div class="integration-item">
+                  <div class="integration-item-header">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" class="integration-logo">
+                      <rect width="24" height="24" rx="6" fill="#db4c3f"/>
+                      <path d="M6 12l4 4 8-8" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <div>
+                      <div class="integration-name">Todoist</div>
+                      <div class="integration-desc">Create tasks from emails using your Todoist account.</div>
+                    </div>
+                  </div>
+
+                  <div class="field-group" style="margin-top: 16px;">
+                    <label class="field-label" for="todoist-token">API Token</label>
+                    <div class="token-row">
+                      <input
+                        id="todoist-token"
+                        v-model.trim="todoistToken"
+                        :type="todoistShowToken ? 'text' : 'password'"
+                        class="field-input"
+                        placeholder="Paste your Todoist API token"
+                        autocomplete="off"
+                      />
+                      <button class="tpl-btn-secondary" type="button" @click="todoistShowToken = !todoistShowToken">
+                        {{ todoistShowToken ? 'Hide' : 'Show' }}
+                      </button>
+                    </div>
+                    <p class="integration-hint">Find your token in Todoist → Settings → Integrations → API token.</p>
+                  </div>
+
+                  <div class="tpl-editor-actions" style="margin-top: 12px;">
+                    <button
+                      type="button"
+                      class="tpl-btn-primary integration-enable-btn"
+                      :disabled="!todoistToken || todoistSaving"
+                      @click="saveTodoistToken"
+                    >
+                      <span v-if="todoistSaving" class="integration-spinner"></span>
+                      <span v-else>Enable Integration</span>
+                    </button>
+                  </div>
+                  <p v-if="todoistStatus && todoistStatusType === 'error'" class="integration-status error">{{ todoistStatus }}</p>
+                </div>
+              </div>
             </section>
           </div>
         </Transition>
@@ -160,6 +205,8 @@
 <script>
 import { getPreference, setPreference } from '../services/theme.js';
 import { listTemplates, saveTemplate, deleteTemplate } from '../services/templates.js';
+import { getTodoistToken, setTodoistToken, clearTodoistToken } from '../services/auth.js';
+import { getTodoistProjects } from '../services/api.js';
 
 const FULL_NAME_KEY = 'userFullName';
 
@@ -175,8 +222,14 @@ export default {
       activeCategory: 'general',
       categories: [
         { id: 'general', label: 'General' },
-        { id: 'templates', label: 'Templates' }
+        { id: 'templates', label: 'Templates' },
+        { id: 'integrations', label: 'Integrations' }
       ],
+      todoistToken: '',
+      todoistShowToken: false,
+      todoistSaving: false,
+      todoistStatus: '',
+      todoistStatusType: '',
       fullName: localStorage.getItem(FULL_NAME_KEY) || '',
       colourMode: getPreference(),
       templates: [],
@@ -199,6 +252,8 @@ export default {
       if (val) {
         this.fullName = localStorage.getItem(FULL_NAME_KEY) || '';
         this.colourMode = getPreference();
+        this.todoistToken = getTodoistToken() || '';
+        this.todoistStatus = '';
         this.refreshTemplates();
         this.cancelEdit();
         this.$nextTick(() => this.$refs.overlay?.focus());
@@ -249,6 +304,29 @@ export default {
       deleteTemplate(id);
       if (this.editingId === id) this.cancelEdit();
       this.refreshTemplates();
+    },
+    async saveTodoistToken() {
+      const token = (this.todoistToken || '').trim();
+      if (!token) return;
+      this.todoistSaving = true;
+      this.todoistStatus = '';
+      setTodoistToken(token);
+      try {
+        await getTodoistProjects();
+      } catch (e) {
+        clearTodoistToken();
+        this.todoistStatus = 'Invalid token — please check and try again.';
+        this.todoistStatusType = 'error';
+        this.todoistSaving = false;
+        return;
+      }
+      this.todoistSaving = false;
+    },
+    clearTodoistToken() {
+      clearTodoistToken();
+      this.todoistToken = '';
+      this.todoistStatus = '';
+      this.todoistStatusType = 'success';
     }
   }
 };
@@ -610,5 +688,84 @@ export default {
     flex-direction: row;
     flex-wrap: wrap;
   }
+}
+
+.integration-item {
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+
+.integration-item-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.integration-logo {
+  flex-shrink: 0;
+  border-radius: 6px;
+}
+
+.integration-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.integration-desc {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+
+.integration-hint {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  margin-top: 6px;
+}
+
+.token-row {
+  display: flex;
+  gap: 8px;
+}
+
+.token-row .field-input {
+  flex: 1;
+}
+
+.integration-status {
+  margin-top: 8px;
+  font-size: 13px;
+}
+
+.integration-status.success {
+  color: var(--color-success, #22c55e);
+}
+
+.integration-status.error {
+  color: var(--color-danger, #ef4444);
+}
+
+.integration-enable-btn {
+  min-width: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.integration-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255,255,255,0.4);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 </style>
