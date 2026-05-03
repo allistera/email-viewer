@@ -276,7 +276,7 @@ export default {
 
 <style scoped>
 .discord-sidebar {
-  width: 240px;
+  width: 100%;
   background: var(--color-sidebar-bg);
   display: flex;
   flex-direction: column;
@@ -288,6 +288,7 @@ export default {
 .sidebar-nav {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 0 8px;
 }
 
@@ -316,7 +317,8 @@ export default {
   color: var(--color-text-secondary);
   letter-spacing: 0.5px;
   padding: 0 8px;
-  margin-bottom: 4px;
+  margin-top: 10px;
+  margin-bottom: 10px;
 }
 
 .add-tag-btn {
@@ -339,12 +341,13 @@ export default {
 }
 
 .add-tag-form {
-  padding: 4px 8px;
+  padding: 4px 12px;
   margin-bottom: 8px;
 }
 
 .tag-input {
   width: 100%;
+  box-sizing: border-box;
   height: 32px;
   padding: 0 10px;
   background: var(--color-bg);
