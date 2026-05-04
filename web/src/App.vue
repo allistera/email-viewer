@@ -26,7 +26,7 @@
 
     <SettingsModal
       :show="showSettingsModal"
-      @close="showSettingsModal = false; todoistEnabled = hasTodoistToken()"
+      @close="showSettingsModal = false; refreshTodoistEnabled()"
     />
 
     <div v-if="!showAuthModal" class="app-layout">
@@ -724,6 +724,10 @@ export default {
       if (this.$refs.toast) {
         this.$refs.toast.show('Failed to move email. Please try again.', 'error');
       }
+    },
+
+    refreshTodoistEnabled() {
+      this.todoistEnabled = hasTodoistToken();
     },
 
     openSettings() {
