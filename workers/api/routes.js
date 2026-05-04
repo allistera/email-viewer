@@ -1005,8 +1005,11 @@ export const ApiRouter = {
       if (path === 'send' && request.method === 'POST') {
         const contentType = (request.headers.get('Content-Type') || '').toLowerCase();
         let rawTo;
+        let rawCc;
+        let rawBcc;
         let emailSubject;
         let emailBody;
+        let emailHtmlBody;
         let replyToId;
         const resendAttachments = [];
 
@@ -1023,8 +1026,13 @@ export const ApiRouter = {
           } catch (e) {
             rawTo = typeof toStr === 'string' ? toStr.split(',') : [];
           }
+          const ccStr = formData.get('cc');
+          try { rawCc = ccStr ? JSON.parse(ccStr) : []; } catch { rawCc = []; }
+          const bccStr = formData.get('bcc');
+          try { rawBcc = bccStr ? JSON.parse(bccStr) : []; } catch { rawBcc = []; }
           emailSubject = formData.get('subject') ?? '';
           emailBody = formData.get('body') ?? '';
+          emailHtmlBody = formData.get('htmlBody') ?? null;
           const replyToIdVal = formData.get('replyToId');
           replyToId = replyToIdVal !== null && replyToIdVal !== undefined && String(replyToIdVal).trim() !== '' ? String(replyToIdVal).trim() : null;
           const files = formData.getAll('attachments').filter(Boolean);
@@ -1045,8 +1053,11 @@ export const ApiRouter = {
             return jsonResponse({ error: error.message || 'Invalid JSON body' }, { status: 400 });
           }
           rawTo = body.to;
+          rawCc = Array.isArray(body.cc) ? body.cc : [];
+          rawBcc = Array.isArray(body.bcc) ? body.bcc : [];
           emailSubject = body.subject;
           emailBody = body.body;
+          emailHtmlBody = body.htmlBody ?? null;
           replyToId = body.replyToId ?? null;
         }
 
@@ -1075,9 +1086,13 @@ export const ApiRouter = {
           return jsonResponse({ error: 'Recipient (to) is required' }, { status: 400 });
         }
 
+        // Normalize cc/bcc
+        const ccRecipients = (Array.isArray(rawCc) ? rawCc : []).map(e => String(e || '').trim()).filter(Boolean);
+        const bccRecipients = (Array.isArray(rawBcc) ? rawBcc : []).map(e => String(e || '').trim()).filter(Boolean);
+
         // Validate email format
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        const invalidRecipients = recipients.filter(email => !emailRegex.test(email));
+        const invalidRecipients = [...recipients, ...ccRecipients, ...bccRecipients].filter(email => !emailRegex.test(email));
         if (invalidRecipients.length > 0) {
           const label = invalidRecipients.length === 1 ? 'Invalid email address' : 'Invalid email addresses';
           return jsonResponse({ error: `${label}: ${invalidRecipients.join(', ')}` }, { status: 400 });
@@ -1157,6 +1172,10 @@ export const ApiRouter = {
               subject: subjectLine,
               text: emailText
             };
+
+            if (emailHtmlBody) resendPayload.html = emailHtmlBody;
+            if (ccRecipients.length > 0) resendPayload.cc = ccRecipients;
+            if (bccRecipients.length > 0) resendPayload.bcc = bccRecipients;
 
             if (inReplyTo) {
               resendPayload.headers = {

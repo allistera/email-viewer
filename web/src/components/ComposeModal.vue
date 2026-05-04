@@ -1,75 +1,127 @@
 <template>
-  <div v-if="show" class="modal-overlay">
+  <div v-if="show" class="modal-overlay" :class="{ 'modal-overlay--fullscreen': isFullscreen }">
     <div
       class="compose-modal"
+      :class="{ 'compose-modal--minimized': isMinimized, 'compose-modal--fullscreen': isFullscreen }"
       role="dialog"
       aria-modal="true"
       aria-labelledby="compose-title"
     >
-      <div class="compose-header">
-        <h2 id="compose-title">{{ replyTo ? 'Reply' : forwardFrom ? 'Forward' : 'New Message' }}</h2>
+      <div class="compose-header" @dblclick="toggleMinimize">
+        <h2 id="compose-title">{{ replyTo ? 'Reply' : forwardFrom ? 'Forward' : (subject.trim() || 'New Message') }}</h2>
         <span v-if="hasDraft && !replyTo && !forwardFrom" class="draft-indicator" title="Draft saved">Draft saved</span>
-        <button class="close-btn" @click="handleClose" title="Close" aria-label="Close">&times;</button>
+        <div class="compose-header-actions">
+          <button class="header-btn" @click.stop="toggleMinimize" :title="isMinimized ? 'Restore' : 'Minimize'" :aria-label="isMinimized ? 'Restore' : 'Minimize'">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+              <line x1="5" y1="19" x2="19" y2="19"/>
+            </svg>
+          </button>
+          <button class="header-btn" @click.stop="toggleFullscreen" :title="isFullscreen ? 'Exit full screen' : 'Full screen'" :aria-label="isFullscreen ? 'Exit full screen' : 'Full screen'">
+            <svg v-if="!isFullscreen" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="15 3 21 3 21 9"/>
+              <polyline points="9 21 3 21 3 15"/>
+              <line x1="21" y1="3" x2="14" y2="10"/>
+              <line x1="3" y1="21" x2="10" y2="14"/>
+            </svg>
+            <svg v-else viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="4 14 10 14 10 20"/>
+              <polyline points="20 10 14 10 14 4"/>
+              <line x1="10" y1="14" x2="3" y2="21"/>
+              <line x1="21" y1="3" x2="14" y2="10"/>
+            </svg>
+          </button>
+          <button class="close-btn" @click="handleClose" title="Close" aria-label="Close">&times;</button>
+        </div>
       </div>
 
       <form @submit.prevent="handleSend" class="compose-form">
         <div class="form-field to-field">
-          <div class="to-input-wrapper">
-            <div class="to-input-container" @click="focusToInput">
-              <span
-                v-for="(recipient, index) in recipients"
-                :key="`${recipient}-${index}`"
-                class="to-pill"
-              >
-                <span class="to-pill-text">{{ recipient }}</span>
-                <button
-                  type="button"
-                  class="to-pill-remove"
-                  :disabled="sending"
-                  @click.stop="removeRecipient(index)"
-                  :aria-label="'Remove ' + recipient"
+          <div class="to-field-row">
+            <div class="to-input-wrapper">
+              <div class="to-input-container" @click="focusToInput">
+                <span
+                  v-for="(recipient, index) in recipients"
+                  :key="`${recipient}-${index}`"
+                  class="to-pill"
                 >
-                  &times;
-                </button>
-              </span>
-              <input
-                id="compose-to"
-                ref="toInput"
-                v-model="toInput"
-                type="text"
-                placeholder="To"
-                :disabled="sending"
-                autocomplete="off"
-                @input="handleToInput"
-                @keydown="handleToKeydown"
-                @focus="handleToFocus"
-                @blur="handleToBlur"
-                role="combobox"
-                aria-autocomplete="list"
-                :aria-expanded="showSuggestions && suggestions.length > 0"
-                aria-controls="suggestions-listbox"
-                :aria-activedescendant="selectedSuggestionIndex >= 0 ? `suggestion-${selectedSuggestionIndex}` : null"
-              />
-            </div>
-            <ul
-              v-if="showSuggestions && suggestions.length > 0"
-              class="suggestions-dropdown"
-              id="suggestions-listbox"
-              role="listbox"
-            >
-              <li
-                v-for="(suggestion, index) in suggestions"
-                :key="suggestion.email"
-                :id="`suggestion-${index}`"
-                role="option"
-                :aria-selected="index === selectedSuggestionIndex"
-                :class="{ selected: index === selectedSuggestionIndex }"
-                @mousedown.prevent="selectSuggestion(suggestion)"
-                @mouseenter="selectedSuggestionIndex = index"
+                  <span class="to-pill-text">{{ recipient }}</span>
+                  <button
+                    type="button"
+                    class="to-pill-remove"
+                    :disabled="sending"
+                    @click.stop="removeRecipient(index)"
+                    :aria-label="'Remove ' + recipient"
+                  >
+                    &times;
+                  </button>
+                </span>
+                <input
+                  id="compose-to"
+                  ref="toInput"
+                  v-model="toInput"
+                  type="text"
+                  placeholder="To"
+                  :disabled="sending"
+                  autocomplete="off"
+                  @input="handleToInput"
+                  @keydown="handleToKeydown"
+                  @focus="handleToFocus"
+                  @blur="handleToBlur"
+                  role="combobox"
+                  aria-autocomplete="list"
+                  :aria-expanded="showSuggestions && suggestions.length > 0"
+                  aria-controls="suggestions-listbox"
+                  :aria-activedescendant="selectedSuggestionIndex >= 0 ? `suggestion-${selectedSuggestionIndex}` : null"
+                />
+              </div>
+              <ul
+                v-if="showSuggestions && suggestions.length > 0"
+                class="suggestions-dropdown"
+                id="suggestions-listbox"
+                role="listbox"
               >
-                {{ suggestion.email }}
-              </li>
-            </ul>
+                <li
+                  v-for="(suggestion, index) in suggestions"
+                  :key="suggestion.email"
+                  :id="`suggestion-${index}`"
+                  role="option"
+                  :aria-selected="index === selectedSuggestionIndex"
+                  :class="{ selected: index === selectedSuggestionIndex }"
+                  @mousedown.prevent="selectSuggestion(suggestion)"
+                  @mouseenter="selectedSuggestionIndex = index"
+                >
+                  {{ suggestion.email }}
+                </li>
+              </ul>
+            </div>
+            <div class="cc-bcc-toggles">
+              <button v-if="!showCc" type="button" class="cc-bcc-btn" @click.prevent="toggleCc">Cc</button>
+              <button v-if="!showBcc" type="button" class="cc-bcc-btn" @click.prevent="toggleBcc">Bcc</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cc field -->
+        <div v-show="showCc" class="form-field cc-field">
+          <div class="to-input-container" @click="focusCcInput">
+            <span class="field-label">Cc</span>
+            <span v-for="(r, i) in ccRecipients" :key="`cc-${r}-${i}`" class="to-pill">
+              <span class="to-pill-text">{{ r }}</span>
+              <button type="button" class="to-pill-remove" :disabled="sending" @click.stop="removeCcRecipient(i)">&times;</button>
+            </span>
+            <input ref="ccInput" v-model="ccInputValue" type="text" :disabled="sending" autocomplete="off" @keydown="handleCcKeydown" />
+          </div>
+        </div>
+
+        <!-- Bcc field -->
+        <div v-show="showBcc" class="form-field bcc-field">
+          <div class="to-input-container" @click="focusBccInput">
+            <span class="field-label">Bcc</span>
+            <span v-for="(r, i) in bccRecipients" :key="`bcc-${r}-${i}`" class="to-pill">
+              <span class="to-pill-text">{{ r }}</span>
+              <button type="button" class="to-pill-remove" :disabled="sending" @click.stop="removeBccRecipient(i)">&times;</button>
+            </span>
+            <input ref="bccInput" v-model="bccInputValue" type="text" :disabled="sending" autocomplete="off" @keydown="handleBccKeydown" />
           </div>
         </div>
 
@@ -85,14 +137,15 @@
         </div>
 
         <div class="form-field body-field">
-          <textarea
-            id="compose-body"
+          <div
             ref="bodyInput"
-            v-model="body"
-            placeholder="Write your message..."
-            :disabled="sending"
+            class="body-editor"
+            :class="{ 'body-editor--disabled': sending }"
+            contenteditable="true"
+            @input="onBodyInput"
             @keydown="handleBodyKeydown"
-          ></textarea>
+            aria-label="Message body"
+          ></div>
         </div>
 
         <div v-if="attachments.length > 0" class="form-field attachments-field">
@@ -177,7 +230,53 @@
           </button>
         </div>
 
-        <div v-else class="compose-actions">
+        <template v-else>
+          <!-- Formatting toolbar – fullscreen always, or toggled in normal mode -->
+          <div v-if="isFullscreen || showFormatBar" class="format-toolbar">
+            <button type="button" class="fmt-btn" @mousedown.prevent="execFormat('undo')" title="Undo">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 00-9-9 9 9 0 00-6 2.3L3 13"/></svg>
+            </button>
+            <button type="button" class="fmt-btn" @mousedown.prevent="execFormat('redo')" title="Redo">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 019-9 9 9 0 016 2.3l3 2.7"/></svg>
+            </button>
+            <div class="fmt-divider"></div>
+            <button type="button" class="fmt-btn fmt-bold" @mousedown.prevent="execFormat('bold')" title="Bold"><b>B</b></button>
+            <button type="button" class="fmt-btn fmt-italic" @mousedown.prevent="execFormat('italic')" title="Italic"><i>I</i></button>
+            <button type="button" class="fmt-btn fmt-underline" @mousedown.prevent="execFormat('underline')" title="Underline"><u>U</u></button>
+            <button type="button" class="fmt-btn fmt-strike" @mousedown.prevent="execFormat('strikeThrough')" title="Strikethrough"><s>S</s></button>
+            <div class="fmt-divider"></div>
+            <button type="button" class="fmt-btn" @mousedown.prevent="execFormat('justifyLeft')" title="Align left">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="18" y2="18"/></svg>
+            </button>
+            <button type="button" class="fmt-btn" @mousedown.prevent="execFormat('justifyCenter')" title="Align center">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="6" y1="12" x2="18" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+            </button>
+            <button type="button" class="fmt-btn" @mousedown.prevent="execFormat('justifyRight')" title="Align right">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="9" y1="12" x2="21" y2="12"/><line x1="6" y1="18" x2="21" y2="18"/></svg>
+            </button>
+            <div class="fmt-divider"></div>
+            <button type="button" class="fmt-btn" @mousedown.prevent="execFormat('insertOrderedList')" title="Numbered list">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><path d="M4 6h1v4"/><path d="M4 10h2"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/></svg>
+            </button>
+            <button type="button" class="fmt-btn" @mousedown.prevent="execFormat('insertUnorderedList')" title="Bullet list">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/><circle cx="4" cy="6" r="1" fill="currentColor" stroke="none"/><circle cx="4" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="4" cy="18" r="1" fill="currentColor" stroke="none"/></svg>
+            </button>
+            <button type="button" class="fmt-btn" @mousedown.prevent="execFormat('outdent')" title="Decrease indent">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="21" y1="6" x2="11" y2="6"/><line x1="21" y1="12" x2="11" y2="12"/><line x1="21" y1="18" x2="11" y2="18"/><polyline points="7 8 3 12 7 16"/></svg>
+            </button>
+            <button type="button" class="fmt-btn" @mousedown.prevent="execFormat('indent')" title="Increase indent">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/><polyline points="7 8 11 12 7 16"/></svg>
+            </button>
+            <button type="button" class="fmt-btn" @mousedown.prevent="execFormat('formatBlock', 'blockquote')" title="Quote">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"/><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"/></svg>
+            </button>
+            <div class="fmt-divider"></div>
+            <button type="button" class="fmt-btn" @mousedown.prevent="execFormat('removeFormat')" title="Remove formatting">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3"/><path d="M5 20h6"/><path d="M13 4l-4 16"/><line x1="22" y1="2" x2="2" y2="22"/></svg>
+            </button>
+          </div>
+
+          <div class="compose-actions">
           <div v-if="undoCountdown > 0" class="undo-send-bar">
             <span>Sending in {{ undoCountdown }}s…</span>
             <button type="button" class="btn-undo" @click="handleUndoSend">Undo</button>
@@ -205,6 +304,19 @@
               </svg>
             </button>
             <TemplatePicker :disabled="sending" @select="applyTemplate" />
+            <button
+              type="button"
+              class="icon-btn"
+              :class="{ 'icon-btn--active': showFormatBar && !isFullscreen }"
+              :disabled="sending"
+              @click="showFormatBar = !showFormatBar"
+              title="Text formatting"
+              aria-label="Text formatting"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/>
+              </svg>
+            </button>
             <button
               type="button"
               class="icon-btn"
@@ -256,7 +368,8 @@
               </svg>
             </button>
           </template>
-        </div>
+          </div><!-- end compose-actions -->
+        </template><!-- end v-else (not aiBarOpen) -->
       </form>
     </div>
   </div>
@@ -294,6 +407,12 @@ export default {
     return {
       recipients: [],
       toInput: '',
+      showCc: false,
+      showBcc: false,
+      ccRecipients: [],
+      bccRecipients: [],
+      ccInputValue: '',
+      bccInputValue: '',
       subject: '',
       body: '',
       attachments: [],
@@ -311,7 +430,10 @@ export default {
       draftId: null,
       aiPrompt: '',
       aiLoading: false,
-      aiBarOpen: false
+      aiBarOpen: false,
+      isMinimized: false,
+      isFullscreen: false,
+      showFormatBar: false
     };
   },
   computed: {
@@ -336,6 +458,8 @@ export default {
   watch: {
     show(newVal) {
       if (newVal) {
+        this.isMinimized = false;
+        this.isFullscreen = false;
         this.resetForm();
         if (this.replyTo) {
           this.prefillReply();
@@ -370,7 +494,13 @@ export default {
       }
     },
     subject() { this.scheduleDraftSave(); },
-    body() { this.scheduleDraftSave(); },
+    body(newVal) {
+      // Sync programmatic body changes to the contenteditable DOM
+      const el = this.$refs.bodyInput;
+      if (el && el.innerHTML !== newVal) {
+        el.innerHTML = newVal;
+      }
+    },
     recipients() { this.scheduleDraftSave(); },
   },
   beforeUnmount() {
@@ -381,8 +511,17 @@ export default {
     resetForm() {
       this.recipients = [];
       this.toInput = '';
+      this.showCc = false;
+      this.showBcc = false;
+      this.ccRecipients = [];
+      this.bccRecipients = [];
+      this.ccInputValue = '';
+      this.bccInputValue = '';
       this.subject = '';
       this.body = '';
+      this.$nextTick(() => {
+        if (this.$refs.bodyInput) this.$refs.bodyInput.innerHTML = '';
+      });
       this.attachments = [];
       this.error = null;
       this.sending = false;
@@ -453,14 +592,8 @@ export default {
       try {
         const sigHtml = getEmailSignature();
         if (!sigHtml) return;
-        // Convert HTML signature to plain text for textarea body
-        const tmp = document.createElement('div');
-        tmp.innerHTML = sigHtml;
-        const sigText = (tmp.textContent || tmp.innerText || '').trim();
-        if (!sigText) return;
-        // Only append if body doesn't already contain it (avoid double-append on draft load)
-        if (!this.body.includes(sigText)) {
-          this.body = `${this.body || ''}\n\n--\n${sigText}`;
+        if (!this.body.includes(sigHtml)) {
+          this.body = `${this.body || ''}<div><br>--<br></div>${sigHtml}`;
         }
       } catch { /* ignore */ }
     },
@@ -614,19 +747,92 @@ export default {
     },
     finalizeRecipients() {
       const pending = this.toInput.trim();
-      if (pending) {
-        this.addRecipient(pending);
-        this.toInput = '';
-      }
+      if (pending) { this.addRecipient(pending); this.toInput = ''; }
+      const pendingCc = this.ccInputValue.trim();
+      if (pendingCc) { this.addCcRecipient(pendingCc); this.ccInputValue = ''; }
+      const pendingBcc = this.bccInputValue.trim();
+      if (pendingBcc) { this.addBccRecipient(pendingBcc); this.bccInputValue = ''; }
     },
     isValidEmail(email) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       return emailRegex.test(email);
     },
+
+    // CC/BCC
+    toggleCc() {
+      this.showCc = true;
+      this.$nextTick(() => this.$refs.ccInput?.focus());
+    },
+    toggleBcc() {
+      this.showBcc = true;
+      this.$nextTick(() => this.$refs.bccInput?.focus());
+    },
+    focusCcInput() { this.$refs.ccInput?.focus(); },
+    focusBccInput() { this.$refs.bccInput?.focus(); },
+    addCcRecipient(email) {
+      const trimmed = String(email || '').trim();
+      if (!trimmed) return;
+      if (this.ccRecipients.some(e => e.toLowerCase() === trimmed.toLowerCase())) return;
+      this.ccRecipients.push(trimmed);
+    },
+    removeCcRecipient(index) { this.ccRecipients.splice(index, 1); },
+    handleCcKeydown(event) {
+      if ((event.key === 'Enter' || event.key === ',') && this.ccInputValue.trim()) {
+        event.preventDefault();
+        this.addCcRecipient(this.ccInputValue.trim());
+        this.ccInputValue = '';
+      } else if (event.key === 'Backspace' && !this.ccInputValue && this.ccRecipients.length > 0) {
+        this.removeCcRecipient(this.ccRecipients.length - 1);
+      }
+    },
+    addBccRecipient(email) {
+      const trimmed = String(email || '').trim();
+      if (!trimmed) return;
+      if (this.bccRecipients.some(e => e.toLowerCase() === trimmed.toLowerCase())) return;
+      this.bccRecipients.push(trimmed);
+    },
+    removeBccRecipient(index) { this.bccRecipients.splice(index, 1); },
+    handleBccKeydown(event) {
+      if ((event.key === 'Enter' || event.key === ',') && this.bccInputValue.trim()) {
+        event.preventDefault();
+        this.addBccRecipient(this.bccInputValue.trim());
+        this.bccInputValue = '';
+      } else if (event.key === 'Backspace' && !this.bccInputValue && this.bccRecipients.length > 0) {
+        this.removeBccRecipient(this.bccRecipients.length - 1);
+      }
+    },
+
+    // HTML helpers
+    escapeHtml(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    },
+    toHtml(text) {
+      return this.escapeHtml(text).replace(/\n/g, '<br>');
+    },
+    getPlainText() {
+      const el = this.$refs.bodyInput;
+      if (el) return el.textContent || el.innerText || '';
+      const tmp = document.createElement('div');
+      tmp.innerHTML = this.body;
+      return tmp.textContent || tmp.innerText || '';
+    },
+
+    // Contenteditable body sync
+    onBodyInput() {
+      this.body = this.$refs.bodyInput?.innerHTML || '';
+      this.scheduleDraftSave();
+    },
+
+    // Rich text formatting
+    execFormat(command, value = null) {
+      this.$refs.bodyInput?.focus();
+      document.execCommand(command, false, value);
+    },
+
     prefillReply() {
       if (!this.replyTo) return;
-      
-      // Extract email from "Name <email>" format with robust handling
       const rawFrom = (this.replyTo.from || '').trim();
       if (rawFrom) {
         const fromMatch = rawFrom.match(/<([^>]+)>/);
@@ -636,34 +842,40 @@ export default {
         this.recipients = [];
       }
       this.toInput = '';
-      
-      // Add Re: prefix if not already present
       const subj = this.replyTo.subject || '';
       this.subject = subj.startsWith('Re:') ? subj : `Re: ${subj}`;
-      
-      // Quote the original message
       const date = this.formatDate(this.replyTo.receivedAt);
-      const originalBody = this.replyTo.textBody || '';
-      this.body = `\n\n---\nOn ${date}, ${this.replyTo.from} wrote:\n\n${originalBody}`;
+      const from = this.escapeHtml(this.replyTo.from);
+      const originalHtml = this.replyTo.htmlBody
+        ? this.replyTo.htmlBody
+        : `<pre style="font-family:inherit;white-space:pre-wrap;margin:0;">${this.escapeHtml(this.replyTo.textBody || '')}</pre>`;
+      this.body = `<div><br></div><div><br></div><div style="color:#5f6368;font-size:13px;">On ${date}, ${from} wrote:</div><blockquote style="margin:4px 0 0 0;padding-left:12px;border-left:3px solid #ccc;">${originalHtml}</blockquote>`;
     },
     prefillForward() {
       if (!this.forwardFrom) return;
-      
-      // Leave To empty for user to fill
       this.recipients = [];
       this.toInput = '';
-      
-      // Add Fwd: prefix if not already present
       const subj = this.forwardFrom.subject || '';
       this.subject = subj.startsWith('Fwd:') ? subj : `Fwd: ${subj}`;
-      
-      // Include forwarded message
       const date = this.formatDate(this.forwardFrom.receivedAt);
-      const originalBody = this.forwardFrom.textBody || '';
-      this.body = `\n\n---------- Forwarded message ----------\nFrom: ${this.forwardFrom.from}\nDate: ${date}\nSubject: ${this.forwardFrom.subject || '(No Subject)'}\n\n${originalBody}`;
+      const originalHtml = this.forwardFrom.htmlBody
+        ? this.forwardFrom.htmlBody
+        : `<pre style="font-family:inherit;white-space:pre-wrap;margin:0;">${this.escapeHtml(this.forwardFrom.textBody || '')}</pre>`;
+      this.body = `<div><br></div><div style="border-top:1px solid #e0e0e0;padding-top:12px;margin-top:12px;font-size:13px;color:#5f6368;"><b>---------- Forwarded message ----------</b><br>From: ${this.escapeHtml(this.forwardFrom.from)}<br>Date: ${date}<br>Subject: ${this.escapeHtml(this.forwardFrom.subject || '(No Subject)')}</div><div style="margin-top:12px;">${originalHtml}</div>`;
+    },
+    toggleMinimize() {
+      this.isMinimized = !this.isMinimized;
+      if (this.isMinimized) this.isFullscreen = false;
+    },
+    toggleFullscreen() {
+      this.isFullscreen = !this.isFullscreen;
+      if (this.isFullscreen) this.isMinimized = false;
     },
     handleClose() {
       if (this.sending) return;
+      this.isMinimized = false;
+      this.isFullscreen = false;
+      this.showFormatBar = false;
       this.$emit('close');
     },
     handleDiscard() {
@@ -678,10 +890,11 @@ export default {
         this.subject = tpl.subject;
       }
       if (tpl.body) {
-        if (this.body && this.body.trim().length > 0) {
-          this.body = `${tpl.body}\n${this.body}`;
+        const currentText = this.getPlainText().trim();
+        if (currentText.length > 0) {
+          this.body = `${this.toHtml(tpl.body)}<br>${this.$refs.bodyInput?.innerHTML || ''}`;
         } else {
-          this.body = tpl.body;
+          this.body = this.toHtml(tpl.body);
         }
       }
       this.$nextTick(() => this.$refs.bodyInput?.focus());
@@ -695,7 +908,8 @@ export default {
     },
     handleEscapeKey(event) {
       if (event.key === 'Escape' && !this.sending) {
-        this.handleClose();
+        this.isMinimized = true;
+        this.isFullscreen = false;
       }
     },
     formatDate(timestamp) {
@@ -743,8 +957,11 @@ export default {
       try {
         await sendEmail({
           to: this.recipients,
+          cc: this.ccRecipients.length > 0 ? this.ccRecipients : undefined,
+          bcc: this.bccRecipients.length > 0 ? this.bccRecipients : undefined,
           subject: this.subject,
-          body: this.body,
+          body: this.getPlainText(),
+          htmlBody: this.body,
           replyToId: this.replyTo?.id,
           attachments: this.attachments.length > 0 ? this.attachments : undefined
         });
@@ -760,8 +977,11 @@ export default {
 
     handleBodyKeydown(event) {
       if (event.key === '/' && !this.aiBarOpen && !this.aiLoading && !this.sending) {
-        event.preventDefault();
-        this.openAiBar();
+        const sel = window.getSelection();
+        if (sel && sel.isCollapsed) {
+          event.preventDefault();
+          this.openAiBar();
+        }
       }
     },
 
@@ -805,11 +1025,12 @@ export default {
           this.subject = result.subject;
         }
         if (result?.body) {
+          const resultHtml = this.toHtml(result.body);
           if (this.replyTo) {
-            // Prepend AI body above the quoted original
-            this.body = `${result.body}\n${this.body}`;
+            const currentHtml = this.$refs.bodyInput?.innerHTML || '';
+            this.body = `${resultHtml}<br>${currentHtml}`;
           } else {
-            this.body = result.body;
+            this.body = resultHtml;
           }
         }
         this.aiPrompt = '';
@@ -844,6 +1065,14 @@ export default {
   pointer-events: none;
 }
 
+.modal-overlay--fullscreen {
+  pointer-events: auto;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .compose-modal {
   position: fixed;
   bottom: 0;
@@ -860,6 +1089,22 @@ export default {
   overflow: hidden;
 }
 
+.compose-modal--minimized {
+  height: auto;
+}
+
+.compose-modal--minimized .compose-form {
+  display: none;
+}
+
+.compose-modal--fullscreen {
+  position: static;
+  width: min(860px, 90vw);
+  height: min(88vh, 800px);
+  border-radius: 12px;
+  animation: none;
+}
+
 @keyframes slideUp {
   from {
     transform: translateY(100%);
@@ -873,9 +1118,11 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 16px;
+  padding: 10px 12px 10px 16px;
   background: var(--color-bg-secondary, #f2f6fc);
   border-bottom: 1px solid var(--color-border, #e0e0e0);
+  cursor: default;
+  flex-shrink: 0;
 }
 
 .compose-header h2 {
@@ -889,20 +1136,46 @@ export default {
   font-size: 12px;
   color: var(--color-text-secondary, #808080);
   margin-left: auto;
-  margin-right: 12px;
+  margin-right: 8px;
+}
+
+.compose-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.header-btn {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary, #808080);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.header-btn:hover {
+  background: var(--color-bg-hover, #e3e5e8);
+  color: var(--color-text, #202020);
 }
 
 .close-btn {
   background: none;
   border: none;
-  font-size: 24px;
+  font-size: 22px;
   color: var(--color-text-secondary, #808080);
   cursor: pointer;
-  padding: 0;
+  padding: 2px 4px;
   line-height: 1;
+  border-radius: 4px;
 }
 
 .close-btn:hover {
+  background: var(--color-bg-hover, #e3e5e8);
   color: var(--color-text, #202020);
 }
 
@@ -921,6 +1194,57 @@ export default {
 
 .to-field {
   padding-top: 4px;
+  position: relative;
+}
+
+.to-field-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.to-input-wrapper {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+}
+
+.cc-bcc-toggles {
+  display: flex;
+  gap: 4px;
+  padding-top: 10px;
+  flex-shrink: 0;
+}
+
+.cc-bcc-btn {
+  background: none;
+  border: none;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-secondary, #808080);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 3px;
+  line-height: 1.4;
+}
+
+.cc-bcc-btn:hover {
+  color: var(--color-text, #202020);
+  background: var(--color-bg-secondary, #f5f5f5);
+}
+
+.cc-field,
+.bcc-field {
+  padding-top: 0;
+}
+
+.field-label {
+  font-size: 13px;
+  color: var(--color-text-secondary, #808080);
+  padding: 0 8px 0 0;
+  flex-shrink: 0;
+  align-self: center;
+  pointer-events: none;
 }
 
 .form-field input,
@@ -1005,14 +1329,6 @@ export default {
   cursor: not-allowed;
 }
 
-.to-field {
-  position: relative;
-}
-
-.to-input-wrapper {
-  position: relative;
-}
-
 .suggestions-dropdown {
   position: absolute;
   top: 100%;
@@ -1060,12 +1376,36 @@ export default {
   padding-top: 8px;
 }
 
-.body-field textarea {
+.body-editor {
   flex: 1;
   min-height: 0;
-  resize: none;
-  border-bottom: none;
-  padding: 4px 0;
+  overflow-y: auto;
+  padding: 4px 0 8px;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--color-text, #202020);
+  line-height: 1.6;
+  outline: none;
+  word-break: break-word;
+}
+
+.body-editor:empty::before {
+  content: 'Write your message…';
+  color: var(--color-text-secondary, #b0b8c1);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.body-editor--disabled {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.body-editor blockquote {
+  margin: 4px 0 0 0;
+  padding-left: 12px;
+  border-left: 3px solid #ccc;
+  color: var(--color-text-secondary, #5f6368);
 }
 
 .attachments-field {
@@ -1144,6 +1484,52 @@ export default {
   font-size: 14px;
 }
 
+.format-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding: 6px 12px;
+  border-top: 1px solid var(--color-border, #e0e0e0);
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.fmt-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  color: var(--color-text-secondary, #5f6368);
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  padding: 0;
+  transition: background 0.12s, color 0.12s;
+  flex-shrink: 0;
+}
+
+.fmt-btn:hover {
+  background: var(--color-bg-secondary, #f1f3f4);
+  color: var(--color-text, #202020);
+}
+
+.fmt-bold { font-weight: 700; }
+.fmt-italic { font-style: italic; }
+.fmt-underline { text-decoration: underline; }
+.fmt-strike { text-decoration: line-through; }
+
+.fmt-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--color-border, #e0e0e0);
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
 .compose-actions {
   display: flex;
   align-items: center;
@@ -1197,6 +1583,11 @@ export default {
 .icon-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.icon-btn--active {
+  color: var(--color-primary, #1a73e8);
+  background: var(--color-bg-secondary, #f1f3f4);
 }
 
 .icon-btn-trailing {

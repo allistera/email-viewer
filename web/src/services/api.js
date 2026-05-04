@@ -307,7 +307,7 @@ export async function deleteTag(id) {
   });
 }
 
-export async function sendEmail({ to, subject, body, replyToId, attachments }) {
+export async function sendEmail({ to, cc, bcc, subject, body, htmlBody, replyToId, attachments }) {
   const token = getToken();
   const headers = {};
   if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -315,8 +315,11 @@ export async function sendEmail({ to, subject, body, replyToId, attachments }) {
   if (attachments && attachments.length > 0) {
     const formData = new FormData();
     formData.append('to', JSON.stringify(Array.isArray(to) ? to : [to]));
+    if (cc && cc.length > 0) formData.append('cc', JSON.stringify(cc));
+    if (bcc && bcc.length > 0) formData.append('bcc', JSON.stringify(bcc));
     formData.append('subject', subject ?? '');
     formData.append('body', body ?? '');
+    if (htmlBody) formData.append('htmlBody', htmlBody);
     if (replyToId) formData.append('replyToId', replyToId);
     for (const file of attachments) {
       formData.append('attachments', file, file.name || 'attachment');
@@ -336,7 +339,7 @@ export async function sendEmail({ to, subject, body, replyToId, attachments }) {
   return request('/send', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ to, subject, body, replyToId })
+    body: JSON.stringify({ to, cc, bcc, subject, body, htmlBody, replyToId })
   });
 }
 

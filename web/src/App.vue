@@ -7,6 +7,7 @@
     />
 
     <ComposeModal
+      ref="composeModal"
       :show="showComposeModal"
       :reply-to="replyToMessage"
       :forward-from="forwardMessage"
@@ -734,6 +735,11 @@ export default {
     },
 
     openCompose() {
+      // If already open and minimized, just restore it
+      if (this.showComposeModal && this.$refs.composeModal?.isMinimized) {
+        this.$refs.composeModal.isMinimized = false;
+        return;
+      }
       this.replyToMessage = null;
       this.forwardMessage = null;
       this.composeDraft = null;
@@ -1029,7 +1035,7 @@ export default {
 .compose-fab {
   position: fixed;
   bottom: 96px;
-  right: 96px;
+  right: calc(72px + 96px);
   width: 56px;
   height: 56px;
   border-radius: 50%;

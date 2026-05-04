@@ -589,7 +589,7 @@ export default {
   position: absolute;
   bottom: 96px;
   left: 16px;
-  right: 16px;
+  right: calc(72px + 96px);
   padding: 10px 16px;
   background: var(--color-primary, #db4c3f);
   color: #fff;
